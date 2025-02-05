@@ -1,0 +1,53 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn.lock
+package-lock.json
+
+# Environment variables
+.env
+
+# TypeScript build files
+dist/
+*.tsbuildinfo
+
+# Webpack build files
+build/
+
+# Logs
+logs/
+*.log
+log/
+
+# Editor settings
+.vscode/
+.idea/
+.DS_Store
+
+# Linting
+.eslintcache
+
+# Temporary files
+*.tmp
+*.swp
+
+# Coverage
+coverage/
+
+# Ignore compiled JavaScript files
+*.js.map
+
+# Ignore Jest test coverage
+jest-coverage/
+
+# Ignore cache files
+.cache/
+
+# Ignore multer uploads (if applicable)
+uploads/
+
+# Ignore compiled output
+out/
+
+# Ignore winston logs (if using winston-daily-rotate-file)
+logs/**/*.log
