@@ -54,6 +54,13 @@ model Brand {
   Workshop Workshop[]
 }
 
+model Cars {
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  imageUrls String[] @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Workshop {
   id        String   @id @default(cuid()) @db.VarChar(30)
   name      String   @db.VarChar(100)

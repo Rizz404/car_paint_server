@@ -1,5 +1,14 @@
-import { Response } from "express";
+import { Response, Request } from "express";
 import { ZodError } from "zod";
+
+export type RequestBody<T> = Request<{}, {}, T>;
+export type RequestParams<T> = Request<T, {}, {}>;
+export type RequestQuery<T> = Request<{}, T, {}>;
+
+export type PageLimit = {
+  page: number;
+  limit: number;
+};
 
 export interface ApiSuccessResponse<T> {
   message: string;

@@ -50,7 +50,7 @@ export const login: RequestHandler = async (req, res) => {
       { userId: user.id },
       process.env.JWT_ACCESS_TOKEN!,
       {
-        expiresIn: "30m",
+        expiresIn: "30d",
       }
     );
 

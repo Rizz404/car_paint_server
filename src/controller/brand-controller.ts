@@ -4,15 +4,35 @@ import {
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
+import logger from "@/utils/logger";
+import { parsePagination } from "@/utils/parse-pagination";
 import { Brand } from "@prisma/client";
 import { RequestHandler } from "express";
 
 // *======================= POST =======================*
+export const createManyBrands: RequestHandler = async (req, res) => {
+  try {
+    const payload: Brand[] = req.body;
+
+    const createdBrand = await prisma.brand.createMany({ data: payload });
+
+    createSuccessResponse(res, createdBrand, "Created many brands", 201);
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
 export const createBrand: RequestHandler = async (req, res) => {
   try {
     const payload: Brand = req.body;
+    const image = req.file as Express.Multer.File;
+    console.log(payload);
 
-    const createdBrand = await prisma.brand.create({ data: payload });
+    const createdBrand = await prisma.brand.create({
+      data: { ...payload, imageUrl: image.cloudinary?.secure_url! },
+    });
+
+    console.log(createdBrand);
 
     createSuccessResponse(res, createdBrand, "Created", 201);
   } catch (error) {
@@ -23,9 +43,27 @@ export const createBrand: RequestHandler = async (req, res) => {
 // *======================= GET =======================*
 export const getBrands: RequestHandler = async (req, res) => {
   try {
-    const brands = await prisma.brand.findMany();
+    const { page = "1", limit = "10" } = req.query as unknown as {
+      page: string;
+      limit: string;
+    };
 
-    createPaginatedResponse(res, brands, 1, 10, 18);
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const brands = await prisma.brand.findMany({
+      skip: offset,
+      take: +limit,
+      orderBy: { name: "asc" },
+    });
+    const totalBrands = await prisma.brand.count();
+
+    createPaginatedResponse(
+      res,
+      brands,
+      currentPage,
+      itemsPerPage,
+      totalBrands
+    );
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
@@ -41,6 +79,42 @@ export const getBrandById: RequestHandler = async (req, res) => {
     }
 
     createSuccessResponse(res, brand);
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+export const searchBrands: RequestHandler = async (req, res) => {
+  try {
+    const {
+      page = "1",
+      limit = "10",
+      name,
+    } = req.query as unknown as {
+      page: string;
+      limit: string;
+      name: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const brands = await prisma.brand.findMany({
+      where: { name: { contains: name } },
+      skip: offset,
+      take: +limit,
+      orderBy: { createdAt: "desc" },
+    });
+    const totalBrands = await prisma.brand.count({
+      where: { name: { contains: name } },
+    });
+
+    createPaginatedResponse(
+      res,
+      brands,
+      currentPage,
+      itemsPerPage,
+      totalBrands
+    );
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
