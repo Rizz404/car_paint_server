@@ -1,5 +1,6 @@
 import {
   createBrand,
+  createManyBrands,
   deleteAllBrand,
   deleteBrand,
   getBrandById,
@@ -10,7 +11,10 @@ import {
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
-import { createBrandSchema } from "@/validation/brand-validation";
+import {
+  createBrandSchema,
+  createManyBrandsSchema,
+} from "@/validation/brand-validation";
 import express from "express";
 
 const brandRouter = express.Router();
@@ -25,6 +29,15 @@ brandRouter
     createBrand
   )
   .delete(authMiddleware(), deleteAllBrand);
+
+brandRouter
+  .route("/multiple")
+  .post(
+    authMiddleware(),
+    validateBody(createManyBrandsSchema),
+    createManyBrands
+  );
+
 brandRouter.route("/search").get(searchBrands);
 brandRouter
   .route("/:brandId")

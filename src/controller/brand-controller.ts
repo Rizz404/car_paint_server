@@ -12,12 +12,28 @@ import { RequestHandler } from "express";
 // *======================= POST =======================*
 export const createManyBrands: RequestHandler = async (req, res) => {
   try {
-    const payload: Brand[] = req.body;
+    const payloads: Brand[] = req.body;
 
-    const createdBrand = await prisma.brand.createMany({ data: payload });
+    // Validate if files are uploaded for each brand if required
+    const images = req.files as Express.Multer.File[];
 
-    createSuccessResponse(res, createdBrand, "Created many brands", 201);
+    // Map payloads to include cloudinary image URLs if images are present
+    const brandsToCreate = payloads.map((payload, index) => ({
+      ...payload,
+      ...(images &&
+        images[index] && {
+          imageUrl: images[index].cloudinary?.secure_url!,
+        }),
+    }));
+
+    const createdBrands = await prisma.brand.createMany({
+      data: brandsToCreate,
+      skipDuplicates: true, // Optional: skip duplicate entries
+    });
+
+    createSuccessResponse(res, createdBrands, "Brands Created", 201);
   } catch (error) {
+    logger.error("Error creating multiple brands:", error);
     createErrorResponse(res, error, 500);
   }
 };
@@ -26,7 +42,6 @@ export const createBrand: RequestHandler = async (req, res) => {
   try {
     const payload: Brand = req.body;
     const image = req.file as Express.Multer.File;
-    console.log(payload);
 
     const createdBrand = await prisma.brand.create({
       data: { ...payload, imageUrl: image.cloudinary?.secure_url! },
@@ -125,6 +140,16 @@ export const updateBrand: RequestHandler = async (req, res) => {
   try {
     const { brandId } = req.params;
     const payload: Brand = req.body;
+
+    const brand = await prisma.brand.findUnique({
+      where: {
+        id: brandId,
+      },
+    });
+
+    if (!brand) {
+      createErrorResponse(res, "Brand Not Found", 500);
+    }
 
     const updatedBrand = await prisma.brand.update({
       data: payload,

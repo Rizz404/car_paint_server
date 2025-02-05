@@ -102,6 +102,15 @@ export const updateProfile: RequestHandler = async (req, res) => {
   try {
     const { id } = req.user!;
     const payload: UserProfile = req.body;
+    const profile = await prisma.userProfile.findUnique({
+      where: {
+        userId: id,
+      },
+    });
+
+    if (!profile) {
+      createErrorResponse(res, "Profile Not Found", 500);
+    }
     const updatedProfile = await prisma.userProfile.update({
       data: payload,
       where: { userId: id },

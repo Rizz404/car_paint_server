@@ -55,6 +55,16 @@ export const updateWorkshop: RequestHandler = async (req, res) => {
     const { workshopId } = req.params;
     const payload: Workshop = req.body;
 
+    const workshop = await prisma.workshop.findUnique({
+      where: {
+        id: workshopId,
+      },
+    });
+
+    if (!workshop) {
+      createErrorResponse(res, "Workshop Not Found", 500);
+    }
+
     const updatedWorkshop = await prisma.workshop.update({
       data: payload,
       where: { id: workshopId },

@@ -40,7 +40,7 @@ export const login: RequestHandler = async (req, res) => {
 
     if (!user) return createErrorResponse(res, "Credentials not match", 400);
 
-    const passwordMatch = await bcrypt.compare(password!, user.password!);
+    const passwordMatch = await bcrypt.compare(password, user.password!);
 
     if (!passwordMatch) {
       return createErrorResponse(res, "Password not match", 400);
