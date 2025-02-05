@@ -21,6 +21,13 @@ app.use(cookieParser());
 app.use(bodyParser.json({ limit: "30mb" }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
 
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+  });
+});
 app.use("/api/v1", routes);
 
 process.on("uncaughtException", (err) => {

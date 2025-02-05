@@ -1,6 +1,8 @@
 import {
   createBrand,
+  deleteAllBrand,
   deleteBrand,
+  getBrandById,
   getBrands,
   updateBrand,
 } from "@/controller/brand-controller";
@@ -13,9 +15,11 @@ const brandRouter = express.Router();
 brandRouter
   .route("/")
   .get(getBrands)
-  .post(validateBody(createBrandSchema), createBrand);
+  .post(validateBody(createBrandSchema), createBrand)
+  .delete(deleteAllBrand);
 brandRouter
   .route("/:brandId")
+  .get(getBrandById)
   .patch(validateBody(createBrandSchema), updateBrand)
   .delete(deleteBrand);
 
