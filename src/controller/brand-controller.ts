@@ -47,8 +47,6 @@ export const createBrand: RequestHandler = async (req, res) => {
       data: { ...payload, imageUrl: image.cloudinary?.secure_url! },
     });
 
-    console.log(createdBrand);
-
     createSuccessResponse(res, createdBrand, "Created", 201);
   } catch (error) {
     createErrorResponse(res, error, 500);
@@ -166,6 +164,16 @@ export const updateBrand: RequestHandler = async (req, res) => {
 export const deleteBrand: RequestHandler = async (req, res) => {
   try {
     const { brandId } = req.params;
+
+    const brand = await prisma.brand.findUnique({
+      where: {
+        id: brandId,
+      },
+    });
+
+    if (!brand) {
+      createErrorResponse(res, "Brand Not Found", 500);
+    }
 
     const deletedBrand = await prisma.brand.delete({
       where: { id: brandId },

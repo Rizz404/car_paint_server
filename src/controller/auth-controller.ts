@@ -16,6 +16,25 @@ export const register: RequestHandler = async (req, res) => {
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const emailExist = await prisma.user.findUnique({
+      where: {
+        email: email,
+      },
+    });
+
+    if (emailExist) {
+      createErrorResponse(res, "Email already registered", 500);
+    }
+    const usernameExist = await prisma.user.findUnique({
+      where: {
+        username: username,
+      },
+    });
+
+    if (usernameExist) {
+      createErrorResponse(res, "Username already registered", 500);
+    }
+
     const createdUser = await prisma.user.create({
       data: {
         username,

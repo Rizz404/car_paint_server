@@ -16,8 +16,8 @@ datasource db {
 
 model User {
   id           String   @id @default(cuid()) @db.VarChar(30)
-  username     String   @db.VarChar(100)
-  email        String   @db.VarChar(100)
+  username     String   @unique @db.VarChar(100)
+  email        String   @unique @db.VarChar(100)
   password     String   @db.Text
   profileImage String   @default("") @db.VarChar(1024)
   createdAt    DateTime @default(now())
@@ -46,7 +46,7 @@ model UserProfile {
 
 model Brand {
   id        String   @id @default(cuid()) @db.VarChar(30)
-  name      String   @db.VarChar(50)
+  name      String   @unique @db.VarChar(50)
   imageUrl  String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -63,7 +63,7 @@ model Cars {
 
 model Workshop {
   id        String   @id @default(cuid()) @db.VarChar(30)
-  name      String   @db.VarChar(100)
+  name      String   @unique @db.VarChar(100)
   address   String   @db.Text
   latitude  Decimal  @db.Decimal(9, 6)
   longitude Decimal  @db.Decimal(9, 6)
