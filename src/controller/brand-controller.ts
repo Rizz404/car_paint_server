@@ -4,7 +4,6 @@ import {
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
-import logger from "@/utils/logger";
 import { Brand } from "@prisma/client";
 import { RequestHandler } from "express";
 
