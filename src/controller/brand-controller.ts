@@ -26,7 +26,6 @@ export const getBrands: RequestHandler = async (req, res) => {
     const brands = await prisma.brand.findMany();
 
     createPaginatedResponse(res, brands, 1, 10, 18);
-    console.log(brands);
   } catch (error) {
     createErrorResponse(res, error, 500);
   }

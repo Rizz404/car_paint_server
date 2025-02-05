@@ -6,6 +6,7 @@ import {
   getBrands,
   updateBrand,
 } from "@/controller/brand-controller";
+import { authMiddleware } from "@/middlewares/auth";
 import { validateBody } from "@/middlewares/validate-body";
 import { createBrandSchema } from "@/validation/brand-validation";
 import express from "express";
@@ -16,7 +17,7 @@ brandRouter
   .route("/")
   .get(getBrands)
   .post(validateBody(createBrandSchema), createBrand)
-  .delete(deleteAllBrand);
+  .delete(authMiddleware(), deleteAllBrand);
 brandRouter
   .route("/:brandId")
   .get(getBrandById)

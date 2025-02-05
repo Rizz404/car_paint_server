@@ -2,26 +2,15 @@ import { z } from "zod";
 
 export const loginSchema = z.object({
   body: z.object({
-    name: z
-      .string({
-        required_error: "Name is required",
-      })
-      .min(2, "Name must be at least 2 characters"),
-    imageUrl: z.string({
-      required_error: "Logo URL is required",
-    }),
+    email: z.string().email("Invalid email format").optional(),
+    password: z.string().min(6, "Password must be at least 6 characters"),
   }),
 });
 
 export const registerSchema = z.object({
   body: z.object({
-    name: z
-      .string({
-        required_error: "Name is required",
-      })
-      .min(2, "Name must be at least 2 characters"),
-    imageUrl: z.string({
-      required_error: "Logo URL is required",
-    }),
+    username: z.string().min(2, "Username must be at least 2 characters"),
+    email: z.string().email("Invalid email format"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
   }),
 });

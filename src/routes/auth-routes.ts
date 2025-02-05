@@ -5,7 +5,7 @@ import express from "express";
 
 const authRouter = express.Router();
 
-authRouter.route("/register").post(validateBody(createBrandSchema), register);
-authRouter.route("/login").post(validateBody(createBrandSchema), login);
+authRouter.route("/register").post(validateBody(registerSchema), register);
+authRouter.route("/login").post(validateBody(loginSchema), login);
 
 export default authRouter;
