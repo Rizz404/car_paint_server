@@ -11,10 +11,10 @@ import {
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
-import { updateCarBrandSchema } from "@/test/validation";
 import {
   createCarBrandSchema,
   createManyCarBrandsSchema,
+  updateCarBrandSchema,
 } from "@/validation/car-brand-validation";
 import express from "express";
 

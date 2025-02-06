@@ -73,6 +73,41 @@ export const getCarModelYears: RequestHandler = async (req, res) => {
   }
 };
 
+export const getCarModelYearsByCarModelId: RequestHandler = async (
+  req,
+  res
+) => {
+  try {
+    const { carModelId } = req.params;
+    const { page = "1", limit = "10" } = req.query as unknown as {
+      page: string;
+      limit: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const carModelYears = await prisma.carModelYear.findMany({
+      where: { carModelId },
+      skip: offset,
+      take: +limit,
+      orderBy: { createdAt: "desc" },
+    });
+    const totalCarModelYears = await prisma.carModelYear.count({
+      where: { carModelId },
+    });
+
+    createPaginatedResponse(
+      res,
+      carModelYears,
+      currentPage,
+      itemsPerPage,
+      totalCarModelYears
+    );
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
 export const getCarModelYearById: RequestHandler = async (req, res) => {
   try {
     const { carModelYearId } = req.params;

@@ -5,6 +5,7 @@ import {
   deleteCarModel,
   getCarModelById,
   getCarModels,
+  getCarModelsByBrandId,
   searchCarModels,
   updateCarModel,
 } from "@/controller/car-model-controller";
@@ -24,6 +25,8 @@ carModelRouter
   .get(getCarModels)
   .post(authMiddleware(), validateBody(createCarModelSchema), createCarModel)
   .delete(authMiddleware(), deleteAllCarModel);
+
+carModelRouter.route("/brand/:carBrandId").get(getCarModelsByBrandId);
 
 carModelRouter
   .route("/multiple")

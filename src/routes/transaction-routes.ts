@@ -7,6 +7,7 @@ import {
   getTransactions,
   searchTransactions,
   updateTransaction,
+  getCurrentUserTransactions,
 } from "@/controller/transaction-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
@@ -29,6 +30,10 @@ transactionRouter
     createTransaction
   )
   .delete(authMiddleware(), deleteAllTransaction);
+
+transactionRouter
+  .route("/user")
+  .get(authMiddleware(), getCurrentUserTransactions);
 
 transactionRouter
   .route("/multiple")

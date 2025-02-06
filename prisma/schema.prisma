@@ -51,7 +51,6 @@ model CarBrand {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workshop Workshop[]
   carModel CarModel[]
   userCar  UserCar[]
 }
@@ -70,14 +69,12 @@ model CarModel {
 }
 
 model CarService {
-  id         String   @id @default(cuid()) @db.VarChar(30)
-  workshopId String   @db.VarChar(30)
-  name       String   @unique @db.VarChar(50)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  name      String   @unique @db.VarChar(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  workshop Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  orders   Order[]
+  orders Order[]
 }
 
 model CarModelColor {
@@ -130,15 +127,10 @@ model Workshop {
   address     String   @db.Text
   latitude    Decimal  @db.Decimal(9, 6)
   longitude   Decimal  @db.Decimal(9, 6)
-  carBrandId  String   @db.VarChar(30)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  carBrand   CarBrand     @relation(fields: [carBrandId], references: [id], onDelete: Cascade)
-  carService CarService[]
-  order      Order[]
-
-  @@index([carBrandId])
+  order Order[]
 }
 
 model PaymentMethod {

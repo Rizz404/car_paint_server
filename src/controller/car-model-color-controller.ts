@@ -78,6 +78,41 @@ export const getCarModelColors: RequestHandler = async (req, res) => {
   }
 };
 
+export const getCarModelColorsByCarModelId: RequestHandler = async (
+  req,
+  res
+) => {
+  try {
+    const { carModelId } = req.params;
+    const { page = "1", limit = "10" } = req.query as unknown as {
+      page: string;
+      limit: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const carModelColors = await prisma.carModelColor.findMany({
+      where: { carModelId },
+      skip: offset,
+      take: +limit,
+      orderBy: { name: "asc" },
+    });
+    const totalCarModelColors = await prisma.carModelColor.count({
+      where: { carModelId },
+    });
+
+    createPaginatedResponse(
+      res,
+      carModelColors,
+      currentPage,
+      itemsPerPage,
+      totalCarModelColors
+    );
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
 export const getCarModelColorById: RequestHandler = async (req, res) => {
   try {
     const { carModelColorId } = req.params;

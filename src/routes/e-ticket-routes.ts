@@ -3,6 +3,7 @@ import {
   createManyETickets,
   deleteAllETicket,
   deleteETicket,
+  getCurrentUserETickets,
   getETicketById,
   getETickets,
   searchETickets,
@@ -25,6 +26,8 @@ eTicketRouter
   .get(getETickets)
   .post(authMiddleware(), validateBody(createETicketSchema), createETicket)
   .delete(authMiddleware(), deleteAllETicket);
+
+eTicketRouter.route("/user").get(authMiddleware(), getCurrentUserETickets);
 
 eTicketRouter
   .route("/multiple")

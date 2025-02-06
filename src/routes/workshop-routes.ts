@@ -7,6 +7,7 @@ import {
   getWorkshops,
   searchWorkshops,
   updateWorkshop,
+  getCurrentUserNearestWorkshops,
 } from "@/controller/workshop-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
@@ -25,6 +26,10 @@ workshopRouter
   .get(getWorkshops)
   .post(authMiddleware(), validateBody(createWorkshopSchema), createWorkshop)
   .delete(authMiddleware(), deleteAllWorkshops);
+
+workshopRouter
+  .route("/nearest")
+  .get(authMiddleware(), getCurrentUserNearestWorkshops);
 
 workshopRouter
   .route("/multiple")

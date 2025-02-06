@@ -187,3 +187,34 @@ export const deleteAllETicket: RequestHandler = async (req, res) => {
     createErrorResponse(res, error, 500);
   }
 };
+
+// * Current user operations
+export const getCurrentUserETickets: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.user!;
+    const { page = "1", limit = "10" } = req.query as unknown as {
+      page: string;
+      limit: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const eTickets = await prisma.eTicket.findMany({
+      where: { userId: id },
+      skip: offset,
+      take: +limit,
+      orderBy: { createdAt: "desc" },
+    });
+    const totalETickets = await prisma.eTicket.count({ where: { userId: id } });
+
+    createPaginatedResponse(
+      res,
+      eTickets,
+      currentPage,
+      itemsPerPage,
+      totalETickets
+    );
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};

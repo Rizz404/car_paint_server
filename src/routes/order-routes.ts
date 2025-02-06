@@ -7,6 +7,7 @@ import {
   getOrders,
   searchOrders,
   updateOrder,
+  getCurrentUserOrders,
 } from "@/controller/order-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
@@ -25,6 +26,8 @@ orderRouter
   .get(getOrders)
   .post(authMiddleware(), validateBody(createOrderSchema), createOrder)
   .delete(authMiddleware(), deleteAllOrder);
+
+orderRouter.route("/user").get(authMiddleware(), getCurrentUserOrders);
 
 orderRouter
   .route("/multiple")

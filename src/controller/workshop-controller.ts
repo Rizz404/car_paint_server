@@ -4,11 +4,15 @@ import {
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
+import {
+  calculateDistanceInKilometers,
+  formatDistanceKmToM,
+} from "@/utils/location";
 import { parsePagination } from "@/utils/parse-pagination";
 import { Workshop } from "@prisma/client";
 import { RequestHandler } from "express";
 
-// *======================= CREATE =======================*
+// *======================= POST =======================*
 export const createManyWorkshops: RequestHandler = async (req, res) => {
   try {
     const payloads: Workshop[] = req.body;
@@ -19,7 +23,7 @@ export const createManyWorkshops: RequestHandler = async (req, res) => {
 
     const createdWorkshops = await prisma.workshop.createMany({
       data: workshopsToCreate,
-      skipDuplicates: true, // Optional: skip duplicate entries
+      skipDuplicates: true,
     });
 
     createSuccessResponse(res, createdWorkshops, "Car brands Created", 201);
@@ -40,7 +44,7 @@ export const createWorkshop: RequestHandler = async (req, res) => {
   }
 };
 
-// *======================= GET ALL =======================*
+// *======================= GET =======================*
 export const getWorkshops: RequestHandler = async (req, res) => {
   try {
     const workshops = await prisma.workshop.findMany();
@@ -51,7 +55,6 @@ export const getWorkshops: RequestHandler = async (req, res) => {
   }
 };
 
-// *======================= GET BY ID =======================*
 export const getWorkshopById: RequestHandler = async (req, res) => {
   try {
     const { workshopId } = req.params;
@@ -105,7 +108,7 @@ export const searchWorkshops: RequestHandler = async (req, res) => {
   }
 };
 
-// *======================= UPDATE =======================*
+// *======================= PATCH =======================*
 export const updateWorkshop: RequestHandler = async (req, res) => {
   try {
     const { workshopId } = req.params;
@@ -137,6 +140,14 @@ export const deleteWorkshop: RequestHandler = async (req, res) => {
   try {
     const { workshopId } = req.params;
 
+    const workshop = await prisma.workshop.findUnique({
+      where: { id: workshopId },
+    });
+
+    if (!workshop) {
+      return createErrorResponse(res, "Workshop not found", 404);
+    }
+
     const deletedWorkshop = await prisma.workshop.delete({
       where: { id: workshopId },
     });
@@ -147,12 +158,95 @@ export const deleteWorkshop: RequestHandler = async (req, res) => {
   }
 };
 
-// *======================= DELETE ALL =======================*
 export const deleteAllWorkshops: RequestHandler = async (req, res) => {
   try {
     const deletedAllWorkshops = await prisma.workshop.deleteMany();
 
     createSuccessResponse(res, deletedAllWorkshops, "All workshops deleted");
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+// * Current user operations
+export const getCurrentUserNearestWorkshops: RequestHandler = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.user!;
+    const {
+      page = "1",
+      limit = "10",
+      maxDistance,
+    } = req.query as {
+      page?: string;
+      limit?: string;
+      maxDistance?: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const currentUser = await prisma.userProfile.findUnique({
+      where: { userId: id },
+      select: { latitude: true, longitude: true },
+    });
+
+    if (!currentUser?.latitude || !currentUser?.longitude) {
+      return createErrorResponse(res, "Missing user coordinate", 400);
+    }
+
+    const workshops = await prisma.workshop.findMany({});
+
+    const workshopDistances = await Promise.all(
+      workshops.map(async (workshop) => {
+        const distance = await calculateDistanceInKilometers(
+          {
+            latitude: currentUser.latitude!,
+            longitude: currentUser.longitude!,
+          },
+          {
+            latitude: workshop.latitude,
+            longitude: workshop.longitude,
+          }
+        );
+
+        return {
+          ...workshop,
+          distance: formatDistanceKmToM(distance || "0"),
+          rawDistance: parseFloat(distance || "0"),
+        };
+      })
+    );
+
+    // * Filter dengan maxdistance
+    const filteredWorkshops = maxDistance
+      ? workshopDistances.filter(
+          (workshop) => workshop.rawDistance <= parseFloat(maxDistance)
+        )
+      : workshopDistances;
+
+    // * Sorting berdasarkan distance
+    const sortedWorkshops = filteredWorkshops.sort(
+      (a, b) => a.rawDistance - b.rawDistance
+    );
+
+    const paginatedWorkshops = sortedWorkshops.slice(
+      offset,
+      offset + itemsPerPage
+    );
+
+    const formattedWorkshops = paginatedWorkshops.map(
+      ({ rawDistance, ...workshop }) => workshop
+    );
+
+    createPaginatedResponse(
+      res,
+      formattedWorkshops,
+      currentPage,
+      itemsPerPage,
+      sortedWorkshops.length
+    );
   } catch (error) {
     createErrorResponse(res, error, 500);
   }

@@ -69,6 +69,38 @@ export const getCarModels: RequestHandler = async (req, res) => {
   }
 };
 
+export const getCarModelsByBrandId: RequestHandler = async (req, res) => {
+  try {
+    const { carBrandId } = req.params;
+    const { page = "1", limit = "10" } = req.query as unknown as {
+      page: string;
+      limit: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const carModels = await prisma.carModel.findMany({
+      where: { carBrandId: carBrandId },
+      skip: offset,
+      take: +limit,
+      orderBy: { name: "asc" },
+    });
+    const totalCarModels = await prisma.carModel.count({
+      where: { carBrandId: carBrandId },
+    });
+
+    createPaginatedResponse(
+      res,
+      carModels,
+      currentPage,
+      itemsPerPage,
+      totalCarModels
+    );
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
 export const getCarModelById: RequestHandler = async (req, res) => {
   try {
     const { carModelId } = req.params;

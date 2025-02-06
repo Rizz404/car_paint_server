@@ -5,6 +5,7 @@ import {
   deleteCarModelColor,
   getCarModelColorById,
   getCarModelColors,
+  getCarModelColorsByCarModelId,
   searchCarModelColors,
   updateCarModelColor,
 } from "@/controller/car-model-color-controller";
@@ -28,6 +29,10 @@ carModelColorRouter
     createCarModelColor
   )
   .delete(authMiddleware(), deleteAllCarModelColor);
+
+carModelColorRouter
+  .route("/car-model/:carModelId")
+  .get(getCarModelColorsByCarModelId);
 
 carModelColorRouter
   .route("/multiple")

@@ -5,6 +5,7 @@ import {
   deleteCarModelYear,
   getCarModelYearById,
   getCarModelYears,
+  getCarModelYearsByCarModelId,
   searchCarModelYears,
   updateCarModelYear,
 } from "@/controller/car-model-year-controller";
@@ -29,6 +30,10 @@ carModelYearRouter
     createCarModelYear
   )
   .delete(authMiddleware(), deleteAllCarModelYear);
+
+carModelYearRouter
+  .route("/car-model/:carModelId")
+  .get(getCarModelYearsByCarModelId);
 
 carModelYearRouter
   .route("/multiple")

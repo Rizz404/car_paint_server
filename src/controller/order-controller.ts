@@ -6,7 +6,7 @@ import {
 } from "@/types/api-response";
 import logger from "@/utils/logger";
 import { parsePagination } from "@/utils/parse-pagination";
-import { Order } from "@prisma/client";
+import { Order, OrderStatus, WorkStatus } from "@prisma/client";
 import { RequestHandler } from "express";
 
 // *======================= POST =======================*
@@ -183,6 +183,50 @@ export const deleteAllOrder: RequestHandler = async (req, res) => {
     const deletedAllOrders = await prisma.order.deleteMany();
 
     createSuccessResponse(res, deletedAllOrders, "All car models deleted");
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+// * Current user operations
+export const getCurrentUserOrders: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.user!;
+    const {
+      page = "1",
+      limit = "10",
+      orderStatus,
+      workStatus,
+    } = req.query as unknown as {
+      page: string;
+      limit: string;
+      orderStatus: OrderStatus;
+      workStatus: WorkStatus;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        userId: id,
+        AND: [
+          { ...(orderStatus && { orderStatus }) },
+          { ...(workStatus && { workStatus }) },
+        ],
+      },
+      skip: offset,
+      take: +limit,
+      orderBy: { createdAt: "desc" },
+    });
+    const totalOrders = await prisma.order.count({ where: { userId: id } });
+
+    createPaginatedResponse(
+      res,
+      orders,
+      currentPage,
+      itemsPerPage,
+      totalOrders
+    );
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
