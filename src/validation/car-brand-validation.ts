@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const createBrandSchema = z.object({
+export const createCarBrandSchema = z.object({
   body: z.object({
     name: z
       .string({
@@ -14,11 +14,11 @@ export const createBrandSchema = z.object({
   }),
 });
 
-export const updateBrandSchema = z.object({
-  body: createBrandSchema.shape.body.partial(),
+export const updateCarBrandSchema = z.object({
+  body: createCarBrandSchema.shape.body.partial(),
 });
 
-export const createManyBrandsSchema = z.object({
+export const createManyCarBrandsSchema = z.object({
   body: z
     .array(
       z.object({
@@ -30,5 +30,5 @@ export const createManyBrandsSchema = z.object({
         imageUrl: z.any().optional(),
       })
     )
-    .min(1, "At least one brand is required"),
+    .min(1, "At least one carCarBrand is required"),
 });

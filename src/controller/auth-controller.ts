@@ -40,7 +40,7 @@ export const register: RequestHandler = async (req, res) => {
         username,
         email,
         password: hashedPassword,
-        UserProfile: { create: {} },
+        userProfile: { create: {} },
       },
     });
 
@@ -49,12 +49,13 @@ export const register: RequestHandler = async (req, res) => {
     createErrorResponse(res, error, 500);
   }
 };
+
 export const login: RequestHandler = async (req, res) => {
   try {
     const { username, email, password }: User = req.body;
     const user = await prisma.user.findFirst({
       where: { OR: [{ username }, { email }] },
-      include: { UserProfile: true },
+      include: { userProfile: true },
     });
 
     if (!user) return createErrorResponse(res, "Credentials not match", 400);

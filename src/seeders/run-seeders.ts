@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
-import { seedBrands } from "./brand-seeder";
 import { seedWorkshops } from "./workshop-seeder";
+import { seedCarBrands } from "./car-brand-seeder";
+import { seedUserCars } from "@/test/seeder";
+import { seedUsersWithProfiles } from "./user-seeder";
 
 const prisma = new PrismaClient();
 
@@ -8,8 +10,9 @@ async function main() {
   try {
     console.log("🌱 Starting database seeding...");
 
-    await seedBrands(prisma);
+    await seedCarBrands(prisma);
     await seedWorkshops(prisma);
+    await seedUsersWithProfiles(prisma);
 
     console.log("✅ Database seeding completed");
   } catch (error) {

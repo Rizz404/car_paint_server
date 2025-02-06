@@ -16,7 +16,7 @@ export const createWorkshopSchema = z.object({
       .number({ required_error: "Longitude is required" })
       .min(-180, "Longitude must be between -180 and 180")
       .max(180, "Longitude must be between -180 and 180"),
-    brandId: z.string({ required_error: "Brand ID is required" }),
+    carCarBrandId: z.string({ required_error: "CarBrand ID is required" }),
   }),
 });
 

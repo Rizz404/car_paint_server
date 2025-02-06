@@ -19,59 +19,206 @@ model User {
   username     String   @unique @db.VarChar(100)
   email        String   @unique @db.VarChar(100)
   password     String   @db.Text
-  profileImage String   @default("") @db.VarChar(1024)
+  profileImage String   @default("") @db.Text
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  UserProfile UserProfile?
-
-  @@index([username, email])
+  userProfile UserProfile?
+  userCar     UserCar[]
+  order       Order[]
+  transaction Transaction[]
+  eTicket     ETicket[]
 }
 
 model UserProfile {
   id          String   @id @default(cuid()) @db.VarChar(30)
   userId      String   @unique @db.VarChar(30)
   fullname    String?  @db.VarChar(255)
-  phoneNumber String?  @db.VarChar(15)
+  phoneNumber String?  @db.VarChar(20) // Diperpanjang untuk format internasional
   address     String?  @db.Text
-  latitude    Decimal? @db.Decimal(9, 6)
-  longitude   Decimal? @db.Decimal(9, 6)
+  latitude    Decimal? @db.Decimal(10, 8) // Presisi lebih tinggi
+  longitude   Decimal? @db.Decimal(11, 8) // Presisi lebih tinggi
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
 }
 
-model Brand {
+model CarBrand {
   id        String   @id @default(cuid()) @db.VarChar(30)
   name      String   @unique @db.VarChar(50)
   imageUrl  String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  Workshop Workshop[]
+  workshop Workshop[]
+  carModel CarModel[]
+  userCar  UserCar[]
 }
 
-model Cars {
-  id        String   @id @default(cuid()) @db.VarChar(30)
-  imageUrls String[] @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model CarModel {
+  id         String   @id @default(cuid()) @db.VarChar(30)
+  carBrandId String   @db.VarChar(30)
+  name       String   @unique @db.VarChar(50)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  carBrand      CarBrand        @relation(fields: [carBrandId], references: [id], onDelete: Cascade)
+  carModelColor CarModelColor[]
+  carModelYear  CarModelYear[]
+  userCar       UserCar[]
+}
+
+model CarService {
+  id         String   @id @default(cuid()) @db.VarChar(30)
+  workshopId String   @db.VarChar(30)
+  name       String   @unique @db.VarChar(50)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workshop Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  orders   Order[]
+}
+
+model CarModelColor {
+  id         String   @id @default(cuid()) @db.VarChar(30)
+  carModelId String   @db.VarChar(30)
+  name       String   @db.VarChar(100)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  carModel CarModel  @relation(fields: [carModelId], references: [id], onDelete: Cascade)
+  userCar  UserCar[]
+}
+
+model CarModelYear {
+  id         String   @id @default(cuid()) @db.VarChar(30)
+  carModelId String   @db.VarChar(30)
+  year       Int      @db.Integer
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  carModel CarModel  @relation(fields: [carModelId], references: [id], onDelete: Cascade)
+  userCar  UserCar[]
+}
+
+model UserCar {
+  id              String   @id @default(cuid()) @db.VarChar(30)
+  userId          String   @db.VarChar(30)
+  carBrandId      String   @db.VarChar(30)
+  carModelId      String   @db.VarChar(30)
+  carModelColorId String   @db.VarChar(30)
+  carModelYearId  String   @db.VarChar(30)
+  licensePlate    String   @db.VarChar(50)
+  imageUrls       String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  carBrand      CarBrand      @relation(fields: [carBrandId], references: [id], onDelete: Cascade)
+  carModel      CarModel      @relation(fields: [carModelId], references: [id], onDelete: Cascade)
+  carModelColor CarModelColor @relation(fields: [carModelColorId], references: [id], onDelete: Cascade)
+  carModelYear  CarModelYear  @relation(fields: [carModelYearId], references: [id], onDelete: Cascade)
+  order         Order[]
 }
 
 model Workshop {
+  id          String   @id @default(cuid()) @db.VarChar(30)
+  name        String   @unique @db.VarChar(100)
+  email       String   @db.VarChar(100)
+  phoneNumber String?  @db.VarChar(15)
+  address     String   @db.Text
+  latitude    Decimal  @db.Decimal(9, 6)
+  longitude   Decimal  @db.Decimal(9, 6)
+  carBrandId  String   @db.VarChar(30)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  carBrand   CarBrand     @relation(fields: [carBrandId], references: [id], onDelete: Cascade)
+  carService CarService[]
+  order      Order[]
+
+  @@index([carBrandId])
+}
+
+model PaymentMethod {
   id        String   @id @default(cuid()) @db.VarChar(30)
-  name      String   @unique @db.VarChar(100)
-  address   String   @db.Text
-  latitude  Decimal  @db.Decimal(9, 6)
-  longitude Decimal  @db.Decimal(9, 6)
-  brandId   String   @db.VarChar(30)
+  name      String   @db.VarChar(100)
+  fee       Decimal  @db.Decimal(5, 2) // Presisi untuk nilai desimal
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  transaction Transaction[]
+}
 
-  @@index([brandId])
+model Order {
+  id          String      @id @default(cuid()) @db.VarChar(30)
+  userId      String      @db.VarChar(30)
+  userCarId   String      @db.VarChar(30)
+  workshopId  String      @db.VarChar(30)
+  workStatus  WorkStatus
+  orderStatus OrderStatus @default(PENDING)
+  note        String      @db.Text
+  totalPrice  Decimal     @db.Decimal(10, 2)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userCar     UserCar       @relation(fields: [userCarId], references: [id], onDelete: Cascade)
+  workshop    Workshop      @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  carServices CarService[]
+  transaction Transaction[]
+  eTicket     ETicket[]
+}
+
+model Transaction {
+  id               String        @id @default(cuid()) @db.VarChar(30)
+  userId           String        @db.VarChar(30)
+  paymentMethodId  String        @db.VarChar(30)
+  orderId          String        @db.VarChar(30)
+  adminFee         Decimal       @db.Decimal(5, 2)
+  paymentMethodFee Decimal       @db.Decimal(5, 2)
+  totalPrice       Decimal       @db.Decimal(10, 2)
+  paymentStatus    PaymentStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model ETicket {
+  id           String   @id @default(cuid()) @db.VarChar(30)
+  userId       String   @db.VarChar(30)
+  orderId      String   @db.VarChar(30)
+  ticketNumber Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+enum WorkStatus {
+  INSPECTION
+  PUTTY
+  SURFACER
+  APPLICATIONCOLORBASE
+  APPLICATIONCLEARCOAT
+  POLISHING
+  FINALQC
+  DONE
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  CANCELLED
 }

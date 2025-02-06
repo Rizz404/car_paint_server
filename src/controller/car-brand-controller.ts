@@ -6,19 +6,17 @@ import {
 } from "@/types/api-response";
 import logger from "@/utils/logger";
 import { parsePagination } from "@/utils/parse-pagination";
-import { Brand } from "@prisma/client";
+import { CarBrand } from "@prisma/client";
 import { RequestHandler } from "express";
 
 // *======================= POST =======================*
-export const createManyBrands: RequestHandler = async (req, res) => {
+export const createManyCarBrands: RequestHandler = async (req, res) => {
   try {
-    const payloads: Brand[] = req.body;
+    const payloads: CarBrand[] = req.body;
 
-    // Validate if files are uploaded for each brand if required
     const images = req.files as Express.Multer.File[];
 
-    // Map payloads to include cloudinary image URLs if images are present
-    const brandsToCreate = payloads.map((payload, index) => ({
+    const carBrandsToCreate = payloads.map((payload, index) => ({
       ...payload,
       ...(images &&
         images[index] && {
@@ -26,35 +24,35 @@ export const createManyBrands: RequestHandler = async (req, res) => {
         }),
     }));
 
-    const createdBrands = await prisma.brand.createMany({
-      data: brandsToCreate,
+    const createdCarBrands = await prisma.carBrand.createMany({
+      data: carBrandsToCreate,
       skipDuplicates: true, // Optional: skip duplicate entries
     });
 
-    createSuccessResponse(res, createdBrands, "Brands Created", 201);
+    createSuccessResponse(res, createdCarBrands, "Car brands Created", 201);
   } catch (error) {
-    logger.error("Error creating multiple brands:", error);
+    logger.error("Error creating multiple carBrands:", error);
     createErrorResponse(res, error, 500);
   }
 };
 
-export const createBrand: RequestHandler = async (req, res) => {
+export const createCarBrand: RequestHandler = async (req, res) => {
   try {
-    const payload: Brand = req.body;
+    const payload: CarBrand = req.body;
     const image = req.file as Express.Multer.File;
 
-    const createdBrand = await prisma.brand.create({
+    const createdCarBrand = await prisma.carBrand.create({
       data: { ...payload, imageUrl: image.cloudinary?.secure_url! },
     });
 
-    createSuccessResponse(res, createdBrand, "Created", 201);
+    createSuccessResponse(res, createdCarBrand, "Created", 201);
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
 };
 
 // *======================= GET =======================*
-export const getBrands: RequestHandler = async (req, res) => {
+export const getCarBrands: RequestHandler = async (req, res) => {
   try {
     const { page = "1", limit = "10" } = req.query as unknown as {
       page: string;
@@ -63,41 +61,43 @@ export const getBrands: RequestHandler = async (req, res) => {
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
-    const brands = await prisma.brand.findMany({
+    const carBrands = await prisma.carBrand.findMany({
       skip: offset,
       take: +limit,
       orderBy: { name: "asc" },
     });
-    const totalBrands = await prisma.brand.count();
+    const totalCarBrands = await prisma.carBrand.count();
 
     createPaginatedResponse(
       res,
-      brands,
+      carBrands,
       currentPage,
       itemsPerPage,
-      totalBrands
+      totalCarBrands
     );
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
 };
 
-export const getBrandById: RequestHandler = async (req, res) => {
+export const getCarBrandById: RequestHandler = async (req, res) => {
   try {
-    const { brandId } = req.params;
-    const brand = await prisma.brand.findUnique({ where: { id: brandId } });
+    const { carBrandId } = req.params;
+    const carBrand = await prisma.carBrand.findUnique({
+      where: { id: carBrandId },
+    });
 
-    if (!brand) {
-      return createErrorResponse(res, "Brand not found", 404);
+    if (!carBrand) {
+      return createErrorResponse(res, "Car brand not found", 404);
     }
 
-    createSuccessResponse(res, brand);
+    createSuccessResponse(res, carBrand);
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
 };
 
-export const searchBrands: RequestHandler = async (req, res) => {
+export const searchCarBrands: RequestHandler = async (req, res) => {
   try {
     const {
       page = "1",
@@ -111,22 +111,22 @@ export const searchBrands: RequestHandler = async (req, res) => {
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
-    const brands = await prisma.brand.findMany({
+    const carBrands = await prisma.carBrand.findMany({
       where: { name: { contains: name } },
       skip: offset,
       take: +limit,
       orderBy: { createdAt: "desc" },
     });
-    const totalBrands = await prisma.brand.count({
+    const totalCarBrands = await prisma.carBrand.count({
       where: { name: { contains: name } },
     });
 
     createPaginatedResponse(
       res,
-      brands,
+      carBrands,
       currentPage,
       itemsPerPage,
-      totalBrands
+      totalCarBrands
     );
   } catch (error) {
     createErrorResponse(res, error, 500);
@@ -134,62 +134,62 @@ export const searchBrands: RequestHandler = async (req, res) => {
 };
 
 // *======================= PATCH =======================*
-export const updateBrand: RequestHandler = async (req, res) => {
+export const updateCarBrand: RequestHandler = async (req, res) => {
   try {
-    const { brandId } = req.params;
-    const payload: Brand = req.body;
+    const { carBrandId } = req.params;
+    const payload: CarBrand = req.body;
 
-    const brand = await prisma.brand.findUnique({
+    const carBrand = await prisma.carBrand.findUnique({
       where: {
-        id: brandId,
+        id: carBrandId,
       },
     });
 
-    if (!brand) {
-      createErrorResponse(res, "Brand Not Found", 500);
+    if (!carBrand) {
+      createErrorResponse(res, "Car brand Not Found", 500);
     }
 
-    const updatedBrand = await prisma.brand.update({
+    const updatedCarBrand = await prisma.carBrand.update({
       data: payload,
-      where: { id: brandId },
+      where: { id: carBrandId },
     });
 
-    createSuccessResponse(res, updatedBrand, "Updated");
+    createSuccessResponse(res, updatedCarBrand, "Updated");
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
 };
 
 // *======================= DELETE =======================*
-export const deleteBrand: RequestHandler = async (req, res) => {
+export const deleteCarBrand: RequestHandler = async (req, res) => {
   try {
-    const { brandId } = req.params;
+    const { carBrandId } = req.params;
 
-    const brand = await prisma.brand.findUnique({
+    const carBrand = await prisma.carBrand.findUnique({
       where: {
-        id: brandId,
+        id: carBrandId,
       },
     });
 
-    if (!brand) {
-      createErrorResponse(res, "Brand Not Found", 500);
+    if (!carBrand) {
+      createErrorResponse(res, "Car brand Not Found", 500);
     }
 
-    const deletedBrand = await prisma.brand.delete({
-      where: { id: brandId },
+    const deletedCarBrand = await prisma.carBrand.delete({
+      where: { id: carBrandId },
     });
 
-    createSuccessResponse(res, deletedBrand, "Deleted");
+    createSuccessResponse(res, deletedCarBrand, "Deleted");
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
 };
 
-export const deleteAllBrand: RequestHandler = async (req, res) => {
+export const deleteAllCarBrand: RequestHandler = async (req, res) => {
   try {
-    const deletedAllBrands = await prisma.brand.deleteMany();
+    const deletedAllCarBrands = await prisma.carBrand.deleteMany();
 
-    createSuccessResponse(res, deletedAllBrands, "All brands deleted");
+    createSuccessResponse(res, deletedAllCarBrands, "All car brands deleted");
   } catch (error) {
     createErrorResponse(res, error, 500);
   }

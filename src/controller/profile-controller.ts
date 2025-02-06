@@ -30,7 +30,7 @@ export const getCompare: RequestHandler = async (req, res) => {
         name: true,
         latitude: true,
         longitude: true,
-        brand: {
+        carBrand: {
           select: {
             name: true,
           },

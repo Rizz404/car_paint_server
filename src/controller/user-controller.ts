@@ -1,0 +1,272 @@
+import prisma from "@/configs/database";
+import {
+  createErrorResponse,
+  createPaginatedResponse,
+  createSuccessResponse,
+} from "@/types/api-response";
+import logger from "@/utils/logger";
+import { parsePagination } from "@/utils/parse-pagination";
+import { User, UserProfile } from "@prisma/client";
+import { RequestHandler } from "express";
+import bcrypt from "bcrypt";
+
+// *======================= POST =======================*
+export const createManyUsers: RequestHandler = async (req, res) => {
+  try {
+    const payloads: Omit<User, "id" | "createdAt" | "updatedAt">[] = req.body;
+
+    const usersToCreate = await Promise.all(
+      payloads.map(async (payload) => {
+        const salt = await bcrypt.genSalt();
+        const hashedPassword = await bcrypt.hash(payload.password, salt);
+
+        return {
+          ...payload,
+          password: hashedPassword,
+          userProfile: {},
+        };
+      })
+    );
+
+    const createdUsers = await prisma.user.createMany({
+      data: usersToCreate,
+      skipDuplicates: true,
+    });
+
+    createSuccessResponse(res, createdUsers, "Users Created Successfully", 201);
+  } catch (error) {
+    logger.error("Error creating multiple users:", error);
+    createErrorResponse(res, "Failed to create users", 500);
+  }
+};
+
+export const createUser: RequestHandler = async (req, res) => {
+  try {
+    const payload: User = req.body;
+
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(payload.password, salt);
+
+    const createdUser = await prisma.user.create({
+      data: { ...payload, password: hashedPassword, userProfile: {} },
+    });
+
+    createSuccessResponse(res, createdUser, "Created", 201);
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+// *======================= GET =======================*
+export const getUsers: RequestHandler = async (req, res) => {
+  try {
+    const { page = "1", limit = "10" } = req.query as unknown as {
+      page: string;
+      limit: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const users = await prisma.user.findMany({
+      skip: offset,
+      take: +limit,
+      orderBy: { createdAt: "desc" },
+    });
+    const totalUsers = await prisma.user.count();
+
+    createPaginatedResponse(res, users, currentPage, itemsPerPage, totalUsers);
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+export const getUserById: RequestHandler = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return createErrorResponse(res, "User not found", 404);
+    }
+
+    createSuccessResponse(res, user);
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+export const searchUsers: RequestHandler = async (req, res) => {
+  try {
+    const {
+      page = "1",
+      limit = "10",
+      username,
+    } = req.query as unknown as {
+      page: string;
+      limit: string;
+      username: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const users = await prisma.user.findMany({
+      where: { username: { contains: username } },
+      skip: offset,
+      take: +limit,
+      orderBy: { createdAt: "desc" },
+    });
+    const totalUsers = await prisma.user.count({
+      where: { username: { contains: username } },
+    });
+
+    createPaginatedResponse(res, users, currentPage, itemsPerPage, totalUsers);
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+// *======================= PATCH =======================*
+export const updateUser: RequestHandler = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const payload: User = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!user) {
+      createErrorResponse(res, "User Not Found", 500);
+    }
+
+    const updatedUser = await prisma.user.update({
+      data: payload,
+      where: { id: userId },
+    });
+
+    createSuccessResponse(res, updatedUser, "Updated");
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+// *======================= DELETE =======================*
+export const deleteUser: RequestHandler = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!user) {
+      createErrorResponse(res, "User Not Found", 500);
+    }
+
+    const deletedUser = await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    createSuccessResponse(res, deletedUser, "Deleted");
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+export const deleteAllUser: RequestHandler = async (req, res) => {
+  try {
+    const deletedAllUsers = await prisma.user.deleteMany();
+
+    createSuccessResponse(res, deletedAllUsers, "All car brands deleted");
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+// * CurrentUser
+export const getCurrentUser: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.user!;
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id },
+      include: { userProfile: true },
+      omit: { password: true },
+    });
+
+    if (!currentUser) {
+      return createErrorResponse(res, "Current user not found", 404);
+    }
+
+    createSuccessResponse(res, currentUser);
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+export const updateCurrentUser: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.user!;
+    const payload: Partial<User> & Partial<UserProfile> = req.body;
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id },
+      include: { userProfile: true },
+      omit: { password: true },
+    });
+
+    if (!currentUser) {
+      return createErrorResponse(res, "Current user not found", 404);
+    }
+
+    const updatedCurrentUser = await prisma.user.update({
+      data: payload,
+      where: { id },
+      include: { userProfile: true },
+      omit: { password: true },
+    });
+
+    createSuccessResponse(res, updatedCurrentUser);
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+export const updateCurrentUserPassword: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.user!;
+    const { currentPassword, newPassword } = req.body;
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!currentUser) {
+      return createErrorResponse(res, "Current user not found", 404);
+    }
+
+    const match = await bcrypt.compare(currentPassword, currentUser.password);
+
+    if (!match) {
+      return createErrorResponse(res, "Password not match", 400);
+    }
+
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    const updatedCurrentUser = await prisma.user.update({
+      data: { password: hashedPassword },
+      where: { id },
+    });
+
+    createSuccessResponse(res, updatedCurrentUser);
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
