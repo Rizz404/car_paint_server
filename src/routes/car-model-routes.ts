@@ -40,7 +40,7 @@ carModelRouter
 
 carModelRouter.route("/search").get(searchCarModels);
 carModelRouter
-  .route("/:carCarModelId")
+  .route("/:carModelId")
   .get(getCarModelById)
   .patch(authMiddleware(), validateBody(createCarModelSchema), updateCarModel)
   .delete(authMiddleware(), deleteCarModel);

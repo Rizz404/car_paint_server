@@ -4,10 +4,30 @@ import {
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
+import { parsePagination } from "@/utils/parse-pagination";
 import { Workshop } from "@prisma/client";
 import { RequestHandler } from "express";
 
 // *======================= CREATE =======================*
+export const createManyWorkshops: RequestHandler = async (req, res) => {
+  try {
+    const payloads: Workshop[] = req.body;
+
+    const workshopsToCreate = payloads.map((payload, index) => ({
+      ...payload,
+    }));
+
+    const createdWorkshops = await prisma.workshop.createMany({
+      data: workshopsToCreate,
+      skipDuplicates: true, // Optional: skip duplicate entries
+    });
+
+    createSuccessResponse(res, createdWorkshops, "Car brands Created", 201);
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
 export const createWorkshop: RequestHandler = async (req, res) => {
   try {
     const payload: Workshop = req.body;
@@ -44,6 +64,42 @@ export const getWorkshopById: RequestHandler = async (req, res) => {
     }
 
     createSuccessResponse(res, workshop);
+  } catch (error) {
+    createErrorResponse(res, error, 500);
+  }
+};
+
+export const searchWorkshops: RequestHandler = async (req, res) => {
+  try {
+    const {
+      page = "1",
+      limit = "10",
+      name,
+    } = req.query as unknown as {
+      page: string;
+      limit: string;
+      name: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const workshops = await prisma.workshop.findMany({
+      where: { name: { contains: name } },
+      skip: offset,
+      take: +limit,
+      orderBy: { createdAt: "desc" },
+    });
+    const totalWorkshops = await prisma.workshop.count({
+      where: { name: { contains: name } },
+    });
+
+    createPaginatedResponse(
+      res,
+      workshops,
+      currentPage,
+      itemsPerPage,
+      totalWorkshops
+    );
   } catch (error) {
     createErrorResponse(res, error, 500);
   }

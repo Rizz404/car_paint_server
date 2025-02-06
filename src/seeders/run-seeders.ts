@@ -10,7 +10,7 @@ import { seedUserCars } from "./user-car-seeder";
 import { seedPaymentMethods } from "./payment-method-seeder";
 import { seedOrders } from "./order-seeder";
 import { seedTransactions } from "./transaction-seeder";
-import { seedETickets } from "./ticket-seeder";
+import { seedETickets } from "./e-ticket-seeder";
 
 const prisma = new PrismaClient();
 

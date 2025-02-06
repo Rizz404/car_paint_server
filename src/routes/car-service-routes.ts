@@ -39,7 +39,7 @@ carServiceRouter
 
 carServiceRouter.route("/search").get(searchCarServices);
 carServiceRouter
-  .route("/:carCarServiceId")
+  .route("/:carServiceId")
   .get(getCarServiceById)
   .patch(
     authMiddleware(),
