@@ -11,6 +11,7 @@ import {
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
+import { updateCarBrandSchema } from "@/test/validation";
 import {
   createCarBrandSchema,
   createManyCarBrandsSchema,
@@ -34,6 +35,7 @@ carBrandRouter
   .route("/multiple")
   .post(
     authMiddleware(),
+    uploadSingle("imageUrl", "car-brands"),
     validateBody(createManyCarBrandsSchema),
     createManyCarBrands
   );
@@ -45,7 +47,7 @@ carBrandRouter
   .patch(
     authMiddleware(),
     uploadSingle("imageUrl", "car-brands"),
-    validateBody(createCarBrandSchema),
+    validateBody(updateCarBrandSchema),
     updateCarBrand
   )
   .delete(authMiddleware(), deleteCarBrand);

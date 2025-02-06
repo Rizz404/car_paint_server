@@ -28,6 +28,9 @@ export const seedCarModelYears = async (
       data.push(generateCarModelYear(model.id));
     }
   }
-  const result = await prisma.carModelYear.createMany({ data });
+  const result = await prisma.carModelYear.createMany({
+    data,
+    skipDuplicates: true,
+  });
   console.log(`✅ Seeded ${result.count} CarModelYears`);
 };

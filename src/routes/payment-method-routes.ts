@@ -14,6 +14,7 @@ import { validateBody } from "@/middlewares/validate-body";
 import {
   createPaymentMethodSchema,
   createManyPaymentMethodSchema,
+  updatePaymentMethodSchema,
 } from "@/validation/payment-method-validation";
 import express from "express";
 
@@ -43,7 +44,7 @@ paymentMethodRouter
   .get(getPaymentMethodById)
   .patch(
     authMiddleware(),
-    validateBody(createPaymentMethodSchema),
+    validateBody(updatePaymentMethodSchema),
     updatePaymentMethod
   )
   .delete(authMiddleware(), deletePaymentMethod);

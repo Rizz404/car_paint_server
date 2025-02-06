@@ -18,7 +18,7 @@ const generateTransaction = (
   updatedAt: faker.date.recent(),
 });
 
-export const seedTransactions = async (prisma: PrismaClient, count = 10) => {
+export const seedTransactions = async (prisma: PrismaClient, count = 100) => {
   console.log("🌱 Seeding Transactions...");
   await prisma.transaction.deleteMany();
   const users = await prisma.user.findMany({ select: { id: true } });
@@ -42,6 +42,9 @@ export const seedTransactions = async (prisma: PrismaClient, count = 10) => {
       )
     );
   }
-  const result = await prisma.transaction.createMany({ data });
+  const result = await prisma.transaction.createMany({
+    data,
+    skipDuplicates: true,
+  });
   console.log(`✅ Seeded ${result.count} Transactions`);
 };

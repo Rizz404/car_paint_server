@@ -27,7 +27,7 @@ const generateOrder = (
   updatedAt: faker.date.recent(),
 });
 
-export const seedOrders = async (prisma: PrismaClient, count = 10) => {
+export const seedOrders = async (prisma: PrismaClient, count = 100) => {
   console.log("🌱 Seeding Orders...");
   await prisma.order.deleteMany();
   const users = await prisma.user.findMany({ select: { id: true } });
@@ -49,6 +49,6 @@ export const seedOrders = async (prisma: PrismaClient, count = 10) => {
       )
     );
   }
-  const result = await prisma.order.createMany({ data });
+  const result = await prisma.order.createMany({ data, skipDuplicates: true });
   console.log(`✅ Seeded ${result.count} Orders`);
 };

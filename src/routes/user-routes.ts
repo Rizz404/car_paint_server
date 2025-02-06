@@ -17,6 +17,7 @@ import { validateBody } from "@/middlewares/validate-body";
 import {
   createUserSchema,
   createManyUserSchema,
+  updateUserSchema,
 } from "@/validation/user-validation";
 import express from "express";
 
@@ -41,7 +42,7 @@ userRouter
 userRouter
   .route("/:userId")
   .get(getUserById)
-  .patch(authMiddleware(), validateBody(createUserSchema), updateUser)
+  .patch(authMiddleware(), validateBody(updateUserSchema), updateUser)
   .delete(authMiddleware(), deleteUser);
 
 export default userRouter;

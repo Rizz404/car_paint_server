@@ -14,12 +14,8 @@ export const createManyCarModels: RequestHandler = async (req, res) => {
   try {
     const payloads: CarModel[] = req.body;
 
-    const carModelsToCreate = payloads.map((payload, index) => ({
-      ...payload,
-    }));
-
     const createdCarModels = await prisma.carModel.createMany({
-      data: carModelsToCreate,
+      data: payloads,
       skipDuplicates: true, // Optional: skip duplicate entries
     });
 

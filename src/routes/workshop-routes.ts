@@ -14,6 +14,7 @@ import { validateBody } from "@/middlewares/validate-body";
 import {
   createWorkshopSchema,
   createManyWorkshopSchema,
+  updateWorkshopSchema,
 } from "@/validation/workshop-validation";
 import express from "express";
 
@@ -37,7 +38,7 @@ workshopRouter.route("/search").get(searchWorkshops);
 workshopRouter
   .route("/:workshopId")
   .get(getWorkshopById)
-  .patch(authMiddleware(), validateBody(createWorkshopSchema), updateWorkshop)
+  .patch(authMiddleware(), validateBody(updateWorkshopSchema), updateWorkshop)
   .delete(authMiddleware(), deleteWorkshop);
 
 export default workshopRouter;

@@ -18,7 +18,7 @@ const generateWorkshop = (
   updatedAt: faker.date.recent(),
 });
 
-export const seedWorkshops = async (prisma: PrismaClient, count = 10) => {
+export const seedWorkshops = async (prisma: PrismaClient, count = 100) => {
   console.log("🌱 Seeding Workshops...");
   await prisma.workshop.deleteMany();
   const carBrands = await prisma.carBrand.findMany({ select: { id: true } });
@@ -29,6 +29,9 @@ export const seedWorkshops = async (prisma: PrismaClient, count = 10) => {
   const data = Array.from({ length: count }, () =>
     generateWorkshop(carBrands[Math.floor(Math.random() * carBrands.length)].id)
   );
-  const result = await prisma.workshop.createMany({ data });
+  const result = await prisma.workshop.createMany({
+    data,
+    skipDuplicates: true,
+  });
   console.log(`✅ Seeded ${result.count} Workshops`);
 };

@@ -14,6 +14,7 @@ import { validateBody } from "@/middlewares/validate-body";
 import {
   createCarModelYearSchema,
   createManyCarModelYearSchema,
+  updateCarModelYearSchema,
 } from "@/validation/car-model-year-validation";
 import express from "express";
 
@@ -43,7 +44,7 @@ carModelYearRouter
   .get(getCarModelYearById)
   .patch(
     authMiddleware(),
-    validateBody(createCarModelYearSchema),
+    validateBody(updateCarModelYearSchema),
     updateCarModelYear
   )
   .delete(authMiddleware(), deleteCarModelYear);

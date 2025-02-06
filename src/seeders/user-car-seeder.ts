@@ -20,7 +20,7 @@ const generateUserCar = (
   updatedAt: faker.date.recent(),
 });
 
-export const seedUserCars = async (prisma: PrismaClient, count = 10) => {
+export const seedUserCars = async (prisma: PrismaClient, count = 100) => {
   console.log("🌱 Seeding UserCars...");
   await prisma.userCar.deleteMany();
   const users = await prisma.user.findMany({ select: { id: true } });
@@ -56,6 +56,9 @@ export const seedUserCars = async (prisma: PrismaClient, count = 10) => {
       )
     );
   }
-  const result = await prisma.userCar.createMany({ data });
+  const result = await prisma.userCar.createMany({
+    data,
+    skipDuplicates: true,
+  });
   console.log(`✅ Seeded ${result.count} UserCars`);
 };

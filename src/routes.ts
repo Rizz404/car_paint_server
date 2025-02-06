@@ -1,7 +1,6 @@
 import express from "express";
 import carBrandRouter from "./routes/car-brand-routes";
 import authRouter from "./routes/auth-routes";
-import profileRouter from "./routes/profile-routes";
 import workshopRouter from "./routes/workshop-routes";
 import carsRouter from "./routes/user-car-routes";
 import userRouter from "./routes/user-routes";
@@ -29,7 +28,5 @@ routes.use("/payment-methods", paymentMethodRouter);
 routes.use("/orders", orderRouter);
 routes.use("/transactions", transactionRouter);
 routes.use("/e-tickets", eTicketRouter);
-
-routes.use("/profile", profileRouter);
 
 export default routes;

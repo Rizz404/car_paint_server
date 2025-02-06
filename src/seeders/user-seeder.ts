@@ -23,7 +23,7 @@ const generateUserWithProfile = (): Prisma.UserCreateInput => ({
 
 export const seedUsersWithProfiles = async (
   prisma: PrismaClient,
-  count = 10
+  count = 100
 ) => {
   console.log("🌱 Seeding Users with UserProfiles...");
   await prisma.user.deleteMany();

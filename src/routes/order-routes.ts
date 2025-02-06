@@ -14,6 +14,7 @@ import { validateBody } from "@/middlewares/validate-body";
 import {
   createOrderSchema,
   createManyOrderSchema,
+  updateOrderSchema,
 } from "@/validation/order-validation";
 import express from "express";
 
@@ -37,7 +38,7 @@ orderRouter.route("/search").get(searchOrders);
 orderRouter
   .route("/:orderId")
   .get(getOrderById)
-  .patch(authMiddleware(), validateBody(createOrderSchema), updateOrder)
+  .patch(authMiddleware(), validateBody(updateOrderSchema), updateOrder)
   .delete(authMiddleware(), deleteOrder);
 
 export default orderRouter;

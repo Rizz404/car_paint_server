@@ -28,6 +28,9 @@ export const seedCarModelColors = async (
       data.push(generateCarModelColor(model.id));
     }
   }
-  const result = await prisma.carModelColor.createMany({ data });
+  const result = await prisma.carModelColor.createMany({
+    data,
+    skipDuplicates: true,
+  });
   console.log(`✅ Seeded ${result.count} CarModelColors`);
 };

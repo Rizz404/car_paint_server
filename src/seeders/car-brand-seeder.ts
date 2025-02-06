@@ -9,10 +9,13 @@ const generateCarBrand = (): Prisma.CarBrandCreateManyInput => ({
   updatedAt: faker.date.recent(),
 });
 
-export const seedCarBrands = async (prisma: PrismaClient, count = 5) => {
+export const seedCarBrands = async (prisma: PrismaClient, count = 50) => {
   console.log("🌱 Seeding CarBrands...");
   await prisma.carBrand.deleteMany();
   const data = Array.from({ length: count }, generateCarBrand);
-  const result = await prisma.carBrand.createMany({ data });
+  const result = await prisma.carBrand.createMany({
+    data,
+    skipDuplicates: true,
+  });
   console.log(`✅ Seeded ${result.count} CarBrands`);
 };

@@ -9,11 +9,11 @@ import {
   updateCarModelColor,
 } from "@/controller/car-model-color-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
 import {
   createCarModelColorSchema,
   createManyCarModelColorSchema,
+  updateCarModelColorSchema,
 } from "@/validation/car-model-color-validation";
 import express from "express";
 
@@ -43,7 +43,7 @@ carModelColorRouter
   .get(getCarModelColorById)
   .patch(
     authMiddleware(),
-    validateBody(createCarModelColorSchema),
+    validateBody(updateCarModelColorSchema),
     updateCarModelColor
   )
   .delete(authMiddleware(), deleteCarModelColor);

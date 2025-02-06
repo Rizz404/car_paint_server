@@ -14,6 +14,7 @@ import { validateBody } from "@/middlewares/validate-body";
 import {
   createTransactionSchema,
   createManyTransactionSchema,
+  updateTransactionSchema,
 } from "@/validation/transaction-validation";
 import express from "express";
 
@@ -43,7 +44,7 @@ transactionRouter
   .get(getTransactionById)
   .patch(
     authMiddleware(),
-    validateBody(createTransactionSchema),
+    validateBody(updateTransactionSchema),
     updateTransaction
   )
   .delete(authMiddleware(), deleteTransaction);

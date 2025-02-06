@@ -28,6 +28,9 @@ export const seedCarServices = async (
       data.push(generateCarService(workshop.id));
     }
   }
-  const result = await prisma.carService.createMany({ data });
+  const result = await prisma.carService.createMany({
+    data,
+    skipDuplicates: true,
+  });
   console.log(`✅ Seeded ${result.count} CarServices`);
 };

@@ -14,6 +14,7 @@ import { validateBody } from "@/middlewares/validate-body";
 import {
   createETicketSchema,
   createManyETicketSchema,
+  updateETicketSchema,
 } from "@/validation/e-ticket-validation";
 import express from "express";
 
@@ -37,7 +38,7 @@ eTicketRouter.route("/search").get(searchETickets);
 eTicketRouter
   .route("/:eTicketId")
   .get(getETicketById)
-  .patch(authMiddleware(), validateBody(createETicketSchema), updateETicket)
+  .patch(authMiddleware(), validateBody(updateETicketSchema), updateETicket)
   .delete(authMiddleware(), deleteETicket);
 
 export default eTicketRouter;

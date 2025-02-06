@@ -9,11 +9,11 @@ import {
   updateCarModel,
 } from "@/controller/car-model-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
 import {
   createCarModelSchema,
   createManyCarModelSchema,
+  updateCarModelSchema,
 } from "@/validation/car-model-validation";
 import express from "express";
 
@@ -37,7 +37,7 @@ carModelRouter.route("/search").get(searchCarModels);
 carModelRouter
   .route("/:carModelId")
   .get(getCarModelById)
-  .patch(authMiddleware(), validateBody(createCarModelSchema), updateCarModel)
+  .patch(authMiddleware(), validateBody(updateCarModelSchema), updateCarModel)
   .delete(authMiddleware(), deleteCarModel);
 
 export default carModelRouter;

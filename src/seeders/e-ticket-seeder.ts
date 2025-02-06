@@ -13,7 +13,7 @@ const generateETicket = (
   updatedAt: faker.date.recent(),
 });
 
-export const seedETickets = async (prisma: PrismaClient, count = 10) => {
+export const seedETickets = async (prisma: PrismaClient, count = 100) => {
   console.log("🌱 Seeding ETickets...");
   await prisma.eTicket.deleteMany();
   const users = await prisma.user.findMany({ select: { id: true } });
@@ -31,6 +31,9 @@ export const seedETickets = async (prisma: PrismaClient, count = 10) => {
       )
     );
   }
-  const result = await prisma.eTicket.createMany({ data });
+  const result = await prisma.eTicket.createMany({
+    data,
+    skipDuplicates: true,
+  });
   console.log(`✅ Seeded ${result.count} ETickets`);
 };

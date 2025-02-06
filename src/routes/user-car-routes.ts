@@ -14,6 +14,7 @@ import { validateBody } from "@/middlewares/validate-body";
 import {
   createUserCarSchema,
   createManyUserCarSchema,
+  updateUserCarSchema,
 } from "@/validation/user-car-validation";
 import express from "express";
 
@@ -42,7 +43,7 @@ userCarRouter.route("/search").get(searchUserCars);
 userCarRouter
   .route("/:userCarId")
   .get(getUserCarById)
-  .patch(authMiddleware(), validateBody(createUserCarSchema), updateUserCar)
+  .patch(authMiddleware(), validateBody(updateUserCarSchema), updateUserCar)
   .delete(authMiddleware(), deleteUserCar);
 
 export default userCarRouter;

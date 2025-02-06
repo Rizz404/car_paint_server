@@ -9,11 +9,11 @@ import {
   updateCarService,
 } from "@/controller/car-service-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
 import {
   createCarServiceSchema,
   createManyCarServiceSchema,
+  updateCarServiceSchema,
 } from "@/validation/car-service-validation";
 import express from "express";
 
@@ -43,7 +43,7 @@ carServiceRouter
   .get(getCarServiceById)
   .patch(
     authMiddleware(),
-    validateBody(createCarServiceSchema),
+    validateBody(updateCarServiceSchema),
     updateCarService
   )
   .delete(authMiddleware(), deleteCarService);
