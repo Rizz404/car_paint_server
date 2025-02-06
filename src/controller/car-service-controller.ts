@@ -6,46 +6,46 @@ import {
 } from "@/types/api-response";
 import logger from "@/utils/logger";
 import { parsePagination } from "@/utils/parse-pagination";
-import { CarModel } from "@prisma/client";
+import { CarService } from "@prisma/client";
 import { RequestHandler } from "express";
 
 // *======================= POST =======================*
-export const createManyCarModels: RequestHandler = async (req, res) => {
+export const createManyCarServices: RequestHandler = async (req, res) => {
   try {
-    const payloads: CarModel[] = req.body;
+    const payloads: CarService[] = req.body;
 
-    const carModelsToCreate = payloads.map((payload, index) => ({
+    const carServicesToCreate = payloads.map((payload, index) => ({
       ...payload,
     }));
 
-    const createdCarModels = await prisma.carModel.createMany({
-      data: carModelsToCreate,
+    const createdCarServices = await prisma.carService.createMany({
+      data: carServicesToCreate,
       skipDuplicates: true, // Optional: skip duplicate entries
     });
 
-    createSuccessResponse(res, createdCarModels, "Car models Created", 201);
+    createSuccessResponse(res, createdCarServices, "Car models Created", 201);
   } catch (error) {
-    logger.error("Error creating multiple carModels:", error);
+    logger.error("Error creating multiple carServices:", error);
     createErrorResponse(res, error, 500);
   }
 };
 
-export const createCarModel: RequestHandler = async (req, res) => {
+export const createCarService: RequestHandler = async (req, res) => {
   try {
-    const payload: CarModel = req.body;
+    const payload: CarService = req.body;
 
-    const createdCarModel = await prisma.carModel.create({
+    const createdCarService = await prisma.carService.create({
       data: payload,
     });
 
-    createSuccessResponse(res, createdCarModel, "Created", 201);
+    createSuccessResponse(res, createdCarService, "Created", 201);
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
 };
 
 // *======================= GET =======================*
-export const getCarModels: RequestHandler = async (req, res) => {
+export const getCarServices: RequestHandler = async (req, res) => {
   try {
     const { page = "1", limit = "10" } = req.query as unknown as {
       page: string;
@@ -54,43 +54,43 @@ export const getCarModels: RequestHandler = async (req, res) => {
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
-    const carModels = await prisma.carModel.findMany({
+    const carServices = await prisma.carService.findMany({
       skip: offset,
       take: +limit,
       orderBy: { name: "asc" },
     });
-    const totalCarModels = await prisma.carModel.count();
+    const totalCarServices = await prisma.carService.count();
 
     createPaginatedResponse(
       res,
-      carModels,
+      carServices,
       currentPage,
       itemsPerPage,
-      totalCarModels
+      totalCarServices
     );
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
 };
 
-export const getCarModelById: RequestHandler = async (req, res) => {
+export const getCarServiceById: RequestHandler = async (req, res) => {
   try {
-    const { carModelId } = req.params;
-    const carModel = await prisma.carModel.findUnique({
-      where: { id: carModelId },
+    const { carServiceId } = req.params;
+    const carService = await prisma.carService.findUnique({
+      where: { id: carServiceId },
     });
 
-    if (!carModel) {
+    if (!carService) {
       return createErrorResponse(res, "Car model not found", 404);
     }
 
-    createSuccessResponse(res, carModel);
+    createSuccessResponse(res, carService);
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
 };
 
-export const searchCarModels: RequestHandler = async (req, res) => {
+export const searchCarServices: RequestHandler = async (req, res) => {
   try {
     const {
       page = "1",
@@ -104,22 +104,22 @@ export const searchCarModels: RequestHandler = async (req, res) => {
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
-    const carModels = await prisma.carModel.findMany({
+    const carServices = await prisma.carService.findMany({
       where: { name: { contains: name } },
       skip: offset,
       take: +limit,
       orderBy: { createdAt: "desc" },
     });
-    const totalCarModels = await prisma.carModel.count({
+    const totalCarServices = await prisma.carService.count({
       where: { name: { contains: name } },
     });
 
     createPaginatedResponse(
       res,
-      carModels,
+      carServices,
       currentPage,
       itemsPerPage,
-      totalCarModels
+      totalCarServices
     );
   } catch (error) {
     createErrorResponse(res, error, 500);
@@ -127,62 +127,62 @@ export const searchCarModels: RequestHandler = async (req, res) => {
 };
 
 // *======================= PATCH =======================*
-export const updateCarModel: RequestHandler = async (req, res) => {
+export const updateCarService: RequestHandler = async (req, res) => {
   try {
-    const { carModelId } = req.params;
-    const payload: CarModel = req.body;
+    const { carServiceId } = req.params;
+    const payload: CarService = req.body;
 
-    const carModel = await prisma.carModel.findUnique({
+    const carService = await prisma.carService.findUnique({
       where: {
-        id: carModelId,
+        id: carServiceId,
       },
     });
 
-    if (!carModel) {
+    if (!carService) {
       createErrorResponse(res, "Car model Not Found", 500);
     }
 
-    const updatedCarModel = await prisma.carModel.update({
+    const updatedCarService = await prisma.carService.update({
       data: payload,
-      where: { id: carModelId },
+      where: { id: carServiceId },
     });
 
-    createSuccessResponse(res, updatedCarModel, "Updated");
+    createSuccessResponse(res, updatedCarService, "Updated");
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
 };
 
 // *======================= DELETE =======================*
-export const deleteCarModel: RequestHandler = async (req, res) => {
+export const deleteCarService: RequestHandler = async (req, res) => {
   try {
-    const { carModelId } = req.params;
+    const { carServiceId } = req.params;
 
-    const carModel = await prisma.carModel.findUnique({
+    const carService = await prisma.carService.findUnique({
       where: {
-        id: carModelId,
+        id: carServiceId,
       },
     });
 
-    if (!carModel) {
+    if (!carService) {
       createErrorResponse(res, "Car model Not Found", 500);
     }
 
-    const deletedCarModel = await prisma.carModel.delete({
-      where: { id: carModelId },
+    const deletedCarService = await prisma.carService.delete({
+      where: { id: carServiceId },
     });
 
-    createSuccessResponse(res, deletedCarModel, "Deleted");
+    createSuccessResponse(res, deletedCarService, "Deleted");
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
 };
 
-export const deleteAllCarModel: RequestHandler = async (req, res) => {
+export const deleteAllCarService: RequestHandler = async (req, res) => {
   try {
-    const deletedAllCarModels = await prisma.carModel.deleteMany();
+    const deletedAllCarServices = await prisma.carService.deleteMany();
 
-    createSuccessResponse(res, deletedAllCarModels, "All car models deleted");
+    createSuccessResponse(res, deletedAllCarServices, "All car models deleted");
   } catch (error) {
     createErrorResponse(res, error, 500);
   }
