@@ -23,7 +23,7 @@ export const register: RequestHandler = async (req, res) => {
     });
 
     if (emailExist) {
-      createErrorResponse(res, "Email already registered", 500);
+      return createErrorResponse(res, "Email already registered", 500);
     }
     const usernameExist = await prisma.user.findUnique({
       where: {
@@ -32,7 +32,7 @@ export const register: RequestHandler = async (req, res) => {
     });
 
     if (usernameExist) {
-      createErrorResponse(res, "Username already registered", 500);
+      return createErrorResponse(res, "Username already registered", 500);
     }
 
     const createdUser = await prisma.user.create({
