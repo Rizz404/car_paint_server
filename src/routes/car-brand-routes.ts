@@ -24,7 +24,7 @@ carBrandRouter
   .get(getCarBrands)
   .post(
     authMiddleware(),
-    uploadSingle("imageUrl", "carBrands"),
+    uploadSingle("imageUrl", "car-brands"),
     validateBody(createCarBrandSchema),
     createCarBrand
   )
@@ -42,7 +42,12 @@ carBrandRouter.route("/search").get(searchCarBrands);
 carBrandRouter
   .route("/:carBrandId")
   .get(getCarBrandById)
-  .patch(authMiddleware(), validateBody(createCarBrandSchema), updateCarBrand)
+  .patch(
+    authMiddleware(),
+    uploadSingle("imageUrl", "car-brands"),
+    validateBody(createCarBrandSchema),
+    updateCarBrand
+  )
   .delete(authMiddleware(), deleteCarBrand);
 
 export default carBrandRouter;

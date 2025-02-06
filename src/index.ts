@@ -5,6 +5,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import http from "http";
+import morgan from "morgan";
 import logger from "./utils/logger";
 import prisma from "./configs/database";
 import routes from "./routes";
@@ -13,13 +14,14 @@ const PORT = process.env.port || 5000;
 const app = express();
 const httpServer = http.createServer(app);
 
-app.use(compression());
 app.use(cors());
+app.use(bodyParser.json({ limit: "30mb" }));
+app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
+app.use(compression());
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 app.use(cookieParser());
-app.use(bodyParser.json({ limit: "30mb" }));
-app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
+app.use(morgan("dev"));
 
 app.get("/health", (req, res) => {
   res.status(200).json({

@@ -22,12 +22,7 @@ const carModelRouter = express.Router();
 carModelRouter
   .route("/")
   .get(getCarModels)
-  .post(
-    authMiddleware(),
-    uploadSingle("imageUrl", "carCarModels"),
-    validateBody(createCarModelSchema),
-    createCarModel
-  )
+  .post(authMiddleware(), validateBody(createCarModelSchema), createCarModel)
   .delete(authMiddleware(), deleteAllCarModel);
 
 carModelRouter
