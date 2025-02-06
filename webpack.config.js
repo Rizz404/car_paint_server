@@ -27,5 +27,6 @@ module.exports = {
   plugins: [new CleanWebpackPlugin()],
   externals: {
     express: "commonjs express",
+    bcrypt: "commonjs bcrypt",
   },
 };
