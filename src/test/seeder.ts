@@ -10,33 +10,6 @@ const prisma = new PrismaClient();
 // ============================================================
 // SEED CAR MODEL
 // ============================================================
-const generateCarModel = (
-  carBrandId: string
-): Prisma.CarModelCreateManyInput => ({
-  id: faker.string.alphanumeric(25),
-  carBrandId,
-  name: faker.vehicle.model().slice(0, 50),
-  createdAt: faker.date.past(),
-  updatedAt: faker.date.recent(),
-});
-
-export const seedCarModels = async (modelsPerBrand = 3) => {
-  console.log("🌱 Seeding CarModels...");
-  await prisma.carModel.deleteMany();
-  const carBrands = await prisma.carBrand.findMany({ select: { id: true } });
-  if (!carBrands.length) {
-    console.warn("⚠️ No CarBrands found. Skipping CarModels seeding.");
-    return;
-  }
-  let data: Prisma.CarModelCreateManyInput[] = [];
-  for (const brand of carBrands) {
-    for (let i = 0; i < modelsPerBrand; i++) {
-      data.push(generateCarModel(brand.id));
-    }
-  }
-  const result = await prisma.carModel.createMany({ data });
-  console.log(`✅ Seeded ${result.count} CarModels`);
-};
 
 // ============================================================
 // SEED CAR MODEL COLOR
