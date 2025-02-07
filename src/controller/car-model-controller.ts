@@ -117,6 +117,9 @@ export const getCarModelById: RequestHandler = async (req, res) => {
     const { carModelId } = req.params;
     const carModel = await prisma.carModel.findUnique({
       where: { id: carModelId },
+      include: {
+        carBrand: { select: { name: true, logo: true, country: true } },
+      },
     });
 
     if (!carModel) {
@@ -145,6 +148,9 @@ export const searchCarModels: RequestHandler = async (req, res) => {
 
     const carModels = await prisma.carModel.findMany({
       where: { name: { contains: name } },
+      include: {
+        carBrand: { select: { name: true, logo: true, country: true } },
+      },
       skip: offset,
       take: +limit,
       orderBy: { createdAt: "desc" },

@@ -7,9 +7,11 @@ import {
   getUserCars,
   searchUserCars,
   updateUserCar,
+  addUserCarImage,
+  deleteUserCarImage,
 } from "@/controller/user-car-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
+import { uploadArray, uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
 import {
   createUserCarSchema,
@@ -22,10 +24,10 @@ const userCarRouter = express.Router();
 
 userCarRouter
   .route("/")
-  .get(getUserCars)
+  .get(authMiddleware(), getUserCars)
   .post(
     authMiddleware(),
-    uploadSingle("imageUrl", "carUserCars"),
+    uploadArray("carImages", 5, "car-images"),
     validateBody(createUserCarSchema),
     createUserCar
   )
@@ -39,10 +41,20 @@ userCarRouter
     createManyUserCars
   );
 
-userCarRouter.route("/search").get(searchUserCars);
+userCarRouter.route("/search").get(authMiddleware(), searchUserCars);
+userCarRouter
+  .route("/car-images/:userCarId/index/:index")
+  .delete(authMiddleware(), addUserCarImage);
+userCarRouter
+  .route("/car-images/:userCarId")
+  .post(
+    authMiddleware(),
+    uploadArray("carImages", 5, "car-images"),
+    deleteUserCarImage
+  );
 userCarRouter
   .route("/:userCarId")
-  .get(getUserCarById)
+  .get(authMiddleware(), getUserCarById)
   .patch(authMiddleware(), validateBody(updateUserCarSchema), updateUserCar)
   .delete(authMiddleware(), deleteUserCar);
 

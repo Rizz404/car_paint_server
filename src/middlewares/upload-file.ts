@@ -1,6 +1,6 @@
 import { UploadApiResponse } from "cloudinary";
 import { NextFunction, Request, Response } from "express";
-import multer from "multer";
+import multer, { MulterError } from "multer"; // Import MulterError
 
 import cloudinary from "@/configs/cloudinary";
 
@@ -42,8 +42,14 @@ const uploadToCloudinary = async (
         ],
       },
       (error, result) => {
-        if (error) return reject(error);
-        if (result) return resolve(result);
+        if (error) {
+          console.error("Cloudinary Upload Error:", error); // Logging error Cloudinary
+          return reject(error);
+        }
+        if (result) {
+          return resolve(result);
+        } // Ini untuk jaga-jaga jika tidak ada error dan tidak ada result (seharusnya tidak terjadi)
+        reject(new Error("No result or error from Cloudinary upload"));
       }
     );
     uploadStream.end(buffer);
@@ -56,9 +62,12 @@ const uploadSingle =
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const singleUpload = upload.single(fieldName);
     singleUpload(req, res, async (err) => {
-      if (err instanceof multer.MulterError) {
+      if (err instanceof MulterError) {
+        // Menggunakan MulterError import
+        console.error("Multer Error (Single):", err);
         return res.status(400).json({ error: err.message });
       } else if (err) {
+        console.error("Unknown Error (Single):", err);
         return res.status(500).json({ error: "Internal server error" });
       }
 
@@ -74,7 +83,8 @@ const uploadSingle =
         }
         next();
       } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        console.error("Error in uploadSingle middleware:", error); // Logging error middleware
+        return res.status(500).json({ error: error.message });
       }
     });
   };
@@ -85,9 +95,12 @@ const uploadArray =
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const arrayUpload = upload.array(fieldName, maxCount);
     arrayUpload(req, res, async (err) => {
-      if (err instanceof multer.MulterError) {
+      if (err instanceof MulterError) {
+        // Menggunakan MulterError import
+        console.error("Multer Error (Array):", err);
         return res.status(400).json({ error: err.message });
       } else if (err) {
+        console.error("Unknown Error (Array):", err);
         return res.status(500).json({ error: "Internal server error" });
       }
 
@@ -95,13 +108,23 @@ const uploadArray =
         // Jika ada files, upload ke Cloudinary
         if (req.files && req.files instanceof Array && req.files.length > 0) {
           const results = await Promise.all(
-            req.files.map((file) =>
-              uploadToCloudinary(
-                file.buffer,
-                folder,
-                file.originalname.split(".")[0]
-              )
-            )
+            req.files.map(async (file) => {
+              // Tambahkan async disini
+              try {
+                return await uploadToCloudinary(
+                  // Tambahkan return disini
+                  file.buffer,
+                  folder,
+                  file.originalname.split(".")[0]
+                );
+              } catch (error: any) {
+                console.error(
+                  "Error during uploadToCloudinary (Array):",
+                  error
+                ); // Logging error di dalam Promise.all
+                throw error; // Re-throw error agar Promise.all reject jika salah satu upload gagal
+              }
+            })
           );
           req.files.forEach((file, index) => {
             file.cloudinary = results[index];
@@ -109,7 +132,8 @@ const uploadArray =
         }
         next();
       } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        console.error("Error in uploadArray middleware:", error); // Logging error middleware
+        return res.status(500).json({ error: error.message });
       }
     });
   };
@@ -120,9 +144,12 @@ const uploadFields =
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const fieldsUpload = upload.fields(fields);
     fieldsUpload(req, res, async (err) => {
-      if (err instanceof multer.MulterError) {
+      if (err instanceof MulterError) {
+        // Menggunakan MulterError import
+        console.error("Multer Error (Fields):", err);
         return res.status(400).json({ error: err.message });
       } else if (err) {
+        console.error("Unknown Error (Fields):", err);
         return res.status(500).json({ error: "Internal server error" });
       }
 
@@ -133,16 +160,25 @@ const uploadFields =
             if (Array.isArray(files) && files.length > 0) {
               // Upload semua file dalam field ini ke Cloudinary
               const results = await Promise.all(
-                files.map((file) =>
-                  uploadToCloudinary(
-                    file.buffer,
-                    folder,
-                    file.originalname.split(".")[0]
-                  )
-                )
-              );
+                files.map(async (file) => {
+                  // Tambahkan async disini
+                  try {
+                    return await uploadToCloudinary(
+                      // Tambahkan return disini
+                      file.buffer,
+                      folder,
+                      file.originalname.split(".")[0]
+                    );
+                  } catch (error: any) {
+                    console.error(
+                      `Error during uploadToCloudinary (Fields - ${fieldName}):`,
+                      error
+                    ); // Logging error di dalam Promise.all dengan fieldName
+                    throw error; // Re-throw error agar Promise.all reject jika salah satu upload gagal
+                  }
+                })
+              ); // Assign hasil cloudinary ke masing-masing file
 
-              // Assign hasil cloudinary ke masing-masing file
               files.forEach((file, index) => {
                 file.cloudinary = results[index];
               });
@@ -151,7 +187,8 @@ const uploadFields =
         }
         next();
       } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        console.error("Error in uploadFields middleware:", error); // Logging error middleware
+        return res.status(500).json({ error: error.message });
       }
     });
   };

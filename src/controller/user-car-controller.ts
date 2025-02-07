@@ -39,9 +39,19 @@ export const createUserCar: RequestHandler = async (req, res) => {
   try {
     const { id } = req.user!;
     const payload: UserCar = req.body;
+    const carImages = req.files as Express.Multer.File[];
+
+    const carImageUrls =
+      carImages
+        ?.map((carImage) => carImage.cloudinary?.url)
+        .filter((url): url is string => typeof url === "string") || [];
 
     const createdUserCar = await prisma.userCar.create({
-      data: { ...payload, userId: id },
+      data: {
+        ...payload,
+        userId: id,
+        carImages: carImageUrls,
+      },
     });
 
     return createSuccessResponse(res, createdUserCar, "Created", 201);
@@ -49,7 +59,6 @@ export const createUserCar: RequestHandler = async (req, res) => {
     return createErrorResponse(res, error, 500);
   }
 };
-
 // *======================= GET =======================*
 export const getUserCars: RequestHandler = async (req, res) => {
   try {
@@ -64,7 +73,20 @@ export const getUserCars: RequestHandler = async (req, res) => {
     const userCars = await prisma.userCar.findMany({
       where: { userId: id },
       include: {
-        carModelYearColor: true,
+        carModelYearColor: {
+          select: {
+            carModelYear: {
+              select: {
+                year: true,
+                carModel: {
+                  select: { name: true, carBrand: { select: { name: true } } },
+                },
+              },
+            },
+            color: { select: { name: true } },
+          },
+        },
+        user: { select: { username: true, email: true, profileImage: true } },
       },
       skip: offset,
       take: +limit,
@@ -92,7 +114,20 @@ export const getUserCarById: RequestHandler = async (req, res) => {
     const userCar = await prisma.userCar.findUnique({
       where: { id: userCarId, userId: id },
       include: {
-        carModelYearColor: true,
+        carModelYearColor: {
+          select: {
+            carModelYear: {
+              select: {
+                year: true,
+                carModel: {
+                  select: { name: true, carBrand: { select: { name: true } } },
+                },
+              },
+            },
+            color: { select: { name: true } },
+          },
+        },
+        user: { select: { username: true, email: true, profileImage: true } },
       },
     });
 
@@ -112,11 +147,11 @@ export const searchUserCars: RequestHandler = async (req, res) => {
     const {
       page = "1",
       limit = "10",
-      query,
+      licensePlate,
     } = req.query as unknown as {
       page: string;
       limit: string;
-      query: string;
+      licensePlate: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
@@ -124,10 +159,23 @@ export const searchUserCars: RequestHandler = async (req, res) => {
     const userCars = await prisma.userCar.findMany({
       where: {
         userId: id,
-        // OR: [{ carBrand: { name: query } }, { carModel: { name: query } }],
+        licensePlate: { contains: licensePlate },
       },
       include: {
-        carModelYearColor: true,
+        carModelYearColor: {
+          select: {
+            carModelYear: {
+              select: {
+                year: true,
+                carModel: {
+                  select: { name: true, carBrand: { select: { name: true } } },
+                },
+              },
+            },
+            color: { select: { name: true } },
+          },
+        },
+        user: { select: { username: true, email: true, profileImage: true } },
       },
       skip: offset,
       take: +limit,
@@ -136,7 +184,7 @@ export const searchUserCars: RequestHandler = async (req, res) => {
     const totalUserCars = await prisma.userCar.count({
       where: {
         userId: id,
-        // OR: [{ carBrand: { name: query } }, { carModel: { name: query } }],
+        licensePlate: { contains: licensePlate },
       },
     });
 
@@ -158,7 +206,7 @@ export const updateUserCar: RequestHandler = async (req, res) => {
     const { id } = req.user!;
     const { userCarId } = req.params;
 
-    const payload: UserCar = req.body;
+    const payload: Omit<UserCar, "carImages"> = req.body;
 
     const userCar = await prisma.userCar.findUnique({
       where: {
@@ -222,6 +270,97 @@ export const deleteAllUserCar: RequestHandler = async (req, res) => {
       deletedAllUserCars,
       "All car models deleted"
     );
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+// *======================= ADD & DELETE CAR IMAGES =======================*
+export const addUserCarImage: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.user!;
+    const { userCarId } = req.params;
+    const carImages = req.files as Express.Multer.File[];
+
+    const carImageUrls =
+      carImages
+        ?.map((carImage) => carImage.cloudinary?.url)
+        .filter((url): url is string => typeof url === "string") || [];
+
+    const userCar = await prisma.userCar.findUnique({
+      where: {
+        id: userCarId,
+        userId: id,
+      },
+    });
+
+    if (!userCar) {
+      return createErrorResponse(res, "User Car Not Found", 404);
+    }
+
+    const existingCarImages = userCar.carImages || [];
+
+    const updatedCarImages = [...existingCarImages, ...carImageUrls];
+
+    const updatedUserCar = await prisma.userCar.update({
+      where: { id: userCarId },
+      data: {
+        carImages: updatedCarImages,
+      },
+    });
+
+    return createSuccessResponse(res, updatedUserCar, "Car Image Added");
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const deleteUserCarImage: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.user!;
+    const { userCarId, index } = req.params;
+
+    if (index === undefined) {
+      return createErrorResponse(res, "Image index is required", 400);
+    }
+
+    const imageIndex = parseInt(index as string, 10);
+
+    if (isNaN(imageIndex) || imageIndex < 0) {
+      return createErrorResponse(res, "Invalid image index", 400);
+    }
+
+    const userCar = await prisma.userCar.findUnique({
+      where: {
+        id: userCarId,
+        userId: id,
+      },
+    });
+
+    if (!userCar) {
+      return createErrorResponse(res, "User Car Not Found", 404);
+    }
+
+    if (!userCar.carImages || imageIndex >= userCar.carImages.length) {
+      return createErrorResponse(
+        res,
+        "Image index out of bounds or no images available",
+        400
+      );
+    }
+
+    const updatedCarImages = userCar.carImages.filter(
+      (_, i) => i !== imageIndex
+    );
+
+    const updatedUserCar = await prisma.userCar.update({
+      where: { id: userCarId },
+      data: {
+        carImages: updatedCarImages,
+      },
+    });
+
+    return createSuccessResponse(res, updatedUserCar, "Car Image Deleted");
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }

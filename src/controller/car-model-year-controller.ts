@@ -60,6 +60,7 @@ export const getCarModelYears: RequestHandler = async (req, res) => {
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const carModelYears = await prisma.carModelYear.findMany({
+      include: { carModel: { select: { name: true } } },
       skip: offset,
       take: +limit,
       orderBy: { createdAt: "desc" },
@@ -93,6 +94,7 @@ export const getCarModelYearsByCarModelId: RequestHandler = async (
 
     const carModelYears = await prisma.carModelYear.findMany({
       where: { carModelId },
+      include: { carModel: { select: { name: true } } },
       skip: offset,
       take: +limit,
       orderBy: { createdAt: "desc" },
@@ -118,6 +120,7 @@ export const getCarModelYearById: RequestHandler = async (req, res) => {
     const { carModelYearId } = req.params;
     const carModelYear = await prisma.carModelYear.findUnique({
       where: { id: carModelYearId },
+      include: { carModel: { select: { name: true } } },
     });
 
     if (!carModelYear) {
@@ -135,23 +138,49 @@ export const searchCarModelYears: RequestHandler = async (req, res) => {
     const {
       page = "1",
       limit = "10",
-      year,
+      yearFrom,
+      yearTo,
     } = req.query as unknown as {
       page: string;
       limit: string;
-      year: number;
+      yearFrom?: string;
+      yearTo?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
+    let whereClause = {};
+
+    if (yearFrom && yearTo) {
+      whereClause = {
+        year: {
+          gte: Number(yearFrom),
+          lte: Number(yearTo),
+        },
+      };
+    } else if (yearFrom) {
+      whereClause = {
+        year: {
+          gte: Number(yearFrom),
+        },
+      };
+    } else if (yearTo) {
+      whereClause = {
+        year: {
+          lte: Number(yearTo),
+        },
+      };
+    }
+
     const carModelYears = await prisma.carModelYear.findMany({
-      where: { year: { equals: year } },
+      where: whereClause,
+      include: { carModel: { select: { name: true } } },
       skip: offset,
       take: +limit,
       orderBy: { createdAt: "desc" },
     });
     const totalCarModelYears = await prisma.carModelYear.count({
-      where: { year: { equals: year } },
+      where: whereClause,
     });
 
     createPaginatedResponse(

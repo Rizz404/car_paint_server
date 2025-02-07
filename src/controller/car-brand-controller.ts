@@ -14,13 +14,13 @@ export const createManyCarBrands: RequestHandler = async (req, res) => {
   try {
     const payloads: CarBrand[] = req.body;
 
-    const images = req.files as Express.Multer.File[];
+    const logos = req.files as Express.Multer.File[];
 
     const carBrandsToCreate = payloads.map((payload, index) => ({
       ...payload,
-      ...(images &&
-        images[index] && {
-          logo: images[index].cloudinary?.secure_url!,
+      ...(logos &&
+        logos[index] && {
+          logo: logos[index].cloudinary?.secure_url!,
         }),
     }));
 
@@ -44,10 +44,18 @@ export const createManyCarBrands: RequestHandler = async (req, res) => {
 export const createCarBrand: RequestHandler = async (req, res) => {
   try {
     const payload: CarBrand = req.body;
-    const image = req.file as Express.Multer.File;
+    const logo = req.file as Express.Multer.File;
+
+    if (!logo) {
+      return createErrorResponse(res, "Image is required", 400);
+    }
+
+    if (!logo.cloudinary?.secure_url) {
+      return createErrorResponse(res, "Cloudinary error", 400);
+    }
 
     const createdCarBrand = await prisma.carBrand.create({
-      data: { ...payload, logo: image.cloudinary?.secure_url! },
+      data: { ...payload, logo: logo.cloudinary.secure_url },
     });
 
     return createSuccessResponse(res, createdCarBrand, "Created", 201);

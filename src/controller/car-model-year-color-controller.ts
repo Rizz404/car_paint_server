@@ -65,6 +65,10 @@ export const getCarModelYearColors: RequestHandler = async (req, res) => {
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const carModelYearColors = await prisma.carModelYearColor.findMany({
+      include: {
+        carModelYear: { select: { year: true } },
+        color: { select: { name: true } },
+      },
       skip: offset,
       take: +limit,
       orderBy: { createdAt: "desc" },
@@ -83,43 +87,32 @@ export const getCarModelYearColors: RequestHandler = async (req, res) => {
   }
 };
 
-export const getCarModelYearColorById: RequestHandler = async (req, res) => {
+export const getCarModelYearColorsByCarModelYearId: RequestHandler = async (
+  req,
+  res
+) => {
   try {
-    const { carModelYearColorId } = req.params;
-    const carModelYearColor = await prisma.carModelYearColor.findUnique({
-      where: { id: carModelYearColorId },
-    });
-
-    if (!carModelYearColor) {
-      return createErrorResponse(res, "Car model not found", 404);
-    }
-
-    return createSuccessResponse(res, carModelYearColor);
-  } catch (error) {
-    return createErrorResponse(res, error, 500);
-  }
-};
-
-export const searchCarModelYearColors: RequestHandler = async (req, res) => {
-  try {
-    const {
-      page = "1",
-      limit = "10",
-      year,
-    } = req.query as unknown as {
+    const { carModelYearId } = req.params;
+    const { page = "1", limit = "10" } = req.query as unknown as {
       page: string;
       limit: string;
-      year: number;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const carModelYearColors = await prisma.carModelYearColor.findMany({
+      where: { carModelYearId }, // Filter berdasarkan carModelYearId
+      include: {
+        carModelYear: { select: { year: true } },
+        color: { select: { name: true } },
+      },
       skip: offset,
       take: +limit,
       orderBy: { createdAt: "desc" },
     });
-    const totalCarModelYearColors = await prisma.carModelYearColor.count({});
+    const totalCarModelYearColors = await prisma.carModelYearColor.count({
+      where: { carModelYearId }, // Count juga difilter
+    });
 
     createPaginatedResponse(
       res,
@@ -128,6 +121,112 @@ export const searchCarModelYearColors: RequestHandler = async (req, res) => {
       itemsPerPage,
       totalCarModelYearColors
     );
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const getCarModelYearColorsByColorId: RequestHandler = async (
+  req,
+  res
+) => {
+  try {
+    const { colorId } = req.params;
+    const { page = "1", limit = "10" } = req.query as unknown as {
+      page: string;
+      limit: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const carModelYearColors = await prisma.carModelYearColor.findMany({
+      where: { colorId }, // Filter berdasarkan colorId
+      include: {
+        carModelYear: { select: { year: true } },
+        color: { select: { name: true } },
+      },
+      skip: offset,
+      take: +limit,
+      orderBy: { createdAt: "desc" },
+    });
+    const totalCarModelYearColors = await prisma.carModelYearColor.count({
+      where: { colorId }, // Count juga difilter
+    });
+
+    createPaginatedResponse(
+      res,
+      carModelYearColors,
+      currentPage,
+      itemsPerPage,
+      totalCarModelYearColors
+    );
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const getCarModelYearColorsByCarModelYearIdAndColorId: RequestHandler =
+  async (req, res) => {
+    try {
+      const { carModelYearId, colorId } = req.params;
+      const { page = "1", limit = "10" } = req.query as unknown as {
+        page: string;
+        limit: string;
+      };
+
+      const { currentPage, itemsPerPage, offset } = parsePagination(
+        page,
+        limit
+      );
+
+      const carModelYearColors = await prisma.carModelYearColor.findMany({
+        where: {
+          carModelYearId,
+          colorId,
+        }, // Filter berdasarkan keduanya
+        include: {
+          carModelYear: { select: { year: true } },
+          color: { select: { name: true } },
+        },
+        skip: offset,
+        take: +limit,
+        orderBy: { createdAt: "desc" },
+      });
+      const totalCarModelYearColors = await prisma.carModelYearColor.count({
+        where: {
+          carModelYearId,
+          colorId,
+        }, // Count juga difilter
+      });
+
+      createPaginatedResponse(
+        res,
+        carModelYearColors,
+        currentPage,
+        itemsPerPage,
+        totalCarModelYearColors
+      );
+    } catch (error) {
+      return createErrorResponse(res, error, 500);
+    }
+  };
+
+export const getCarModelYearColorById: RequestHandler = async (req, res) => {
+  try {
+    const { carModelYearColorId } = req.params;
+    const carModelYearColor = await prisma.carModelYearColor.findUnique({
+      where: { id: carModelYearColorId },
+      include: {
+        carModelYear: { select: { year: true } },
+        color: { select: { name: true } },
+      },
+    });
+
+    if (!carModelYearColor) {
+      return createErrorResponse(res, "Car model not found", 404);
+    }
+
+    return createSuccessResponse(res, carModelYearColor);
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }

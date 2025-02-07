@@ -5,7 +5,9 @@ import {
   deleteCarModelYearColor,
   getCarModelYearColorById,
   getCarModelYearColors,
-  searchCarModelYearColors,
+  getCarModelYearColorsByCarModelYearId,
+  getCarModelYearColorsByCarModelYearIdAndColorId,
+  getCarModelYearColorsByColorId,
   updateCarModelYearColor,
 } from "@/controller/car-model-year-color-controller";
 import { authMiddleware } from "@/middlewares/auth";
@@ -38,7 +40,16 @@ carModelYearColorRouter
     createManyCarModelYearColors
   );
 
-carModelYearColorRouter.route("/search").get(searchCarModelYearColors);
+carModelYearColorRouter.get(
+  "/car-model-year/:carModelYearId",
+  getCarModelYearColorsByCarModelYearId
+);
+carModelYearColorRouter.get("/color/:colorId", getCarModelYearColorsByColorId);
+carModelYearColorRouter.get(
+  "/car-model-year/:carModelYearId/color/:colorId",
+  getCarModelYearColorsByCarModelYearIdAndColorId
+);
+
 carModelYearColorRouter
   .route("/:carModelYearColorId")
   .get(getCarModelYearColorById)
