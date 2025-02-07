@@ -64,10 +64,7 @@ export const getUserCars: RequestHandler = async (req, res) => {
     const userCars = await prisma.userCar.findMany({
       where: { userId: id },
       include: {
-        carBrand: { select: { name: true, imageUrl: true } },
-        carModel: { select: { name: true } },
-        carModelColor: { select: { name: true } },
-        carModelYear: { select: { year: true } },
+        carModelYearColor: true,
       },
       skip: offset,
       take: +limit,
@@ -95,10 +92,7 @@ export const getUserCarById: RequestHandler = async (req, res) => {
     const userCar = await prisma.userCar.findUnique({
       where: { id: userCarId, userId: id },
       include: {
-        carBrand: { select: { name: true, imageUrl: true } },
-        carModel: { select: { name: true } },
-        carModelColor: { select: { name: true } },
-        carModelYear: { select: { year: true } },
+        carModelYearColor: true,
       },
     });
 
@@ -130,13 +124,10 @@ export const searchUserCars: RequestHandler = async (req, res) => {
     const userCars = await prisma.userCar.findMany({
       where: {
         userId: id,
-        OR: [{ carBrand: { name: query } }, { carModel: { name: query } }],
+        // OR: [{ carBrand: { name: query } }, { carModel: { name: query } }],
       },
       include: {
-        carBrand: { select: { name: true, imageUrl: true } },
-        carModel: { select: { name: true } },
-        carModelColor: { select: { name: true } },
-        carModelYear: { select: { year: true } },
+        carModelYearColor: true,
       },
       skip: offset,
       take: +limit,
@@ -145,7 +136,7 @@ export const searchUserCars: RequestHandler = async (req, res) => {
     const totalUserCars = await prisma.userCar.count({
       where: {
         userId: id,
-        OR: [{ carBrand: { name: query } }, { carModel: { name: query } }],
+        // OR: [{ carBrand: { name: query } }, { carModel: { name: query } }],
       },
     });
 

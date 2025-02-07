@@ -107,8 +107,8 @@ model CarModelYearColor {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  carModelYear CarModelYear @relation(fields: [carModelYearId], references: [id])
-  color        Color        @relation(fields: [colorId], references: [id])
+  carModelYear CarModelYear @relation(fields: [carModelYearId], references: [id], onDelete: Cascade)
+  color        Color        @relation(fields: [colorId], references: [id], onDelete: Cascade)
   userCars     UserCar[]
 
   @@unique([carModelYearId, colorId])
@@ -125,7 +125,7 @@ model UserCar {
   updatedAt           DateTime @updatedAt @map("updated_at")
 
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  carModelYearColor CarModelYearColor @relation(fields: [carModelYearColorId], references: [id])
+  carModelYearColor CarModelYearColor @relation(fields: [carModelYearColorId], references: [id], onDelete: Cascade)
   order             Order[]
 
   @@map("user_cars")

@@ -20,7 +20,7 @@ export const createManyCarModelYears: RequestHandler = async (req, res) => {
 
     const createdCarModelYears = await prisma.carModelYear.createMany({
       data: carModelYearsToCreate,
-      skipDuplicates: true, // Optional: skip duplicate entries
+      skipDuplicates: true,
     });
 
     return createSuccessResponse(

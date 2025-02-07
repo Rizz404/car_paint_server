@@ -4,13 +4,14 @@ import { seedCarBrands } from "./car-brand-seeder";
 import { seedUsersWithProfiles } from "./user-seeder";
 import { seedCarModels } from "./car-model-seeder";
 import { seedCarServices } from "./car-service-seeder";
-import { seedCarModelColors } from "./car-model-color-seeder";
 import { seedCarModelYears } from "./car-model-year-seeder";
 import { seedUserCars } from "./user-car-seeder";
 import { seedPaymentMethods } from "./payment-method-seeder";
 import { seedOrders } from "./order-seeder";
 import { seedTransactions } from "./transaction-seeder";
 import { seedETickets } from "./e-ticket-seeder";
+import { seedColors } from "./color-seeder";
+import { seedCarModelYearColors } from "./car-model-year-color-seeder";
 
 const prisma = new PrismaClient();
 
@@ -20,11 +21,12 @@ async function main() {
 
     await seedUsersWithProfiles(prisma);
     await seedCarBrands(prisma);
-    await seedWorkshops(prisma);
     await seedCarModels(prisma);
+    await seedWorkshops(prisma);
     await seedCarServices(prisma);
-    await seedCarModelColors(prisma);
+    await seedColors(prisma);
     await seedCarModelYears(prisma);
+    await seedCarModelYearColors(prisma);
     await seedUserCars(prisma);
     await seedPaymentMethods(prisma);
     await seedOrders(prisma);

@@ -26,7 +26,7 @@ carModelRouter
   .post(authMiddleware(), validateBody(createCarModelSchema), createCarModel)
   .delete(authMiddleware(), deleteAllCarModel);
 
-carModelRouter.route("/brand/:carBrandId").get(getCarModelsByBrandId);
+carModelRouter.route("/car-brand/:carBrandId").get(getCarModelsByBrandId);
 
 carModelRouter
   .route("/multiple")

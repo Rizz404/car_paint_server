@@ -20,7 +20,7 @@ export const createManyCarBrands: RequestHandler = async (req, res) => {
       ...payload,
       ...(images &&
         images[index] && {
-          imageUrl: images[index].cloudinary?.secure_url!,
+          logo: images[index].cloudinary?.secure_url!,
         }),
     }));
 
@@ -47,7 +47,7 @@ export const createCarBrand: RequestHandler = async (req, res) => {
     const image = req.file as Express.Multer.File;
 
     const createdCarBrand = await prisma.carBrand.create({
-      data: { ...payload, imageUrl: image.cloudinary?.secure_url! },
+      data: { ...payload, logo: image.cloudinary?.secure_url! },
     });
 
     return createSuccessResponse(res, createdCarBrand, "Created", 201);

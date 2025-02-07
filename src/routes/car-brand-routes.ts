@@ -13,7 +13,7 @@ import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
 import {
   createCarBrandSchema,
-  createManyCarBrandsSchema,
+  createManyCarBrandSchema,
   updateCarBrandSchema,
 } from "@/validation/car-brand-validation";
 import express from "express";
@@ -36,7 +36,7 @@ carBrandRouter
   .post(
     authMiddleware(),
     uploadSingle("imageUrl", "car-brands"),
-    validateBody(createManyCarBrandsSchema),
+    validateBody(createManyCarBrandSchema),
     createManyCarBrands
   );
 
