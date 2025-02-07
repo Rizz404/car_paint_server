@@ -35,7 +35,11 @@ userRouter.route("/search").get(searchUsers);
 userRouter
   .route("/current")
   .get(authMiddleware(), getCurrentUser)
-  .patch(authMiddleware(), updateCurrentUser);
+  .patch(
+    authMiddleware(),
+    uploadSingle("profileImage", "profile-images"),
+    updateCurrentUser
+  );
 userRouter
   .route("/current/password")
   .patch(authMiddleware(), updateCurrentUserPassword);

@@ -223,6 +223,7 @@ export const updateCurrentUser: RequestHandler = async (req, res) => {
   try {
     const { id } = req.user!;
     const payload: Partial<User> & Partial<UserProfile> = req.body;
+    const profileImage = req.file as Express.Multer.File;
 
     const currentUser = await prisma.user.findUnique({
       where: { id },
@@ -235,7 +236,22 @@ export const updateCurrentUser: RequestHandler = async (req, res) => {
     }
 
     const updatedCurrentUser = await prisma.user.update({
-      data: payload,
+      data: {
+        username: payload.username,
+        email: payload.email,
+        ...(profileImage && {
+          profileImage: profileImage.cloudinary?.secure_url,
+        }),
+        userProfile: {
+          update: {
+            fullname: payload.fullname,
+            phoneNumber: payload.phoneNumber,
+            address: payload.address,
+            longitude: payload.longitude,
+            latitude: payload.latitude,
+          },
+        },
+      },
       where: { id },
       include: { userProfile: true },
       omit: { password: true },
