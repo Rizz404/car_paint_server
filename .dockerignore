@@ -1,4 +1,8 @@
 node_modules
 dist
+build
 .git
 .env
+.dockerignore
+Dockerfile
+README.md
