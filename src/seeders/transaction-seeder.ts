@@ -6,7 +6,6 @@ const generateTransaction = (
   paymentMethodId: string,
   orderId: string
 ): Prisma.TransactionCreateManyInput => ({
-  id: faker.string.alphanumeric(25),
   userId,
   paymentMethodId,
   orderId,
@@ -14,8 +13,6 @@ const generateTransaction = (
   paymentMethodFee: new Prisma.Decimal(faker.number.float({ min: 1, max: 20 })),
   totalPrice: new Prisma.Decimal(faker.number.float({ min: 50, max: 1000 })),
   paymentStatus: "PENDING",
-  createdAt: faker.date.past(),
-  updatedAt: faker.date.recent(),
 });
 
 export const seedTransactions = async (prisma: PrismaClient, count = 100) => {

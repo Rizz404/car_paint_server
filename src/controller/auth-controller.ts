@@ -7,6 +7,7 @@ import { RequestHandler } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { User } from "@prisma/client";
+import { faker } from "@faker-js/faker";
 
 export const register: RequestHandler = async (req, res) => {
   try {
@@ -39,6 +40,7 @@ export const register: RequestHandler = async (req, res) => {
         username,
         email,
         password: hashedPassword,
+        profileImage: faker.image.avatar(),
         userProfile: { create: {} },
       },
     });

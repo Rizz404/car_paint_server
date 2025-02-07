@@ -4,11 +4,8 @@ import { Prisma, PrismaClient } from "@prisma/client";
 const generateCarModelYear = (
   carModelId: string
 ): Prisma.CarModelYearCreateManyInput => ({
-  id: faker.string.alphanumeric(25),
   carModelId,
   year: faker.number.int({ min: 1990, max: new Date().getFullYear() }),
-  createdAt: faker.date.past(),
-  updatedAt: faker.date.recent(),
 });
 
 export const seedCarModelYears = async (

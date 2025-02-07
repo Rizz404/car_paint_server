@@ -4,11 +4,8 @@ import { Prisma, PrismaClient } from "@prisma/client";
 const generateCarModel = (
   carBrandId: string
 ): Prisma.CarModelCreateManyInput => ({
-  id: faker.string.alphanumeric(25),
   carBrandId,
   name: faker.vehicle.model().slice(0, 50),
-  createdAt: faker.date.past(),
-  updatedAt: faker.date.recent(),
 });
 
 export const seedCarModels = async (

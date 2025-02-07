@@ -56,6 +56,9 @@ export const getCarModels: RequestHandler = async (req, res) => {
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const carModels = await prisma.carModel.findMany({
+      include: {
+        carBrand: { select: { name: true, logo: true, country: true } },
+      },
       skip: offset,
       take: +limit,
       orderBy: { name: "asc" },
@@ -86,6 +89,9 @@ export const getCarModelsByBrandId: RequestHandler = async (req, res) => {
 
     const carModels = await prisma.carModel.findMany({
       where: { carBrandId: carBrandId },
+      include: {
+        carBrand: { select: { name: true, logo: true, country: true } },
+      },
       skip: offset,
       take: +limit,
       orderBy: { name: "asc" },

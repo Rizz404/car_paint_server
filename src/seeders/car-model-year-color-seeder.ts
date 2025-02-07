@@ -5,11 +5,8 @@ const generateCarModelYearColor = (
   carModelYearId: string,
   colorId: string
 ): Prisma.CarModelYearColorCreateManyInput => ({
-  id: faker.string.alphanumeric(25),
   carModelYearId,
   colorId,
-  createdAt: faker.date.past(),
-  updatedAt: faker.date.recent(),
 });
 
 export const seedCarModelYearColors = async (

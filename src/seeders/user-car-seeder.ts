@@ -5,13 +5,10 @@ const generateUserCar = (
   userId: string,
   carModelYearColorId: string
 ): Prisma.UserCarCreateManyInput => ({
-  id: faker.string.alphanumeric(25),
   userId,
   carModelYearColorId,
   licensePlate: faker.vehicle.vrm(),
   carImages: [faker.image.urlLoremFlickr({ category: "transport" })],
-  createdAt: faker.date.past(),
-  updatedAt: faker.date.recent(),
 });
 
 export const seedUserCars = async (prisma: PrismaClient, count = 100) => {

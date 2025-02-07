@@ -5,12 +5,9 @@ const generateETicket = (
   userId: string,
   orderId: string
 ): Prisma.ETicketCreateManyInput => ({
-  id: faker.string.alphanumeric(25),
   userId,
   orderId,
   ticketNumber: faker.number.int({ min: 1000, max: 9999 }),
-  createdAt: faker.date.past(),
-  updatedAt: faker.date.recent(),
 });
 
 export const seedETickets = async (prisma: PrismaClient, count = 100) => {

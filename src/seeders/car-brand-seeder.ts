@@ -2,11 +2,9 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { faker } from "@faker-js/faker";
 
 const generateCarBrand = (): Prisma.CarBrandCreateManyInput => ({
-  id: faker.string.alphanumeric(25),
   name: faker.company.name().slice(0, 50),
   logo: faker.image.urlLoremFlickr({ category: "transport" }),
-  createdAt: faker.date.past(),
-  updatedAt: faker.date.recent(),
+  country: faker.location.country(),
 });
 
 export const seedCarBrands = async (prisma: PrismaClient, count = 50) => {
