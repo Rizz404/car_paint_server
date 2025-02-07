@@ -23,7 +23,7 @@ export const createManyPaymentMethods: RequestHandler = async (req, res) => {
       skipDuplicates: true, // Optional: skip duplicate entries
     });
 
-    createSuccessResponse(
+    return createSuccessResponse(
       res,
       createdPaymentMethods,
       "Car brands Created",
@@ -31,7 +31,7 @@ export const createManyPaymentMethods: RequestHandler = async (req, res) => {
     );
   } catch (error) {
     logger.error("Error creating multiple paymentMethods:", error);
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -43,9 +43,9 @@ export const createPaymentMethod: RequestHandler = async (req, res) => {
       data: payload,
     });
 
-    createSuccessResponse(res, createdPaymentMethod, "Created", 201);
+    return createSuccessResponse(res, createdPaymentMethod, "Created", 201);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -74,7 +74,7 @@ export const getPaymentMethods: RequestHandler = async (req, res) => {
       totalPaymentMethods
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -89,9 +89,9 @@ export const getPaymentMethodById: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Car brand not found", 404);
     }
 
-    createSuccessResponse(res, paymentMethod);
+    return createSuccessResponse(res, paymentMethod);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -127,7 +127,7 @@ export const searchPaymentMethods: RequestHandler = async (req, res) => {
       totalPaymentMethods
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -144,7 +144,7 @@ export const updatePaymentMethod: RequestHandler = async (req, res) => {
     });
 
     if (!paymentMethod) {
-      createErrorResponse(res, "Car brand Not Found", 500);
+      return createErrorResponse(res, "Car brand Not Found", 500);
     }
 
     const updatedPaymentMethod = await prisma.paymentMethod.update({
@@ -152,9 +152,9 @@ export const updatePaymentMethod: RequestHandler = async (req, res) => {
       where: { id: paymentMethodId },
     });
 
-    createSuccessResponse(res, updatedPaymentMethod, "Updated");
+    return createSuccessResponse(res, updatedPaymentMethod, "Updated");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -170,16 +170,16 @@ export const deletePaymentMethod: RequestHandler = async (req, res) => {
     });
 
     if (!paymentMethod) {
-      createErrorResponse(res, "Car brand Not Found", 500);
+      return createErrorResponse(res, "Car brand Not Found", 500);
     }
 
     const deletedPaymentMethod = await prisma.paymentMethod.delete({
       where: { id: paymentMethodId },
     });
 
-    createSuccessResponse(res, deletedPaymentMethod, "Deleted");
+    return createSuccessResponse(res, deletedPaymentMethod, "Deleted");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -187,12 +187,12 @@ export const deleteAllPaymentMethod: RequestHandler = async (req, res) => {
   try {
     const deletedAllPaymentMethods = await prisma.paymentMethod.deleteMany();
 
-    createSuccessResponse(
+    return createSuccessResponse(
       res,
       deletedAllPaymentMethods,
       "All car brands deleted"
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };

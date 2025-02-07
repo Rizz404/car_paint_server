@@ -19,10 +19,15 @@ export const createManyCarModels: RequestHandler = async (req, res) => {
       skipDuplicates: true, // Optional: skip duplicate entries
     });
 
-    createSuccessResponse(res, createdCarModels, "Car models Created", 201);
+    return createSuccessResponse(
+      res,
+      createdCarModels,
+      "Car models Created",
+      201
+    );
   } catch (error) {
     logger.error("Error creating multiple carModels:", error);
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -34,9 +39,9 @@ export const createCarModel: RequestHandler = async (req, res) => {
       data: payload,
     });
 
-    createSuccessResponse(res, createdCarModel, "Created", 201);
+    return createSuccessResponse(res, createdCarModel, "Created", 201);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -65,7 +70,7 @@ export const getCarModels: RequestHandler = async (req, res) => {
       totalCarModels
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -97,7 +102,7 @@ export const getCarModelsByBrandId: RequestHandler = async (req, res) => {
       totalCarModels
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -112,9 +117,9 @@ export const getCarModelById: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Car model not found", 404);
     }
 
-    createSuccessResponse(res, carModel);
+    return createSuccessResponse(res, carModel);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -150,7 +155,7 @@ export const searchCarModels: RequestHandler = async (req, res) => {
       totalCarModels
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -167,7 +172,7 @@ export const updateCarModel: RequestHandler = async (req, res) => {
     });
 
     if (!carModel) {
-      createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model Not Found", 500);
     }
 
     const updatedCarModel = await prisma.carModel.update({
@@ -175,9 +180,9 @@ export const updateCarModel: RequestHandler = async (req, res) => {
       where: { id: carModelId },
     });
 
-    createSuccessResponse(res, updatedCarModel, "Updated");
+    return createSuccessResponse(res, updatedCarModel, "Updated");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -193,16 +198,16 @@ export const deleteCarModel: RequestHandler = async (req, res) => {
     });
 
     if (!carModel) {
-      createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model Not Found", 500);
     }
 
     const deletedCarModel = await prisma.carModel.delete({
       where: { id: carModelId },
     });
 
-    createSuccessResponse(res, deletedCarModel, "Deleted");
+    return createSuccessResponse(res, deletedCarModel, "Deleted");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -210,8 +215,12 @@ export const deleteAllCarModel: RequestHandler = async (req, res) => {
   try {
     const deletedAllCarModels = await prisma.carModel.deleteMany();
 
-    createSuccessResponse(res, deletedAllCarModels, "All car models deleted");
+    return createSuccessResponse(
+      res,
+      deletedAllCarModels,
+      "All car models deleted"
+    );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };

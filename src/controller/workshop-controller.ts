@@ -26,9 +26,14 @@ export const createManyWorkshops: RequestHandler = async (req, res) => {
       skipDuplicates: true,
     });
 
-    createSuccessResponse(res, createdWorkshops, "Car brands Created", 201);
+    return createSuccessResponse(
+      res,
+      createdWorkshops,
+      "Car brands Created",
+      201
+    );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -38,9 +43,9 @@ export const createWorkshop: RequestHandler = async (req, res) => {
 
     const createdWorkshop = await prisma.workshop.create({ data: payload });
 
-    createSuccessResponse(res, createdWorkshop, "Workshop created", 201);
+    return createSuccessResponse(res, createdWorkshop, "Workshop created", 201);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -51,7 +56,7 @@ export const getWorkshops: RequestHandler = async (req, res) => {
 
     createPaginatedResponse(res, workshops, 1, 10, workshops.length);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -66,9 +71,9 @@ export const getWorkshopById: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Workshop not found", 404);
     }
 
-    createSuccessResponse(res, workshop);
+    return createSuccessResponse(res, workshop);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -104,7 +109,7 @@ export const searchWorkshops: RequestHandler = async (req, res) => {
       totalWorkshops
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -121,7 +126,7 @@ export const updateWorkshop: RequestHandler = async (req, res) => {
     });
 
     if (!workshop) {
-      createErrorResponse(res, "Workshop Not Found", 500);
+      return createErrorResponse(res, "Workshop Not Found", 500);
     }
 
     const updatedWorkshop = await prisma.workshop.update({
@@ -129,9 +134,9 @@ export const updateWorkshop: RequestHandler = async (req, res) => {
       where: { id: workshopId },
     });
 
-    createSuccessResponse(res, updatedWorkshop, "Workshop updated");
+    return createSuccessResponse(res, updatedWorkshop, "Workshop updated");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -152,9 +157,9 @@ export const deleteWorkshop: RequestHandler = async (req, res) => {
       where: { id: workshopId },
     });
 
-    createSuccessResponse(res, deletedWorkshop, "Workshop deleted");
+    return createSuccessResponse(res, deletedWorkshop, "Workshop deleted");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -162,9 +167,13 @@ export const deleteAllWorkshops: RequestHandler = async (req, res) => {
   try {
     const deletedAllWorkshops = await prisma.workshop.deleteMany();
 
-    createSuccessResponse(res, deletedAllWorkshops, "All workshops deleted");
+    return createSuccessResponse(
+      res,
+      deletedAllWorkshops,
+      "All workshops deleted"
+    );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -248,6 +257,6 @@ export const getCurrentUserNearestWorkshops: RequestHandler = async (
       sortedWorkshops.length
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };

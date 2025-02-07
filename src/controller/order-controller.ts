@@ -23,10 +23,10 @@ export const createManyOrders: RequestHandler = async (req, res) => {
       skipDuplicates: true, // Optional: skip duplicate entries
     });
 
-    createSuccessResponse(res, createdOrders, "Car models Created", 201);
+    return createSuccessResponse(res, createdOrders, "Car models Created", 201);
   } catch (error) {
     logger.error("Error creating multiple orders:", error);
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -38,9 +38,9 @@ export const createOrder: RequestHandler = async (req, res) => {
       data: payload,
     });
 
-    createSuccessResponse(res, createdOrder, "Created", 201);
+    return createSuccessResponse(res, createdOrder, "Created", 201);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -69,7 +69,7 @@ export const getOrders: RequestHandler = async (req, res) => {
       totalOrders
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -84,9 +84,9 @@ export const getOrderById: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Car model not found", 404);
     }
 
-    createSuccessResponse(res, order);
+    return createSuccessResponse(res, order);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -122,7 +122,7 @@ export const searchOrders: RequestHandler = async (req, res) => {
       totalOrders
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -139,7 +139,7 @@ export const updateOrder: RequestHandler = async (req, res) => {
     });
 
     if (!order) {
-      createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model Not Found", 500);
     }
 
     const updatedOrder = await prisma.order.update({
@@ -147,9 +147,9 @@ export const updateOrder: RequestHandler = async (req, res) => {
       where: { id: orderId },
     });
 
-    createSuccessResponse(res, updatedOrder, "Updated");
+    return createSuccessResponse(res, updatedOrder, "Updated");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -165,16 +165,16 @@ export const deleteOrder: RequestHandler = async (req, res) => {
     });
 
     if (!order) {
-      createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model Not Found", 500);
     }
 
     const deletedOrder = await prisma.order.delete({
       where: { id: orderId },
     });
 
-    createSuccessResponse(res, deletedOrder, "Deleted");
+    return createSuccessResponse(res, deletedOrder, "Deleted");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -182,9 +182,13 @@ export const deleteAllOrder: RequestHandler = async (req, res) => {
   try {
     const deletedAllOrders = await prisma.order.deleteMany();
 
-    createSuccessResponse(res, deletedAllOrders, "All car models deleted");
+    return createSuccessResponse(
+      res,
+      deletedAllOrders,
+      "All car models deleted"
+    );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -228,6 +232,6 @@ export const getCurrentUserOrders: RequestHandler = async (req, res) => {
       totalOrders
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };

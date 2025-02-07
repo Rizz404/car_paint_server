@@ -29,10 +29,15 @@ export const createManyCarBrands: RequestHandler = async (req, res) => {
       skipDuplicates: true, // Optional: skip duplicate entries
     });
 
-    createSuccessResponse(res, createdCarBrands, "Car brands Created", 201);
+    return createSuccessResponse(
+      res,
+      createdCarBrands,
+      "Car brands Created",
+      201
+    );
   } catch (error) {
     logger.error("Error creating multiple carBrands:", error);
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -45,9 +50,9 @@ export const createCarBrand: RequestHandler = async (req, res) => {
       data: { ...payload, imageUrl: image.cloudinary?.secure_url! },
     });
 
-    createSuccessResponse(res, createdCarBrand, "Created", 201);
+    return createSuccessResponse(res, createdCarBrand, "Created", 201);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -76,7 +81,7 @@ export const getCarBrands: RequestHandler = async (req, res) => {
       totalCarBrands
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -91,9 +96,9 @@ export const getCarBrandById: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Car brand not found", 404);
     }
 
-    createSuccessResponse(res, carBrand);
+    return createSuccessResponse(res, carBrand);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -129,7 +134,7 @@ export const searchCarBrands: RequestHandler = async (req, res) => {
       totalCarBrands
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -146,7 +151,7 @@ export const updateCarBrand: RequestHandler = async (req, res) => {
     });
 
     if (!carBrand) {
-      createErrorResponse(res, "Car brand Not Found", 500);
+      return createErrorResponse(res, "Car brand Not Found", 500);
     }
 
     const updatedCarBrand = await prisma.carBrand.update({
@@ -154,9 +159,9 @@ export const updateCarBrand: RequestHandler = async (req, res) => {
       where: { id: carBrandId },
     });
 
-    createSuccessResponse(res, updatedCarBrand, "Updated");
+    return createSuccessResponse(res, updatedCarBrand, "Updated");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -172,16 +177,16 @@ export const deleteCarBrand: RequestHandler = async (req, res) => {
     });
 
     if (!carBrand) {
-      createErrorResponse(res, "Car brand Not Found", 500);
+      return createErrorResponse(res, "Car brand Not Found", 500);
     }
 
     const deletedCarBrand = await prisma.carBrand.delete({
       where: { id: carBrandId },
     });
 
-    createSuccessResponse(res, deletedCarBrand, "Deleted");
+    return createSuccessResponse(res, deletedCarBrand, "Deleted");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -189,8 +194,12 @@ export const deleteAllCarBrand: RequestHandler = async (req, res) => {
   try {
     const deletedAllCarBrands = await prisma.carBrand.deleteMany();
 
-    createSuccessResponse(res, deletedAllCarBrands, "All car brands deleted");
+    return createSuccessResponse(
+      res,
+      deletedAllCarBrands,
+      "All car brands deleted"
+    );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };

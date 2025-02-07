@@ -23,10 +23,15 @@ export const createManyETickets: RequestHandler = async (req, res) => {
       skipDuplicates: true, // Optional: skip duplicate entries
     });
 
-    createSuccessResponse(res, createdETickets, "Car models Created", 201);
+    return createSuccessResponse(
+      res,
+      createdETickets,
+      "Car models Created",
+      201
+    );
   } catch (error) {
     logger.error("Error creating multiple eTickets:", error);
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -38,9 +43,9 @@ export const createETicket: RequestHandler = async (req, res) => {
       data: payload,
     });
 
-    createSuccessResponse(res, createdETicket, "Created", 201);
+    return createSuccessResponse(res, createdETicket, "Created", 201);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -69,7 +74,7 @@ export const getETickets: RequestHandler = async (req, res) => {
       totalETickets
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -84,9 +89,9 @@ export const getETicketById: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Car model not found", 404);
     }
 
-    createSuccessResponse(res, eTicket);
+    return createSuccessResponse(res, eTicket);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -122,7 +127,7 @@ export const searchETickets: RequestHandler = async (req, res) => {
       totalETickets
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -139,7 +144,7 @@ export const updateETicket: RequestHandler = async (req, res) => {
     });
 
     if (!eTicket) {
-      createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model Not Found", 500);
     }
 
     const updatedETicket = await prisma.eTicket.update({
@@ -147,9 +152,9 @@ export const updateETicket: RequestHandler = async (req, res) => {
       where: { id: eTicketId },
     });
 
-    createSuccessResponse(res, updatedETicket, "Updated");
+    return createSuccessResponse(res, updatedETicket, "Updated");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -165,16 +170,16 @@ export const deleteETicket: RequestHandler = async (req, res) => {
     });
 
     if (!eTicket) {
-      createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model Not Found", 500);
     }
 
     const deletedETicket = await prisma.eTicket.delete({
       where: { id: eTicketId },
     });
 
-    createSuccessResponse(res, deletedETicket, "Deleted");
+    return createSuccessResponse(res, deletedETicket, "Deleted");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -182,9 +187,13 @@ export const deleteAllETicket: RequestHandler = async (req, res) => {
   try {
     const deletedAllETickets = await prisma.eTicket.deleteMany();
 
-    createSuccessResponse(res, deletedAllETickets, "All car models deleted");
+    return createSuccessResponse(
+      res,
+      deletedAllETickets,
+      "All car models deleted"
+    );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -215,6 +224,6 @@ export const getCurrentUserETickets: RequestHandler = async (req, res) => {
       totalETickets
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };

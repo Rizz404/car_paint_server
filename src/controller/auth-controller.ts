@@ -1,7 +1,6 @@
 import prisma from "@/configs/database";
 import {
   createErrorResponse,
-  createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
 import { RequestHandler } from "express";
@@ -23,7 +22,7 @@ export const register: RequestHandler = async (req, res) => {
     });
 
     if (emailExist) {
-      return createErrorResponse(res, "Email already registered", 500);
+      return createErrorResponse(res, "Email already registered", 400);
     }
     const usernameExist = await prisma.user.findUnique({
       where: {
@@ -32,7 +31,7 @@ export const register: RequestHandler = async (req, res) => {
     });
 
     if (usernameExist) {
-      return createErrorResponse(res, "Username already registered", 500);
+      return createErrorResponse(res, "Username already registered", 400);
     }
 
     const createdUser = await prisma.user.create({
@@ -44,9 +43,9 @@ export const register: RequestHandler = async (req, res) => {
       },
     });
 
-    createSuccessResponse(res, createdUser, "User created", 201);
+    return createSuccessResponse(res, createdUser, "User created", 201);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -74,8 +73,12 @@ export const login: RequestHandler = async (req, res) => {
       }
     );
 
-    createSuccessResponse(res, { ...user, newAccessToken }, "User logged in");
+    return createSuccessResponse(
+      res,
+      { ...user, newAccessToken },
+      "User logged in"
+    );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };

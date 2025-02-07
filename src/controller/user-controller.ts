@@ -33,10 +33,15 @@ export const createManyUsers: RequestHandler = async (req, res) => {
       skipDuplicates: true,
     });
 
-    createSuccessResponse(res, createdUsers, "Users Created Successfully", 201);
+    return createSuccessResponse(
+      res,
+      createdUsers,
+      "Users Created Successfully",
+      201
+    );
   } catch (error) {
     logger.error("Error creating multiple users:", error);
-    createErrorResponse(res, "Failed to create users", 500);
+    return createErrorResponse(res, "Failed to create users", 500);
   }
 };
 
@@ -51,9 +56,9 @@ export const createUser: RequestHandler = async (req, res) => {
       data: { ...payload, password: hashedPassword, userProfile: {} },
     });
 
-    createSuccessResponse(res, createdUser, "Created", 201);
+    return createSuccessResponse(res, createdUser, "Created", 201);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -76,7 +81,7 @@ export const getUsers: RequestHandler = async (req, res) => {
 
     createPaginatedResponse(res, users, currentPage, itemsPerPage, totalUsers);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -91,9 +96,9 @@ export const getUserById: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "User not found", 404);
     }
 
-    createSuccessResponse(res, user);
+    return createSuccessResponse(res, user);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -123,7 +128,7 @@ export const searchUsers: RequestHandler = async (req, res) => {
 
     createPaginatedResponse(res, users, currentPage, itemsPerPage, totalUsers);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -140,7 +145,7 @@ export const updateUser: RequestHandler = async (req, res) => {
     });
 
     if (!user) {
-      createErrorResponse(res, "User Not Found", 500);
+      return createErrorResponse(res, "User Not Found", 500);
     }
 
     const updatedUser = await prisma.user.update({
@@ -148,9 +153,9 @@ export const updateUser: RequestHandler = async (req, res) => {
       where: { id: userId },
     });
 
-    createSuccessResponse(res, updatedUser, "Updated");
+    return createSuccessResponse(res, updatedUser, "Updated");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -166,16 +171,16 @@ export const deleteUser: RequestHandler = async (req, res) => {
     });
 
     if (!user) {
-      createErrorResponse(res, "User Not Found", 500);
+      return createErrorResponse(res, "User Not Found", 500);
     }
 
     const deletedUser = await prisma.user.delete({
       where: { id: userId },
     });
 
-    createSuccessResponse(res, deletedUser, "Deleted");
+    return createSuccessResponse(res, deletedUser, "Deleted");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -183,9 +188,13 @@ export const deleteAllUser: RequestHandler = async (req, res) => {
   try {
     const deletedAllUsers = await prisma.user.deleteMany();
 
-    createSuccessResponse(res, deletedAllUsers, "All car brands deleted");
+    return createSuccessResponse(
+      res,
+      deletedAllUsers,
+      "All car brands deleted"
+    );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -204,9 +213,9 @@ export const getCurrentUser: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Current user not found", 404);
     }
 
-    createSuccessResponse(res, currentUser);
+    return createSuccessResponse(res, currentUser);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -232,9 +241,9 @@ export const updateCurrentUser: RequestHandler = async (req, res) => {
       omit: { password: true },
     });
 
-    createSuccessResponse(res, updatedCurrentUser);
+    return createSuccessResponse(res, updatedCurrentUser);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -265,8 +274,8 @@ export const updateCurrentUserPassword: RequestHandler = async (req, res) => {
       where: { id },
     });
 
-    createSuccessResponse(res, updatedCurrentUser);
+    return createSuccessResponse(res, updatedCurrentUser);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };

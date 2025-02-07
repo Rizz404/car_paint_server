@@ -23,10 +23,15 @@ export const createManyCarModelYears: RequestHandler = async (req, res) => {
       skipDuplicates: true, // Optional: skip duplicate entries
     });
 
-    createSuccessResponse(res, createdCarModelYears, "Car models Created", 201);
+    return createSuccessResponse(
+      res,
+      createdCarModelYears,
+      "Car models Created",
+      201
+    );
   } catch (error) {
     logger.error("Error creating multiple carModelYears:", error);
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -38,9 +43,9 @@ export const createCarModelYear: RequestHandler = async (req, res) => {
       data: payload,
     });
 
-    createSuccessResponse(res, createdCarModelYear, "Created", 201);
+    return createSuccessResponse(res, createdCarModelYear, "Created", 201);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -69,7 +74,7 @@ export const getCarModelYears: RequestHandler = async (req, res) => {
       totalCarModelYears
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -104,7 +109,7 @@ export const getCarModelYearsByCarModelId: RequestHandler = async (
       totalCarModelYears
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -119,9 +124,9 @@ export const getCarModelYearById: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Car model not found", 404);
     }
 
-    createSuccessResponse(res, carModelYear);
+    return createSuccessResponse(res, carModelYear);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -157,7 +162,7 @@ export const searchCarModelYears: RequestHandler = async (req, res) => {
       totalCarModelYears
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -174,7 +179,7 @@ export const updateCarModelYear: RequestHandler = async (req, res) => {
     });
 
     if (!carModelYear) {
-      createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model Not Found", 500);
     }
 
     const updatedCarModelYear = await prisma.carModelYear.update({
@@ -182,9 +187,9 @@ export const updateCarModelYear: RequestHandler = async (req, res) => {
       where: { id: carModelYearId },
     });
 
-    createSuccessResponse(res, updatedCarModelYear, "Updated");
+    return createSuccessResponse(res, updatedCarModelYear, "Updated");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -200,16 +205,16 @@ export const deleteCarModelYear: RequestHandler = async (req, res) => {
     });
 
     if (!carModelYear) {
-      createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model Not Found", 500);
     }
 
     const deletedCarModelYear = await prisma.carModelYear.delete({
       where: { id: carModelYearId },
     });
 
-    createSuccessResponse(res, deletedCarModelYear, "Deleted");
+    return createSuccessResponse(res, deletedCarModelYear, "Deleted");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -217,12 +222,12 @@ export const deleteAllCarModelYear: RequestHandler = async (req, res) => {
   try {
     const deletedAllCarModelYears = await prisma.carModelYear.deleteMany();
 
-    createSuccessResponse(
+    return createSuccessResponse(
       res,
       deletedAllCarModelYears,
       "All car models deleted"
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };

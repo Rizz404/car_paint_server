@@ -23,10 +23,15 @@ export const createManyTransactions: RequestHandler = async (req, res) => {
       skipDuplicates: true, // Optional: skip duplicate entries
     });
 
-    createSuccessResponse(res, createdTransactions, "Car models Created", 201);
+    return createSuccessResponse(
+      res,
+      createdTransactions,
+      "Car models Created",
+      201
+    );
   } catch (error) {
     logger.error("Error creating multiple transactions:", error);
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -38,9 +43,9 @@ export const createTransaction: RequestHandler = async (req, res) => {
       data: payload,
     });
 
-    createSuccessResponse(res, createdTransaction, "Created", 201);
+    return createSuccessResponse(res, createdTransaction, "Created", 201);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -69,7 +74,7 @@ export const getTransactions: RequestHandler = async (req, res) => {
       totalTransactions
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -84,9 +89,9 @@ export const getTransactionById: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Car model not found", 404);
     }
 
-    createSuccessResponse(res, transaction);
+    return createSuccessResponse(res, transaction);
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -122,7 +127,7 @@ export const searchTransactions: RequestHandler = async (req, res) => {
       totalTransactions
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -139,7 +144,7 @@ export const updateTransaction: RequestHandler = async (req, res) => {
     });
 
     if (!transaction) {
-      createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model Not Found", 500);
     }
 
     const updatedTransaction = await prisma.transaction.update({
@@ -147,9 +152,9 @@ export const updateTransaction: RequestHandler = async (req, res) => {
       where: { id: transactionId },
     });
 
-    createSuccessResponse(res, updatedTransaction, "Updated");
+    return createSuccessResponse(res, updatedTransaction, "Updated");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -165,16 +170,16 @@ export const deleteTransaction: RequestHandler = async (req, res) => {
     });
 
     if (!transaction) {
-      createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model Not Found", 500);
     }
 
     const deletedTransaction = await prisma.transaction.delete({
       where: { id: transactionId },
     });
 
-    createSuccessResponse(res, deletedTransaction, "Deleted");
+    return createSuccessResponse(res, deletedTransaction, "Deleted");
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -182,13 +187,13 @@ export const deleteAllTransaction: RequestHandler = async (req, res) => {
   try {
     const deletedAllTransactions = await prisma.transaction.deleteMany();
 
-    createSuccessResponse(
+    return createSuccessResponse(
       res,
       deletedAllTransactions,
       "All car models deleted"
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 
@@ -238,6 +243,6 @@ export const getCurrentUserTransactions: RequestHandler = async (req, res) => {
       totalTransactions
     );
   } catch (error) {
-    createErrorResponse(res, error, 500);
+    return createErrorResponse(res, error, 500);
   }
 };
