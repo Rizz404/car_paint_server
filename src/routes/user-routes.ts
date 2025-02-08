@@ -18,6 +18,8 @@ import {
   createUserSchema,
   createManyUserSchema,
   updateUserSchema,
+  updateCurrentUserSchema,
+  updateCurrentUserPasswordSchema,
 } from "@/validation/user-validation";
 import express from "express";
 
@@ -26,7 +28,12 @@ const userRouter = express.Router();
 userRouter
   .route("/")
   .get(getUsers)
-  .post(authMiddleware(), validateBody(createUserSchema), createUser)
+  .post(
+    authMiddleware(),
+    uploadSingle("profileImage", "profile-images"),
+    validateBody(createUserSchema),
+    createUser
+  )
   .delete(authMiddleware(), deleteAllUser);
 userRouter
   .route("/multiple")
@@ -38,11 +45,16 @@ userRouter
   .patch(
     authMiddleware(),
     uploadSingle("profileImage", "profile-images"),
+    validateBody(updateCurrentUserSchema),
     updateCurrentUser
   );
 userRouter
   .route("/current/password")
-  .patch(authMiddleware(), updateCurrentUserPassword);
+  .patch(
+    authMiddleware(),
+    validateBody(updateCurrentUserPasswordSchema),
+    updateCurrentUserPassword
+  );
 userRouter
   .route("/:userId")
   .get(getUserById)

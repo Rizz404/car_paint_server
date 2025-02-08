@@ -1,26 +1,19 @@
 import { z } from "zod";
 
+export const carServiceSchema = z.object({
+  carServiceId: z.string().min(1, "Car service ID is required"),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+});
+
 export const createOrderSchema = z.object({
   body: z.object({
-    userId: z.string({ required_error: "User ID is required" }),
-    userCarId: z.string({ required_error: "User car ID is required" }),
-    workshopId: z.string({ required_error: "Workshop ID is required" }),
-    workStatus: z.enum(
-      [
-        "INSPECTION",
-        "PUTTY",
-        "SURFACER",
-        "APPLICATIONCOLORBASE",
-        "APPLICATIONCLEARCOAT",
-        "POLISHING",
-        "FINALQC",
-        "DONE",
-      ],
-      { required_error: "Work status is required" }
-    ),
-    orderStatus: z.enum(["PENDING", "ACCEPTED", "CANCELLED"]).optional(),
-    note: z.string({ required_error: "Note is required" }),
-    totalPrice: z.number({ required_error: "Total price is required" }),
+    userCarId: z.string().min(1, "User car ID is required"),
+    workshopId: z.string().min(1, "Workshop ID is required"),
+    note: z.string().optional(),
+    carServices: z
+      .array(carServiceSchema)
+      .min(1, "At least one car service is required"),
+    paymentMethodId: z.string().min(1, "Payment method ID is required"),
   }),
 });
 

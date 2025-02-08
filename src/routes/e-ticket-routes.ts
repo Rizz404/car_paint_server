@@ -10,7 +10,6 @@ import {
   updateETicket,
 } from "@/controller/e-ticket-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
 import {
   createETicketSchema,

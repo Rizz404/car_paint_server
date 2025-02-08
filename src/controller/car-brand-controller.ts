@@ -151,6 +151,15 @@ export const updateCarBrand: RequestHandler = async (req, res) => {
   try {
     const { carBrandId } = req.params;
     const payload: CarBrand = req.body;
+    const logo = req.file as Express.Multer.File;
+
+    if (!logo) {
+      return createErrorResponse(res, "Image is required", 400);
+    }
+
+    if (!logo.cloudinary?.secure_url) {
+      return createErrorResponse(res, "Cloudinary error", 400);
+    }
 
     const carBrand = await prisma.carBrand.findUnique({
       where: {
@@ -159,11 +168,11 @@ export const updateCarBrand: RequestHandler = async (req, res) => {
     });
 
     if (!carBrand) {
-      return createErrorResponse(res, "Car brand Not Found", 500);
+      return createErrorResponse(res, "Car brand Not Found", 404);
     }
 
     const updatedCarBrand = await prisma.carBrand.update({
-      data: payload,
+      data: { ...payload, logo: logo.cloudinary.secure_url },
       where: { id: carBrandId },
     });
 
@@ -185,7 +194,7 @@ export const deleteCarBrand: RequestHandler = async (req, res) => {
     });
 
     if (!carBrand) {
-      return createErrorResponse(res, "Car brand Not Found", 500);
+      return createErrorResponse(res, "Car brand Not Found", 404);
     }
 
     const deletedCarBrand = await prisma.carBrand.delete({

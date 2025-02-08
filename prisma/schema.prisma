@@ -150,6 +150,7 @@ model Workshop {
 model CarService {
   id        String   @id @default(cuid()) @db.VarChar(30)
   name      String   @unique @db.VarChar(50)
+  price     Decimal  @map("price") @db.Decimal(10, 2)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -175,7 +176,7 @@ model Order {
   userId      String      @map("user_id") @db.VarChar(30)
   userCarId   String      @map("user_car_id") @db.VarChar(30)
   workshopId  String      @map("workshop_id") @db.VarChar(30)
-  workStatus  WorkStatus  @map("work_status")
+  workStatus  WorkStatus? @map("work_status")
   orderStatus OrderStatus @default(PENDING) @map("order_status")
   note        String      @db.Text
   totalPrice  Decimal     @map("total_price") @db.Decimal(10, 2)

@@ -6,8 +6,12 @@ import {
 } from "@/types/api-response";
 import logger from "@/utils/logger";
 import { parsePagination } from "@/utils/parse-pagination";
-import { Order, OrderStatus, WorkStatus } from "@prisma/client";
+import { createOrderSchema } from "@/validation/order-validation";
+import { Order, OrderStatus, Prisma, WorkStatus } from "@prisma/client";
 import { RequestHandler } from "express";
+import { z } from "zod";
+
+type CreateOrderDTO = z.infer<typeof createOrderSchema>["body"];
 
 // *======================= POST =======================*
 export const createManyOrders: RequestHandler = async (req, res) => {
@@ -20,7 +24,7 @@ export const createManyOrders: RequestHandler = async (req, res) => {
 
     const createdOrders = await prisma.order.createMany({
       data: ordersToCreate,
-      skipDuplicates: true, // Optional: skip duplicate entries
+      skipDuplicates: true,
     });
 
     return createSuccessResponse(res, createdOrders, "Car models Created", 201);
@@ -32,13 +36,112 @@ export const createManyOrders: RequestHandler = async (req, res) => {
 
 export const createOrder: RequestHandler = async (req, res) => {
   try {
-    const payload: Order = req.body;
+    const { id: userId } = req.user!;
+    const {
+      carServices,
+      paymentMethodId,
+      userCarId,
+      workshopId,
+      note,
+    }: CreateOrderDTO = req.body;
 
-    const createdOrder = await prisma.order.create({
-      data: payload,
+    const carServicesData = await prisma.carService.findMany({
+      where: {
+        id: {
+          in: carServices.map((service) => service.carServiceId),
+        },
+      },
+      select: {
+        id: true,
+        price: true,
+      },
     });
 
-    return createSuccessResponse(res, createdOrder, "Created", 201);
+    // * Buat map biar gampang
+    const carServicePriceMap = new Map(
+      carServicesData.map((service) => [service.id, service.price])
+    );
+
+    // * Validasi yang gak ada
+    const missingServices = carServices.filter(
+      (service) => !carServicePriceMap.has(service.carServiceId)
+    );
+
+    if (missingServices.length > 0) {
+      return createErrorResponse(
+        res,
+        `Car services not found: ${missingServices.map((s) => s.carServiceId).join(", ")}`,
+        404
+      );
+    }
+
+    // * Hitung pakai reduce
+    const orderTotalPrice = carServices.reduce((sum, service) => {
+      const price = carServicePriceMap.get(service.carServiceId)!;
+      return sum.add(price.mul(service.quantity));
+    }, new Prisma.Decimal(0));
+
+    const paymentMethod = await prisma.paymentMethod.findUnique({
+      where: { id: paymentMethodId },
+      select: { fee: true },
+    });
+
+    if (!paymentMethod) {
+      return createErrorResponse(res, "Payment method not found", 404);
+    }
+
+    // * Saat ini 0 dulu fee-nya
+    const adminFee = new Prisma.Decimal(0);
+    const paymentMethodFee = new Prisma.Decimal(paymentMethod.fee);
+
+    // * Pake prisma decimal buat jumlahin
+    const transactionTotalPrice = orderTotalPrice
+      .add(adminFee)
+      .add(paymentMethodFee);
+
+    const result = await prisma.$transaction(async (tx) => {
+      return await tx.order.create({
+        data: {
+          userId,
+          userCarId,
+          workshopId,
+          workStatus: "INSPECTION",
+          orderStatus: "PENDING",
+          note: note ?? "",
+          totalPrice: orderTotalPrice,
+          carServices: {
+            connect: carServicesData.map(({ id }) => ({ id })),
+          },
+          transaction: {
+            create: {
+              userId,
+              paymentMethodId,
+              adminFee,
+              paymentMethodFee,
+              totalPrice: transactionTotalPrice,
+              paymentStatus: "PENDING",
+            },
+          },
+        },
+        include: {
+          carServices: { select: { name: true, price: true } },
+          workshop: {
+            select: {
+              name: true,
+              address: true,
+            },
+          },
+          transaction: true,
+        },
+      });
+    });
+
+    return createSuccessResponse(
+      res,
+      result,
+      "Order created successfully",
+      201
+    );
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }

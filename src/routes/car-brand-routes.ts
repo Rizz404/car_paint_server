@@ -25,7 +25,7 @@ carBrandRouter
   .get(getCarBrands)
   .post(
     authMiddleware(),
-    uploadSingle("imageUrl", "car-brands"),
+    uploadSingle("logo", "car-brands"),
     validateBody(createCarBrandSchema),
     createCarBrand
   )
@@ -35,7 +35,7 @@ carBrandRouter
   .route("/multiple")
   .post(
     authMiddleware(),
-    uploadSingle("imageUrl", "car-brands"),
+    uploadSingle("logo", "car-brands"),
     validateBody(createManyCarBrandSchema),
     createManyCarBrands
   );
@@ -46,7 +46,7 @@ carBrandRouter
   .get(getCarBrandById)
   .patch(
     authMiddleware(),
-    uploadSingle("imageUrl", "car-brands"),
+    uploadSingle("logo", "car-brands"),
     validateBody(updateCarBrandSchema),
     updateCarBrand
   )
