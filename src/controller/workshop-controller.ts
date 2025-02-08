@@ -205,56 +205,75 @@ export const getCurrentUserNearestWorkshops: RequestHandler = async (
       return createErrorResponse(res, "Missing user coordinate", 400);
     }
 
-    const workshops = await prisma.workshop.findMany({});
+    // Using the custom function to find nearest workshops
+    const workshops = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        name: string;
+        email: string;
+        phoneNumber: string;
+        address: string;
+        latitude: string;
+        longitude: string;
+        createdAt: Date;
+        updatedAt: Date;
+        distance: string;
+      }>
+    >`
+      SELECT 
+        w.*,
+        calculate_distance(
+          ${Number(currentUser.latitude)}, 
+          ${Number(currentUser.longitude)}, 
+          w.latitude::decimal, 
+          w.longitude::decimal
+        )::text as distance
+      FROM workshops w
+      WHERE 
+        CASE 
+          WHEN ${maxDistance ? Number(maxDistance) : null}::decimal IS NOT NULL THEN
+            calculate_distance(
+              ${Number(currentUser.latitude)}, 
+              ${Number(currentUser.longitude)}, 
+              w.latitude::decimal, 
+              w.longitude::decimal
+            ) <= ${maxDistance ? Number(maxDistance) : null}::decimal
+          ELSE TRUE
+        END
+      ORDER BY ST_SetSRID(ST_MakePoint(w.longitude::float8, w.latitude::float8), 4326)::geography <-> 
+               ST_SetSRID(ST_MakePoint(${Number(currentUser.longitude)}::float8, ${Number(currentUser.latitude)}::float8), 4326)::geography
+      LIMIT ${itemsPerPage}
+      OFFSET ${offset}
+    `;
 
-    const workshopDistances = await Promise.all(
-      workshops.map(async (workshop) => {
-        const distance = await calculateDistanceInKilometers(
-          {
-            latitude: currentUser.latitude!,
-            longitude: currentUser.longitude!,
-          },
-          {
-            latitude: workshop.latitude,
-            longitude: workshop.longitude,
-          }
-        );
+    // Get total count for pagination
+    const totalCount = await prisma.$queryRaw<[{ count: number }]>`
+      SELECT COUNT(*)::integer
+      FROM workshops w
+      WHERE 
+        CASE 
+          WHEN ${maxDistance ? Number(maxDistance) : null}::decimal IS NOT NULL THEN
+            calculate_distance(
+              ${Number(currentUser.latitude)}, 
+              ${Number(currentUser.longitude)}, 
+              w.latitude::decimal, 
+              w.longitude::decimal
+            ) <= ${maxDistance ? Number(maxDistance) : null}::decimal
+          ELSE TRUE
+        END
+    `;
 
-        return {
-          ...workshop,
-          distance: formatDistanceKmToM(distance || "0"),
-          rawDistance: parseFloat(distance || "0"),
-        };
-      })
-    );
-
-    // * Filter dengan maxdistance
-    const filteredWorkshops = maxDistance
-      ? workshopDistances.filter(
-          (workshop) => workshop.rawDistance <= parseFloat(maxDistance)
-        )
-      : workshopDistances;
-
-    // * Sorting berdasarkan distance
-    const sortedWorkshops = filteredWorkshops.sort(
-      (a, b) => a.rawDistance - b.rawDistance
-    );
-
-    const paginatedWorkshops = sortedWorkshops.slice(
-      offset,
-      offset + itemsPerPage
-    );
-
-    const formattedWorkshops = paginatedWorkshops.map(
-      ({ rawDistance, ...workshop }) => workshop
-    );
+    const formattedWorkshops = workshops.map((workshop) => ({
+      ...workshop,
+      distance: formatDistanceKmToM(workshop.distance),
+    }));
 
     createPaginatedResponse(
       res,
       formattedWorkshops,
       currentPage,
       itemsPerPage,
-      sortedWorkshops.length
+      totalCount[0].count
     );
   } catch (error) {
     return createErrorResponse(res, error, 500);

@@ -9,6 +9,7 @@ import morgan from "morgan";
 import logger from "./utils/logger";
 import prisma from "./configs/database";
 import routes from "./routes";
+import { metricsMiddleware } from "./middlewares/metrics";
 
 const PORT = process.env.PORT || 5000;
 const app = express();
@@ -18,6 +19,7 @@ const app = express();
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 app.use(cors({ credentials: true }));
+app.use(metricsMiddleware);
 app.use(compression());
 app.use(bodyParser.json({ limit: "30mb" }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
