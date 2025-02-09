@@ -15,8 +15,8 @@ async function syncCloudToLocal() {
   });
 
   try {
-    console.info("Clearing local database...");
-    await clearLocalDatabase(localDb);
+    // console.info("Clearing local database...");
+    // await clearLocalDatabase(localDb);
 
     console.info("Fetching data from cloud...");
     const cloudData = await fetchCloudData(cloudDb);

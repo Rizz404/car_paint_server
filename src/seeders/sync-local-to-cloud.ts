@@ -2,7 +2,6 @@ import { PrismaClient } from "@prisma/client";
 import "dotenv/config";
 
 async function syncLocalToCloud() {
-  // Inisialisasi koneksi ke database lokal dan cloud
   const localDb = new PrismaClient({
     datasources: {
       db: { url: process.env.DATABASE_URL },
@@ -16,8 +15,8 @@ async function syncLocalToCloud() {
   });
 
   try {
-    console.info("Clearing cloud database...");
-    await clearCloudDatabase(cloudDb);
+    // console.info("Clearing cloud database...");
+    // await clearCloudDatabase(cloudDb);
 
     console.info("Fetching data from local database...");
     const localData = await fetchLocalData(localDb);

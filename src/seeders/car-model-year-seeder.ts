@@ -10,7 +10,7 @@ const generateCarModelYear = (
 
 export const seedCarModelYears = async (
   prisma: PrismaClient,
-  yearsPerModel = 3
+  yearsPerModel = 2
 ) => {
   console.log("🌱 Seeding CarModelYears...");
   await prisma.carModelYear.deleteMany();

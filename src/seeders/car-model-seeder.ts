@@ -10,7 +10,7 @@ const generateCarModel = (
 
 export const seedCarModels = async (
   prisma: PrismaClient,
-  modelsPerBrand = 3
+  modelsPerBrand = 2
 ) => {
   console.log("🌱 Seeding CarModels...");
   await prisma.carModel.deleteMany();

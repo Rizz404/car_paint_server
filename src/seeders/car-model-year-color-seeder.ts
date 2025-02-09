@@ -11,7 +11,7 @@ const generateCarModelYearColor = (
 
 export const seedCarModelYearColors = async (
   prisma: PrismaClient,
-  yearColorsPerModel = 3
+  yearColorsPerModel = 2
 ) => {
   console.log("🌱 Seeding CarModelYearColors...");
   await prisma.carModelYearColor.deleteMany();
