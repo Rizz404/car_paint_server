@@ -2,58 +2,138 @@ import bodyParser from "body-parser";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import http from "http";
 import morgan from "morgan";
+import responseTime from "response-time";
+import promBundle from "express-prom-bundle";
 import logger from "./utils/logger";
 import prisma from "./configs/database";
 import routes from "./routes";
+import {
+  register,
+  httpRequestDuration,
+  httpRequestsTotal,
+  databaseConnections,
+  errorCounter,
+  collectPrismaMetrics,
+} from "./utils/metrics";
+import { prismaMetricsMiddleware } from "./middlewares/prisma-metrics";
 import { metricsMiddleware } from "./middlewares/metrics";
 
 const PORT = process.env.PORT || 5000;
 const app = express();
 
-// * Middleware
-// ! urutannya harus bener
+// * ======================
+// * MIDDLEWARE
+// * ======================
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 app.use(cors({ credentials: true }));
 app.use(metricsMiddleware);
+app.use(
+  responseTime((req: Request, res: Response, time: number) => {
+    const route = req.route?.path || req.path;
+    httpRequestDuration
+      .labels(req.method, route, res.statusCode.toString())
+      .observe(time / 1000); // * Convert to seconds
+  })
+);
 app.use(compression());
 app.use(bodyParser.json({ limit: "30mb" }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
 app.use(cookieParser());
+
+// * Custom request tracking
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const route = req.route?.path || req.path;
+  httpRequestsTotal.inc({
+    method: req.method,
+    route,
+    status: res.statusCode.toString(),
+  });
+  next();
+});
+
+// * Error tracking
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  errorCounter.inc({ type: err.name });
+  next(err);
+});
+
+// * Logging
 app.use(
   morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", {
     stream: { write: (message) => logger.info(message.trim()) },
   })
 );
 
-// * Health
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "ok",
-    uptime: process.uptime(),
-    timestamp: Date.now(),
-  });
+// * ======================
+// * METRICS ENDPOINTS
+// * ======================
+app.get("/metrics", async (req: Request, res: Response) => {
+  try {
+    const prismaMetrics = await collectPrismaMetrics();
+    res.set("Content-Type", register.contentType);
+    res.end((await register.metrics()) + prismaMetrics);
+  } catch (err) {
+    logger.error("Metrics collection error:", err);
+    res.status(500).end("Error collecting metrics");
+  }
 });
 
-// * API routes
+// * ======================
+// * HEALTH CHECK
+// * ======================
+app.get("/health", async (req: Request, res: Response) => {
+  const healthCheck = {
+    uptime: process.uptime(),
+    message: "OK",
+    timestamp: Date.now(),
+    database: {
+      status: "OK",
+      // * Use get() instead of values()
+      connections: databaseConnections.get(),
+    },
+    metrics: await register.metrics().then((data) => data.split("\n").length),
+  };
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    healthCheck.database.status = "OK";
+    res.status(200).json(healthCheck);
+  } catch (error) {
+    healthCheck.database.status = "ERROR";
+    healthCheck.message = "Database connection failed";
+    logger.error("Database health check failed:", error);
+    res.status(500).json(healthCheck);
+  }
+});
+
+// * ======================
+// * API ROUTES
+// * ======================
 app.use("/api/v1", routes);
 
-// * Database
+// * ======================
+// * DATABASE CONNECTION
+// * ======================
 const connectDatabase = async () => {
   try {
     await prisma.$connect();
     logger.info("Database connected successfully");
+    // * Start Prisma metrics collection
+    prismaMetricsMiddleware();
   } catch (error) {
     logger.error("Database connection error:", error);
     process.exit(1);
   }
 };
 
-// * Server
+// * ======================
+// * SERVER CONFIG
+// * ======================
 const httpServer = http.createServer(app);
 
 const startServer = () => {
@@ -61,18 +141,23 @@ const startServer = () => {
     logger.info(
       `Server running in ${process.env.NODE_ENV || "development"} mode on port ${PORT}`
     );
+    logger.info(`Metrics available at http://localhost:${PORT}/metrics`);
   });
 };
 
-// * Graceful Shutdown
+// * ======================
+// * GRACEFUL SHUTDOWN
+// * ======================
 const gracefulShutdown = async () => {
   logger.info("Shutting down gracefully...");
 
-  // * Tutup server terlebih dahulu
   httpServer.close(async () => {
     logger.info("HTTP server closed");
 
-    // * Tutup koneksi database
+    // * Reset metrics
+    await register.clear();
+    logger.info("Metrics reset");
+
     await prisma.$disconnect().catch((error) => {
       logger.error("Error disconnecting database:", error);
     });
@@ -81,14 +166,15 @@ const gracefulShutdown = async () => {
     process.exit(0);
   });
 
-  // * Force shutdown setelah 10 detik
   setTimeout(() => {
     logger.error("Forcing shutdown after timeout");
     process.exit(1);
   }, 10000);
 };
 
-// * Process Event Handlers
+// * ======================
+// * PROCESS HANDLERS
+// * ======================
 process.on("uncaughtException", (error) => {
   logger.error("Uncaught Exception:", error);
   process.exit(1);
@@ -101,11 +187,24 @@ process.on("unhandledRejection", (reason, promise) => {
 process.on("SIGTERM", gracefulShutdown);
 process.on("SIGINT", gracefulShutdown);
 
-// * Initialize Application
+// * ======================
+// * INITIALIZATION
+// * ======================
 (async () => {
-  // * Validasi environment variables
-  if (!process.env.DATABASE_URL) {
-    logger.error("DATABASE_URL environment variable is missing");
+  // * Validate environment variables
+  const requiredEnvVars = [
+    "DATABASE_URL",
+    "JWT_ACCESS_TOKEN",
+    "CLOUDINARY_CLOUD_NAME",
+    "CLOUDINARY_API_KEY",
+    "CLOUDINARY_API_SECRET",
+  ];
+
+  const missingVars = requiredEnvVars.filter(
+    (varName) => !process.env[varName]
+  );
+  if (missingVars.length > 0) {
+    logger.error("Missing required environment variables:", missingVars);
     process.exit(1);
   }
 

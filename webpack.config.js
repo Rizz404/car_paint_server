@@ -28,5 +28,8 @@ module.exports = {
   externals: {
     express: "commonjs express",
     bcrypt: "commonjs bcrypt",
+    "prom-client": "commonjs prom-client",
+    "express-prom-bundle": "commonjs express-prom-bundle",
+    "response-time": "commonjs response-time",
   },
 };
