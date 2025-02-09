@@ -153,11 +153,7 @@ export const updateCarBrand: RequestHandler = async (req, res) => {
     const payload: CarBrand = req.body;
     const logo = req.file as Express.Multer.File;
 
-    if (!logo) {
-      return createErrorResponse(res, "Image is required", 400);
-    }
-
-    if (!logo.cloudinary?.secure_url) {
+    if (logo && !logo.cloudinary?.secure_url) {
       return createErrorResponse(res, "Cloudinary error", 400);
     }
 
@@ -172,7 +168,10 @@ export const updateCarBrand: RequestHandler = async (req, res) => {
     }
 
     const updatedCarBrand = await prisma.carBrand.update({
-      data: { ...payload, logo: logo.cloudinary.secure_url },
+      data: {
+        ...payload,
+        ...(logo && logo.cloudinary && { logo: logo.cloudinary.secure_url }),
+      },
       where: { id: carBrandId },
     });
 

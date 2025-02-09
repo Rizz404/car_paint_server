@@ -1,6 +1,22 @@
 import { faker } from "@faker-js/faker";
 import { Prisma, PrismaClient } from "@prisma/client";
 
+const generateOrderTotalPrice = (): Prisma.Decimal => {
+  const totalPriceRanges = [{ min: 500_000, max: 12_000_000 }];
+
+  // * Pilih random berdasarkan array
+  const range = faker.helpers.arrayElement(totalPriceRanges);
+
+  const rawTotalPrice = faker.number.float({
+    min: range.min,
+    max: range.max,
+  });
+
+  const roundedTotalPrice = Math.round(rawTotalPrice / 1000) * 1000;
+
+  return new Prisma.Decimal(roundedTotalPrice);
+};
+
 const generateOrder = (
   userId: string,
   userCarId: string,
@@ -21,10 +37,10 @@ const generateOrder = (
   ]) as Prisma.OrderCreateInput["workStatus"],
   orderStatus: "PENDING",
   note: faker.lorem.sentence(),
-  totalPrice: new Prisma.Decimal(faker.number.float({ min: 50, max: 1000 })),
+  totalPrice: generateOrderTotalPrice(),
 });
 
-export const seedOrders = async (prisma: PrismaClient, count = 100) => {
+export const seedOrders = async (prisma: PrismaClient, count = 40) => {
   console.log("🌱 Seeding Orders...");
   await prisma.order.deleteMany();
   const users = await prisma.user.findMany({ select: { id: true } });

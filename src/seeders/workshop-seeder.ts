@@ -12,7 +12,7 @@ const generateWorkshop = (): Prisma.WorkshopCreateManyInput => ({
   ),
 });
 
-export const seedWorkshops = async (prisma: PrismaClient, count = 100) => {
+export const seedWorkshops = async (prisma: PrismaClient, count = 40) => {
   console.log("🌱 Seeding Workshops...");
   await prisma.workshop.deleteMany();
 

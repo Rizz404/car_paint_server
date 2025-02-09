@@ -1,6 +1,38 @@
 import { faker } from "@faker-js/faker";
 import { Prisma, PrismaClient } from "@prisma/client";
 
+const generateFee = (): Prisma.Decimal => {
+  const feeRanges = [{ min: 1000, max: 10_000 }];
+
+  // * Pilih random berdasarkan array
+  const range = faker.helpers.arrayElement(feeRanges);
+
+  const rawFee = faker.number.float({
+    min: range.min,
+    max: range.max,
+  });
+
+  const roundedFee = Math.round(rawFee / 1000) * 1000;
+
+  return new Prisma.Decimal(roundedFee);
+};
+
+const generateTransactionTotalPrice = (): Prisma.Decimal => {
+  const totalPriceRanges = [{ min: 500_000, max: 12_000_000 }];
+
+  // * Pilih random berdasarkan array
+  const range = faker.helpers.arrayElement(totalPriceRanges);
+
+  const rawTotalPrice = faker.number.float({
+    min: range.min,
+    max: range.max,
+  });
+
+  const roundedTotalPrice = Math.round(rawTotalPrice / 1000) * 1000;
+
+  return new Prisma.Decimal(roundedTotalPrice);
+};
+
 const generateTransaction = (
   userId: string,
   paymentMethodId: string,
@@ -9,13 +41,14 @@ const generateTransaction = (
   userId,
   paymentMethodId,
   orderId,
-  adminFee: new Prisma.Decimal(faker.number.float({ min: 1, max: 20 })),
-  paymentMethodFee: new Prisma.Decimal(faker.number.float({ min: 1, max: 20 })),
-  totalPrice: new Prisma.Decimal(faker.number.float({ min: 50, max: 1000 })),
+  adminFee: generateFee(),
+  paymentMethodFee: generateFee(),
+  totalPrice: generateTransactionTotalPrice(),
   paymentStatus: "PENDING",
+  paymentInvoiceUrl: "",
 });
 
-export const seedTransactions = async (prisma: PrismaClient, count = 100) => {
+export const seedTransactions = async (prisma: PrismaClient, count = 40) => {
   console.log("🌱 Seeding Transactions...");
   await prisma.transaction.deleteMany();
   const users = await prisma.user.findMany({ select: { id: true } });

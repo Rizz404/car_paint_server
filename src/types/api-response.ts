@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { Response, Request } from "express";
 import { ZodError } from "zod";
 
@@ -113,23 +114,50 @@ export const createPaginatedResponse = <T extends object>(
 export const createErrorResponse = (
   res: Response,
   error: unknown,
-  statusCode = 500,
-  validationErrors?: any[] | { message: string; type?: string }[]
+  statusCode = 500
 ) => {
-  const errorResponse: ApiErrorResponse = {
-    message: getErrorMessage(error),
-  };
+  let message = "An error occurred";
 
-  // Handle Zod validation errors
-  if (error instanceof ZodError) {
-    errorResponse.message = "Validation failed";
-    errorResponse.errors = formatZodError(error);
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    // Handling known Prisma errors with specific error codes
+    switch (error.code) {
+      case "P2000":
+        message = "The provided value is too long for the column";
+        statusCode = 400;
+        break;
+      case "P2001":
+        message = "The requested record was not found";
+        statusCode = 404;
+        break;
+      case "P2002":
+        message = "Unique constraint failed";
+        statusCode = 400;
+        break;
+      case "P2003":
+        message = "Foreign key constraint failed";
+        statusCode = 400;
+        break;
+      case "P2025":
+        message = "The record to update or delete was not found";
+        statusCode = 404;
+        break;
+      default:
+        message = "A database error occurred";
+        statusCode = 500;
+        break;
+    }
+  } else if (error instanceof ZodError) {
+    // Handling validation errors from Zod
+    message = "Validation failed";
     statusCode = 400;
-  }
-  // Handle other validation errors
-  else if (validationErrors) {
-    errorResponse.errors = formatValidationErrors(validationErrors);
+  } else if (error instanceof Error) {
+    // Other errors that are instances of Error
+    message = error.message;
+  } else if (typeof error === "string") {
+    // If error is a string, use it directly
+    message = error;
   }
 
+  const errorResponse: ApiErrorResponse = { message };
   res.status(statusCode).json(errorResponse);
 };

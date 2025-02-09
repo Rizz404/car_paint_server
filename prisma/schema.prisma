@@ -163,7 +163,7 @@ model CarService {
 model PaymentMethod {
   id        String   @id @default(cuid()) @db.VarChar(30)
   name      String   @db.VarChar(100)
-  fee       Decimal  @db.Decimal(5, 2)
+  fee       Decimal  @db.Decimal(10, 2)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -195,16 +195,17 @@ model Order {
 }
 
 model Transaction {
-  id               String        @id @default(cuid()) @db.VarChar(30)
-  userId           String        @map("user_id") @db.VarChar(30)
-  paymentMethodId  String        @map("payment_method_id") @db.VarChar(30)
-  orderId          String        @map("order_id") @db.VarChar(30)
-  adminFee         Decimal       @map("admin_fee") @db.Decimal(5, 2)
-  paymentMethodFee Decimal       @map("payment_method_fee") @db.Decimal(5, 2)
-  totalPrice       Decimal       @map("total_price") @db.Decimal(10, 2)
-  paymentStatus    PaymentStatus @default(PENDING) @map("payment_status")
-  createdAt        DateTime      @default(now()) @map("created_at")
-  updatedAt        DateTime      @updatedAt @map("updated_at")
+  id                String        @id @default(cuid()) @db.VarChar(30)
+  userId            String        @map("user_id") @db.VarChar(30)
+  paymentMethodId   String        @map("payment_method_id") @db.VarChar(30)
+  orderId           String        @map("order_id") @db.VarChar(30)
+  adminFee          Decimal       @map("admin_fee") @db.Decimal(10, 2)
+  paymentMethodFee  Decimal       @map("payment_method_fee") @db.Decimal(10, 2)
+  totalPrice        Decimal       @map("total_price") @db.Decimal(10, 2)
+  paymentStatus     PaymentStatus @default(PENDING) @map("payment_status")
+  paymentInvoiceUrl String        @db.Text
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
