@@ -1,4 +1,5 @@
 import prisma from "@/configs/database";
+import env from "@/configs/environtment";
 import {
   createErrorResponse,
   createPaginatedResponse,
@@ -63,9 +64,11 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
   try {
     const callbackToken = req.headers["x-callback-token"];
     const payload: XenditWebhookPayload = req.body;
+    console.log(payload);
+    console.log(`statusnya bang ${payload.status}`);
 
     // Early validation checks
-    if (!callbackToken || callbackToken !== process.env.XENDIT_CALLBACK_TOKEN) {
+    if (!callbackToken || callbackToken !== env.XENDIT_CALLBACK_TOKEN) {
       return createErrorResponse(res, "Unauthorized webhook request", 401);
     }
 
