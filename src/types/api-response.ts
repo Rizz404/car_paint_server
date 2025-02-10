@@ -42,7 +42,7 @@ export interface APIPaginatedResponse<T> extends ApiSuccessResponse<T> {
 
 const formatZodError = (error: ZodError): ValidationError[] => {
   return error.errors.map((err) => ({
-    field: err.path.slice(1).map(String).join(".") || String(err.path[0]), // Convert all path elements to string
+    field: err.path.slice(1).map(String).join(".") || String(err.path[0]),
     message: err.message,
     code: err.code,
   }));
@@ -117,6 +117,7 @@ export const createErrorResponse = (
   statusCode = 500
 ) => {
   let message = "An error occurred";
+  let validationErrors: ValidationError[] | undefined;
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     // Handling known Prisma errors with specific error codes
@@ -150,6 +151,12 @@ export const createErrorResponse = (
     // Handling validation errors from Zod
     message = "Validation failed";
     statusCode = 400;
+    validationErrors = formatZodError(error);
+  } else if (Array.isArray(error)) {
+    // Handle array of validation errors
+    message = "Validation failed";
+    statusCode = 400;
+    validationErrors = formatValidationErrors(error);
   } else if (error instanceof Error) {
     // Other errors that are instances of Error
     message = error.message;
@@ -158,6 +165,10 @@ export const createErrorResponse = (
     message = error;
   }
 
-  const errorResponse: ApiErrorResponse = { message };
+  const errorResponse: ApiErrorResponse = {
+    message,
+    ...(validationErrors && { errors: validationErrors }),
+  };
+
   res.status(statusCode).json(errorResponse);
 };
