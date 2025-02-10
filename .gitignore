@@ -6,6 +6,8 @@ package-lock.json
 
 # Environment variables
 .env
+.env.development
+.env.production
 
 # TypeScript build files
 dist/

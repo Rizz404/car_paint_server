@@ -5,7 +5,7 @@ import DailyRotateFile from "winston-daily-rotate-file";
 
 // * Buat logger
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || "info",
+  level: "info",
   transports: [consoleTransport, fileTransport],
   exceptionHandlers: [
     consoleTransport,

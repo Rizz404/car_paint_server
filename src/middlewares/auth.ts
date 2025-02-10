@@ -1,3 +1,4 @@
+import env from "@/configs/environtment";
 import { createErrorResponse } from "@/types/api-response";
 import { NextFunction, Request, Response } from "express";
 import jwt, { TokenExpiredError } from "jsonwebtoken";
@@ -33,7 +34,7 @@ export const authMiddleware = (
       const accessToken = authHeader.split(" ")[1];
       const decoded = jwt.verify(
         accessToken,
-        process.env.JWT_ACCESS_TOKEN as string
+        env.JWT_ACCESS_TOKEN as string
       ) as {
         userId: string;
       };

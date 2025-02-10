@@ -8,6 +8,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { User } from "@prisma/client";
 import { faker } from "@faker-js/faker";
+import env from "@/configs/environtment";
 
 export const register: RequestHandler = async (req, res) => {
   try {
@@ -69,7 +70,7 @@ export const login: RequestHandler = async (req, res) => {
 
     const newAccessToken = jwt.sign(
       { userId: user.id },
-      process.env.JWT_ACCESS_TOKEN!,
+      env.JWT_ACCESS_TOKEN!,
       {
         expiresIn: "30d",
       }

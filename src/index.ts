@@ -7,7 +7,6 @@ import helmet from "helmet";
 import http from "http";
 import morgan from "morgan";
 import responseTime from "response-time";
-import promBundle from "express-prom-bundle";
 import logger from "./utils/logger";
 import prisma from "./configs/database";
 import routes from "./routes";
@@ -19,15 +18,14 @@ import {
   errorCounter,
   collectPrismaMetrics,
 } from "./utils/metrics";
-import { prismaMetricsMiddleware } from "./middlewares/prisma-metrics";
 import { metricsMiddleware } from "./middlewares/metrics";
+import connectDb from "./utils/connect-db";
+import env, { reloadEnv } from "./configs/environtment";
 
-const PORT = process.env.PORT || 5000;
+const PORT = env.PORT || 5000;
 const app = express();
 
-// * ======================
 // * MIDDLEWARE
-// * ======================
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 app.use(cors({ credentials: true }));
@@ -64,14 +62,12 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // * Logging
 app.use(
-  morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", {
+  morgan(env.NODE_ENV === "production" ? "combined" : "dev", {
     stream: { write: (message) => logger.info(message.trim()) },
   })
 );
 
-// * ======================
 // * METRICS ENDPOINTS
-// * ======================
 app.get("/metrics", async (req: Request, res: Response) => {
   try {
     const prismaMetrics = await collectPrismaMetrics();
@@ -83,9 +79,7 @@ app.get("/metrics", async (req: Request, res: Response) => {
   }
 });
 
-// * ======================
 // * HEALTH CHECK
-// * ======================
 app.get("/health", async (req: Request, res: Response) => {
   const healthCheck = {
     uptime: process.uptime(),
@@ -111,44 +105,24 @@ app.get("/health", async (req: Request, res: Response) => {
   }
 });
 
-// * ======================
 // * API ROUTES
-// * ======================
 app.use("/api/v1", routes);
 
-// * ======================
-// * DATABASE CONNECTION
-// * ======================
-const connectDatabase = async () => {
-  try {
-    await prisma.$connect();
-    logger.info("Database connected successfully");
-    // * Start Prisma metrics collection
-    prismaMetricsMiddleware();
-  } catch (error) {
-    logger.error("Database connection error:", error);
-    process.exit(1);
-  }
-};
-
-// * ======================
 // * SERVER CONFIG
-// * ======================
 const httpServer = http.createServer(app);
 
 const startServer = () => {
   httpServer.listen(PORT, () => {
-    logger.info(
-      `Server running in ${process.env.NODE_ENV || "development"} mode on port ${PORT}`
-    );
+    logger.info(`Server running in ${env.NODE_ENV} mode on port ${PORT}`);
     logger.info(`Metrics available at http://localhost:${PORT}/metrics`);
   });
 };
 
-// * ======================
 // * GRACEFUL SHUTDOWN
-// * ======================
 const gracefulShutdown = async () => {
+  logger.info("Reloading environment...");
+  reloadEnv();
+
   logger.info("Shutting down gracefully...");
 
   httpServer.close(async () => {
@@ -172,9 +146,7 @@ const gracefulShutdown = async () => {
   }, 10000);
 };
 
-// * ======================
 // * PROCESS HANDLERS
-// * ======================
 process.on("uncaughtException", (error) => {
   logger.error("Uncaught Exception:", error);
   process.exit(1);
@@ -187,28 +159,9 @@ process.on("unhandledRejection", (reason, promise) => {
 process.on("SIGTERM", gracefulShutdown);
 process.on("SIGINT", gracefulShutdown);
 
-// * ======================
 // * INITIALIZATION
-// * ======================
 (async () => {
-  // * Validate environment variables
-  const requiredEnvVars = [
-    "DATABASE_URL",
-    "JWT_ACCESS_TOKEN",
-    "CLOUDINARY_CLOUD_NAME",
-    "CLOUDINARY_API_KEY",
-    "CLOUDINARY_API_SECRET",
-  ];
-
-  const missingVars = requiredEnvVars.filter(
-    (varName) => !process.env[varName]
-  );
-  if (missingVars.length > 0) {
-    logger.error("Missing required environment variables:", missingVars);
-    process.exit(1);
-  }
-
-  await connectDatabase();
+  await connectDb();
   startServer();
 })();
 

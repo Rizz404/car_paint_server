@@ -1,3 +1,4 @@
+import env from "@/configs/environtment";
 import { register } from "@/utils/metrics";
 import promBundle from "express-prom-bundle";
 
@@ -14,7 +15,7 @@ export const metricsMiddleware = promBundle({
   },
   customLabels: {
     app: "paint-project",
-    env: process.env.NODE_ENV || "development",
+    env: env.NODE_ENV || "development",
   },
   // Gunakan registry yang sama
   promRegistry: register,
