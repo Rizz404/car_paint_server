@@ -62,9 +62,27 @@ export const createWorkshop: RequestHandler = async (req, res) => {
 // *======================= GET =======================*
 export const getWorkshops: RequestHandler = async (req, res) => {
   try {
-    const workshops = await prisma.workshop.findMany();
+    const { page = "1", limit = "10" } = req.query as unknown as {
+      page: string;
+      limit: string;
+    };
 
-    createPaginatedResponse(res, workshops, 1, 10, workshops.length);
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const workshops = await prisma.workshop.findMany({
+      skip: offset,
+      take: +limit,
+      orderBy: { name: "asc" },
+    });
+    const totalWorkshops = await prisma.workshop.count();
+
+    createPaginatedResponse(
+      res,
+      workshops,
+      currentPage,
+      itemsPerPage,
+      totalWorkshops
+    );
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }

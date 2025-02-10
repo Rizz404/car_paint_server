@@ -8,6 +8,7 @@ import {
   searchTransactions,
   updateTransaction,
   getCurrentUserTransactions,
+  confirmTransaction,
 } from "@/controller/transaction-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
@@ -30,6 +31,8 @@ transactionRouter
     createTransaction
   )
   .delete(authMiddleware(), deleteAllTransaction);
+
+transactionRouter.route("/webhook/xendit").post(confirmTransaction);
 
 transactionRouter
   .route("/user")

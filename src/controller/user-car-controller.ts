@@ -59,6 +59,7 @@ export const createUserCar: RequestHandler = async (req, res) => {
     return createErrorResponse(res, error, 500);
   }
 };
+
 // *======================= GET =======================*
 export const getUserCars: RequestHandler = async (req, res) => {
   try {

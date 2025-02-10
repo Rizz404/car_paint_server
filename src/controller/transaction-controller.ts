@@ -20,7 +20,7 @@ export const createManyTransactions: RequestHandler = async (req, res) => {
 
     const createdTransactions = await prisma.transaction.createMany({
       data: transactionsToCreate,
-      skipDuplicates: true, // Optional: skip duplicate entries
+      skipDuplicates: true,
     });
 
     return createSuccessResponse(
@@ -46,6 +46,109 @@ export const createTransaction: RequestHandler = async (req, res) => {
     return createSuccessResponse(res, createdTransaction, "Created", 201);
   } catch (error) {
     return createErrorResponse(res, error, 500);
+  }
+};
+
+export const confirmTransaction: RequestHandler = async (req, res) => {
+  try {
+    const callbackToken = req.headers["x-callback-token"];
+    const payload: {
+      status: PaymentStatus;
+      external_id: string;
+    } = req.body;
+
+    if (callbackToken !== process.env.XENDIT_CALLBACK_TOKEN) {
+      return createErrorResponse(res, "Unauthorized webhook request", 401);
+    }
+
+    const { external_id: externalId } = payload;
+
+    if (externalId === "invoice_123124123") {
+      return createSuccessResponse(res, {}, "Testing webhook success", 200);
+    }
+
+    let response;
+
+    switch (payload.status) {
+      case "SUCCESS":
+        response = await prisma.$transaction(async (tx) => {
+          const updatedTransaction = await tx.transaction.update({
+            where: { id: externalId },
+            data: {
+              paymentStatus: "SUCCESS",
+              order: {
+                update: {
+                  orderStatus: "ACCEPTED",
+                },
+              },
+            },
+            include: {
+              order: {
+                select: {
+                  id: true,
+                  userId: true,
+                },
+              },
+            },
+          });
+
+          const latestTicket = await tx.eTicket.findFirst({
+            orderBy: {
+              ticketNumber: "desc",
+            },
+          });
+
+          const newTicketNumber = (latestTicket?.ticketNumber ?? 0) + 1;
+
+          const ticket = await tx.eTicket.create({
+            data: {
+              userId: updatedTransaction.order.userId,
+              orderId: updatedTransaction.order.id,
+              ticketNumber: newTicketNumber,
+            },
+          });
+
+          return {
+            transaction: updatedTransaction,
+            ticket,
+          };
+        });
+        break;
+
+      case "CANCELLED":
+        response = await prisma.$transaction(async (tx) => {
+          const updatedTransaction = await tx.transaction.update({
+            where: { id: externalId },
+            data: {
+              paymentStatus: "CANCELLED",
+              order: {
+                update: {
+                  orderStatus: "CANCELLED",
+                },
+              },
+            },
+          });
+
+          return {
+            transaction: updatedTransaction,
+          };
+        });
+        break;
+
+      default:
+        response = {};
+        break;
+    }
+
+    return createSuccessResponse(
+      res,
+      response,
+      "Webhook processed successfully",
+      200
+    );
+  } catch (error) {
+    logger.error("Webhook processing error:", error);
+    return createErrorResponse(res, error);
   }
 };
 

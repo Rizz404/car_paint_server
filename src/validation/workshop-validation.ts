@@ -12,7 +12,6 @@ export const createWorkshopSchema = z.object({
     address: z.string({ required_error: "Address is required" }),
     latitude: z.number({ required_error: "Latitude is required" }),
     longitude: z.number({ required_error: "Longitude is required" }),
-    carBrandId: z.string({ required_error: "Car brand ID is required" }),
   }),
 });
 

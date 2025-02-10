@@ -59,12 +59,12 @@ export const createOrder: RequestHandler = async (req, res) => {
       },
     });
 
-    // * Buat map biar gampang
+    // * Buat map untuk mempermudah pengecekan harga
     const carServicePriceMap = new Map(
       carServicesData.map((service) => [service.id, service.price])
     );
 
-    // * Validasi yang gak ada
+    // * Validasi car services yang tidak ditemukan
     const missingServices = carServices.filter(
       (service) => !carServicePriceMap.has(service.carServiceId)
     );
@@ -77,10 +77,10 @@ export const createOrder: RequestHandler = async (req, res) => {
       );
     }
 
-    // * Hitung pakai reduce
+    // * Hitung total harga order tanpa quantity (diasumsikan 1 per service)
     const orderTotalPrice = carServices.reduce((sum, service) => {
       const price = carServicePriceMap.get(service.carServiceId)!;
-      return sum.add(price.mul(service.quantity));
+      return sum.add(price);
     }, new Prisma.Decimal(0));
 
     const paymentMethod = await prisma.paymentMethod.findUnique({
@@ -92,11 +92,11 @@ export const createOrder: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Payment method not found", 404);
     }
 
-    // * Saat ini 0 dulu fee-nya
+    // * Fee admin saat ini 0
     const adminFee = new Prisma.Decimal(0);
     const paymentMethodFee = new Prisma.Decimal(paymentMethod.fee);
 
-    // * Pake prisma decimal buat jumlahin
+    // * Hitung total harga transaksi
     const transactionTotalPrice = orderTotalPrice
       .add(adminFee)
       .add(paymentMethodFee);
