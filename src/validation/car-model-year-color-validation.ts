@@ -6,7 +6,6 @@ export const createCarModelYearColorSchema = z.object({
       required_error: "Car model year ID is required",
     }),
     colorId: z.string({ required_error: "Color ID is required" }),
-    year: z.number({ required_error: "Year is required" }),
   }),
 });
 

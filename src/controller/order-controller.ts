@@ -44,7 +44,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       userCarId,
       workshopId,
       note,
-    }: CreateOrderDTO = req.body;
+    }: CreateOrderDTO & { paymentMethodId: string } = req.body;
 
     const carServicesData = await prisma.carService.findMany({
       where: {

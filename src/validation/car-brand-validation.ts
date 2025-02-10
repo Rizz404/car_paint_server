@@ -10,7 +10,10 @@ export const createCarBrandSchema = z.object({
     logo: z.any({
       required_error: "Logo URL is required",
     }),
-    // .url("Invalid logo URL"),
+    country: z
+      .string()
+      .min(3, "Country must be at least 3 characters")
+      .optional(),
   }),
 });
 

@@ -5,7 +5,12 @@ export const createPaymentMethodSchema = z.object({
     name: z
       .string({ required_error: "Payment method name is required" })
       .min(2, "Name must be at least 2 characters"),
-    fee: z.number({ required_error: "Fee is required" }),
+    fee: z.coerce
+      .number({
+        required_error: "Fee is required",
+        invalid_type_error: "Fee must be a number",
+      })
+      .positive("Fee must be a positive number"),
   }),
 });
 

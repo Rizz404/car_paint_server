@@ -13,7 +13,6 @@ export const createOrderSchema = z.object({
     carServices: z
       .array(carServiceSchema)
       .min(1, "At least one car service is required"),
-    paymentMethodId: z.string().min(1, "Payment method ID is required"),
   }),
 });
 
