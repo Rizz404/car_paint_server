@@ -4,9 +4,19 @@ import {
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
+import {
+  XenditPaymentStatus,
+  XenditWebhookPayload,
+} from "@/types/xendit-webhook";
 import logger from "@/utils/logger";
 import { parsePagination } from "@/utils/parse-pagination";
-import { PaymentStatus, Transaction } from "@prisma/client";
+import {
+  PaymentStatus,
+  Prisma,
+  PrismaClient,
+  Transaction,
+} from "@prisma/client";
+import { DefaultArgs } from "@prisma/client/runtime/library";
 import { RequestHandler } from "express";
 
 // *======================= POST =======================*
@@ -52,26 +62,34 @@ export const createTransaction: RequestHandler = async (req, res) => {
 export const confirmTransaction: RequestHandler = async (req, res) => {
   try {
     const callbackToken = req.headers["x-callback-token"];
-    const payload: {
-      status: PaymentStatus;
-      external_id: string;
-    } = req.body;
+    const payload: XenditWebhookPayload = req.body;
 
-    if (callbackToken !== process.env.XENDIT_CALLBACK_TOKEN) {
+    // Early validation checks
+    if (!callbackToken || callbackToken !== process.env.XENDIT_CALLBACK_TOKEN) {
       return createErrorResponse(res, "Unauthorized webhook request", 401);
     }
 
     const { external_id: externalId } = payload;
 
+    // Early return for test case
     if (externalId === "invoice_123124123") {
       return createSuccessResponse(res, {}, "Testing webhook success", 200);
     }
 
-    let response;
-
-    switch (payload.status) {
-      case "SUCCESS":
-        response = await prisma.$transaction(async (tx) => {
+    // Handle different webhook statuses
+    const handleWebhookStatus = async (
+      tx: Omit<
+        PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
+        | "$connect"
+        | "$disconnect"
+        | "$on"
+        | "$transaction"
+        | "$use"
+        | "$extends"
+      >
+    ) => {
+      switch (payload.status) {
+        case "PAID":
           const updatedTransaction = await tx.transaction.update({
             where: { id: externalId },
             data: {
@@ -112,12 +130,10 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
             transaction: updatedTransaction,
             ticket,
           };
-        });
-        break;
 
-      case "CANCELLED":
-        response = await prisma.$transaction(async (tx) => {
-          const updatedTransaction = await tx.transaction.update({
+        case "EXPIRED":
+        case "STOPPED":
+          return await tx.transaction.update({
             where: { id: externalId },
             data: {
               paymentStatus: "CANCELLED",
@@ -129,16 +145,15 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
             },
           });
 
-          return {
-            transaction: updatedTransaction,
-          };
-        });
-        break;
+        default:
+          return {};
+      }
+    };
 
-      default:
-        response = {};
-        break;
-    }
+    // Single transaction to handle all scenarios
+    const response = await prisma.$transaction(async (tx) => {
+      return handleWebhookStatus(tx);
+    });
 
     return createSuccessResponse(
       res,
@@ -148,7 +163,7 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
     );
   } catch (error) {
     logger.error("Webhook processing error:", error);
-    return createErrorResponse(res, error);
+    return createErrorResponse(res, "Error processing webhook", 500);
   }
 };
 

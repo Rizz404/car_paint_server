@@ -1,25 +1,31 @@
-import env from "@/configs/environtment";
 import { PrismaClient } from "@prisma/client";
-import "dotenv/config";
+import { EnvironmentLoader, isDevelopment } from "@/configs/environtment";
 
 async function syncCloudToLocal() {
+  const envLoader = EnvironmentLoader.getInstance();
+
+  const localDbUrl = envLoader.getDatabaseUrl("local");
+  const cloudDbUrl = envLoader.getDatabaseUrl("cloud");
+
+  console.info("Database URLs:");
+  console.info(`Cloud: ${cloudDbUrl}`);
+  console.info(`Local: ${localDbUrl}`);
+
   const cloudDb = new PrismaClient({
-    datasources: {
-      db: { url: env.CLOUD_DATABASE_URL },
-    },
+    datasourceUrl: cloudDbUrl,
   });
 
   const localDb = new PrismaClient({
-    datasources: {
-      db: { url: env.DATABASE_URL },
-    },
+    datasourceUrl: localDbUrl,
   });
 
   try {
-    // console.info("Clearing local database...");
-    // await clearLocalDatabase(localDb);
+    console.info("Starting database sync...");
+    console.info(
+      `Source: ${isDevelopment ? "Development" : "Production"} environment`
+    );
 
-    console.info("Fetching data from cloud...");
+    console.info("Fetching data from cloud database...");
     const cloudData = await fetchCloudData(cloudDb);
 
     console.info("Inserting data to local database...");
@@ -33,23 +39,6 @@ async function syncCloudToLocal() {
     await cloudDb.$disconnect();
     await localDb.$disconnect();
   }
-}
-
-async function clearLocalDatabase(localDb: PrismaClient) {
-  await localDb.eTicket.deleteMany({});
-  await localDb.transaction.deleteMany({});
-  await localDb.order.deleteMany({});
-  await localDb.userCar.deleteMany({});
-  await localDb.carModelYearColor.deleteMany({});
-  await localDb.carModelYear.deleteMany({});
-  await localDb.carModel.deleteMany({});
-  await localDb.carService.deleteMany({});
-  await localDb.workshop.deleteMany({});
-  await localDb.color.deleteMany({});
-  await localDb.carBrand.deleteMany({});
-  await localDb.userProfile.deleteMany({});
-  await localDb.paymentMethod.deleteMany({});
-  await localDb.user.deleteMany({});
 }
 
 async function fetchCloudData(cloudDb: PrismaClient) {
@@ -73,53 +62,93 @@ async function fetchCloudData(cloudDb: PrismaClient) {
 
 async function insertLocalData(localDb: PrismaClient, data: any) {
   try {
-    await localDb.user.createMany({ data: data.users, skipDuplicates: true });
-    await localDb.userProfile.createMany({
-      data: data.userProfiles,
+    // Level 1: Independent tables
+    console.info("Inserting users...");
+    await localDb.user.createMany({
+      data: data.users,
       skipDuplicates: true,
     });
+
+    console.info("Inserting car brands...");
     await localDb.carBrand.createMany({
       data: data.carBrands,
       skipDuplicates: true,
     });
-    await localDb.carModel.createMany({
-      data: data.carModels,
+
+    console.info("Inserting colors...");
+    await localDb.color.createMany({
+      data: data.colors,
       skipDuplicates: true,
     });
-    await localDb.color.createMany({ data: data.colors, skipDuplicates: true });
+
+    console.info("Inserting workshops...");
     await localDb.workshop.createMany({
       data: data.workshops,
       skipDuplicates: true,
     });
-    await localDb.carService.createMany({
-      data: data.carServices,
-      skipDuplicates: true,
-    });
-    await localDb.carModelYear.createMany({
-      data: data.carModelYears,
-      skipDuplicates: true,
-    });
-    await localDb.carModelYearColor.createMany({
-      data: data.carModelYearColors,
-      skipDuplicates: true,
-    });
-    await localDb.userCar.createMany({
-      data: data.userCars,
-      skipDuplicates: true,
-    });
+
+    console.info("Inserting payment methods...");
     await localDb.paymentMethod.createMany({
       data: data.paymentMethods,
       skipDuplicates: true,
     });
-    await localDb.order.createMany({ data: data.orders, skipDuplicates: true });
-    await localDb.transaction.createMany({
-      data: data.transactions,
+
+    // Level 2: Tables with single foreign key dependencies
+    // console.info("Inserting user profiles...");
+    // await localDb.userProfile.createMany({
+    //   data: data.userProfiles,
+    //   skipDuplicates: true,
+    // });
+
+    console.info("Inserting car models...");
+    await localDb.carModel.createMany({
+      data: data.carModels,
       skipDuplicates: true,
     });
-    await localDb.eTicket.createMany({
-      data: data.eTickets,
+
+    console.info("Inserting car services...");
+    await localDb.carService.createMany({
+      data: data.carServices,
       skipDuplicates: true,
     });
+
+    // Level 3: Tables with multiple foreign key dependencies
+    console.info("Inserting car model years...");
+    await localDb.carModelYear.createMany({
+      data: data.carModelYears,
+      skipDuplicates: true,
+    });
+
+    console.info("Inserting car model year colors...");
+    await localDb.carModelYearColor.createMany({
+      data: data.carModelYearColors,
+      skipDuplicates: true,
+    });
+
+    // console.info("Inserting user cars...");
+    // await localDb.userCar.createMany({
+    //   data: data.userCars,
+    //   skipDuplicates: true,
+    // });
+
+    // Level 4: Order related tables
+    // console.info("Inserting orders...");
+    // await localDb.order.createMany({
+    //   data: data.orders,
+    //   skipDuplicates: true,
+    // });
+
+    // console.info("Inserting transactions...");
+    // await localDb.transaction.createMany({
+    //   data: data.transactions,
+    //   skipDuplicates: true,
+    // });
+
+    // console.info("Inserting e-tickets...");
+    // await localDb.eTicket.createMany({
+    //   data: data.eTickets,
+    //   skipDuplicates: true,
+    // });
   } catch (error) {
     console.error("Error during data insertion:", error);
     throw error;

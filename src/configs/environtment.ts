@@ -1,3 +1,4 @@
+// configs/environment.ts
 import { z } from "zod";
 import dotenv from "dotenv";
 import fs from "fs";
@@ -12,9 +13,8 @@ class EnvironmentLoader {
     this.envSchema = z.object({
       NODE_ENV: z.enum(["development", "production"]).default("development"),
       PORT: z.string().default("5000"),
-      DATABASE_URL: z.string().optional(),
+      DATABASE_URL: z.string(),
       DIRECT_URL: z.string().optional(),
-      CLOUD_DATABASE_URL: z.string().optional(),
       LOCAL_DATABASE_URL: z.string().optional(),
       CLOUDINARY_CLOUD_NAME: z.string().optional(),
       CLOUDINARY_API_KEY: z.string().optional(),
@@ -34,7 +34,6 @@ class EnvironmentLoader {
   }
 
   public loadEnvironment() {
-    // * Tentukan lokasi file environment
     const productionEnvPath = path.resolve(process.cwd(), ".env.production");
     const developmentEnvPath = path.resolve(process.cwd(), ".env.development");
     const defaultEnvPath = path.resolve(process.cwd(), ".env");
@@ -62,7 +61,6 @@ class EnvironmentLoader {
       console.log("[Environment] No .env file found, using process.env only");
     }
 
-    // * Validasi environment
     try {
       this.currentEnv = this.envSchema.parse(process.env);
       console.log(
@@ -81,15 +79,45 @@ class EnvironmentLoader {
     }
     return this.currentEnv;
   }
+
+  public getDatabaseUrl(type: "local" | "cloud"): string {
+    const env = this.getEnv();
+
+    if (env.NODE_ENV === "production") {
+      // In production, DATABASE_URL is the cloud database
+      return type === "cloud"
+        ? env.DATABASE_URL
+        : env.LOCAL_DATABASE_URL || env.DATABASE_URL;
+    } else {
+      // In development, DATABASE_URL is the local database
+      if (type === "local") {
+        return env.DATABASE_URL;
+      } else {
+        // For cloud in development, we use production database URL
+        const productionEnvPath = path.resolve(
+          process.cwd(),
+          ".env.production"
+        );
+        if (fs.existsSync(productionEnvPath)) {
+          const productionEnv = dotenv.parse(
+            fs.readFileSync(productionEnvPath)
+          );
+          return productionEnv.DATABASE_URL;
+        }
+        throw new Error(
+          "Could not find production database URL for cloud sync"
+        );
+      }
+    }
+  }
 }
 
-// * Buat instance environment
+// Create environment instance
 const environmentLoader = EnvironmentLoader.getInstance();
 const env = environmentLoader.loadEnvironment();
 
 export default env;
+export { EnvironmentLoader };
 export const isDevelopment = env.NODE_ENV === "development";
 export const isProduction = env.NODE_ENV === "production";
-
-// * Method untuk reload env jika diperlukan
 export const reloadEnv = () => environmentLoader.loadEnvironment();

@@ -20,10 +20,12 @@
     "prisma:seed:prod": "cross-env NODE_ENV=production ts-node src/seeders/run-seeders.ts",
     "prisma:flush:dev": "cross-env NODE_ENV=development ts-node src/seeders/flush.ts",
     "prisma:flush:prod": "cross-env NODE_ENV=production ts-node src/seeders/flush.ts",
-    "prisma:sync-cloud-to-local": "cross-env NODE_ENV=development ts-node src/seeders/sync-cloud-to-local.ts",
-    "prisma:sync-local-to-cloud": "cross-env NODE_ENV=development ts-node src/seeders/sync-local-to-cloud.ts",
+    "prisma:sync-cloud-to-local": "cross-env NODE_ENV=development ts-node -r tsconfig-paths/register src/seeders/sync-cloud-to-local.ts",
+    "prisma:sync-local-to-cloud": "cross-env NODE_ENV=development ts-node -r tsconfig-paths/register src/seeders/sync-local-to-cloud.ts",
     "monitor:up": "docker-compose -f docker-compose-monitoring.yml up -d",
-    "monitor:down": "docker-compose -f docker-compose-monitoring.yml down"
+    "monitor:down": "docker-compose -f docker-compose-monitoring.yml down",
+    "sync:local-to-cloud": "ts-node src/seeders/sync-db.ts local-to-cloud",
+    "sync:cloud-to-local": "ts-node src/seeders/sync-db.ts cloud-to-local"
   },
   "author": "",
   "license": "ISC",
@@ -72,6 +74,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.10.0",
+    "pg-connection-string": "^2.7.0",
     "prisma": "^6.3.1",
     "prom-client": "^15.1.3",
     "response-time": "^2.3.3",
