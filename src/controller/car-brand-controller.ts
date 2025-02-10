@@ -46,6 +46,14 @@ export const createCarBrand: RequestHandler = async (req, res) => {
     const payload: CarBrand = req.body;
     const logo = req.file as Express.Multer.File;
 
+    const existingBrand = await prisma.carBrand.findUnique({
+      where: { name: payload.name },
+    });
+
+    if (existingBrand) {
+      return createErrorResponse(res, "Brand already exist", 400);
+    }
+
     if (!logo) {
       return createErrorResponse(res, "Image is required", 400);
     }

@@ -39,6 +39,16 @@ export const createCarService: RequestHandler = async (req, res) => {
   try {
     const payload: CarService = req.body;
 
+    const existingCarService = await prisma.carService.findUnique({
+      where: {
+        name: payload.name,
+      },
+    });
+
+    if (existingCarService) {
+      return createErrorResponse(res, "Car service already exist", 400);
+    }
+
     const createdCarService = await prisma.carService.create({
       data: payload,
     });

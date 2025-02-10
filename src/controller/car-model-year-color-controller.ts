@@ -44,6 +44,23 @@ export const createCarModelYearColor: RequestHandler = async (req, res) => {
   try {
     const payload: CarModelYearColor = req.body;
 
+    const existingCarModelYearColor = await prisma.carModelYearColor.findFirst({
+      where: {
+        AND: [
+          { carModelYearId: payload.carModelYearId },
+          { colorId: payload.colorId },
+        ],
+      },
+    });
+
+    if (existingCarModelYearColor) {
+      return createErrorResponse(
+        res,
+        "Car Model Year Color already exist",
+        400
+      );
+    }
+
     const createdCarModelYearColor = await prisma.carModelYearColor.create({
       data: payload,
     });

@@ -41,6 +41,16 @@ export const createWorkshop: RequestHandler = async (req, res) => {
   try {
     const payload: Workshop = req.body;
 
+    const existingWorkshop = await prisma.workshop.findUnique({
+      where: {
+        name: payload.name,
+      },
+    });
+
+    if (existingWorkshop) {
+      return createErrorResponse(res, "Workshop already exist", 400);
+    }
+
     const createdWorkshop = await prisma.workshop.create({ data: payload });
 
     return createSuccessResponse(res, createdWorkshop, "Workshop created", 201);

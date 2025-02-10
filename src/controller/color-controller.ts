@@ -34,6 +34,16 @@ export const createColor: RequestHandler = async (req, res) => {
   try {
     const payload: Color = req.body;
 
+    const existingColor = await prisma.color.findUnique({
+      where: {
+        name: payload.name,
+      },
+    });
+
+    if (existingColor) {
+      return createErrorResponse(res, "Colors exist", 400);
+    }
+
     const createdColor = await prisma.color.create({
       data: { ...payload },
     });

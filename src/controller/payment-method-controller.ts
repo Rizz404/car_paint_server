@@ -39,6 +39,16 @@ export const createPaymentMethod: RequestHandler = async (req, res) => {
   try {
     const payload: PaymentMethod = req.body;
 
+    const existingPaymentMethod = await prisma.paymentMethod.findFirst({
+      where: {
+        name: payload.name,
+      },
+    });
+
+    if (existingPaymentMethod) {
+      return createErrorResponse(res, "Payment Method already exist", 400);
+    }
+
     const createdPaymentMethod = await prisma.paymentMethod.create({
       data: payload,
     });

@@ -39,6 +39,16 @@ export const createCarModelYear: RequestHandler = async (req, res) => {
   try {
     const payload: CarModelYear = req.body;
 
+    const existingCarModelYear = await prisma.carModelYear.findFirst({
+      where: {
+        AND: [{ year: payload.year }, { carModelId: payload.carModelId }],
+      },
+    });
+
+    if (existingCarModelYear) {
+      return createErrorResponse(res, "Car Model Year already exist", 400);
+    }
+
     const createdCarModelYear = await prisma.carModelYear.create({
       data: payload,
     });

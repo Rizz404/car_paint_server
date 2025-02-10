@@ -41,34 +41,58 @@ class EnvironmentLoader {
       }
     });
 
-    // Determine environment file
-    const currentEnvFile =
-      process.env.NODE_ENV === "production"
-        ? ".env.production"
-        : ".env.development";
+    // Determine environment file with fallback
+    let envPath: string;
+    const productionEnvPath = path.resolve(process.cwd(), ".env.production");
+    const developmentEnvPath = path.resolve(process.cwd(), ".env.development");
+    const defaultEnvPath = path.resolve(process.cwd(), ".env");
 
-    // Load primary environment file
-    const envPath = path.resolve(process.cwd(), currentEnvFile);
-    if (!fs.existsSync(envPath)) {
-      throw new Error(`File ${currentEnvFile} tidak ditemukan!`);
+    if (process.env.NODE_ENV === "production") {
+      // In production, try .env.production first, then fallback to .env
+      if (fs.existsSync(productionEnvPath)) {
+        envPath = productionEnvPath;
+      } else if (fs.existsSync(defaultEnvPath)) {
+        envPath = defaultEnvPath;
+        console.log(
+          "[Environment] .env.production not found, using .env instead"
+        );
+      } else {
+        throw new Error("No environment file found!");
+      }
+    } else {
+      // In development, try .env.development first, then fallback to .env
+      if (fs.existsSync(developmentEnvPath)) {
+        envPath = developmentEnvPath;
+      } else if (fs.existsSync(defaultEnvPath)) {
+        envPath = defaultEnvPath;
+        console.log(
+          "[Environment] .env.development not found, using .env instead"
+        );
+      } else {
+        throw new Error("No environment file found!");
+      }
     }
 
+    // Load primary environment file
     dotenv.config({ path: envPath, override: true });
 
-    // Load production environment for CLOUD_DATABASE_URL
-    const productionEnvPath = path.resolve(process.cwd(), ".env.production");
+    // Set DATABASE_URLs for different environments
     if (fs.existsSync(productionEnvPath)) {
       const productionConfig = dotenv.parse(fs.readFileSync(productionEnvPath));
       process.env.CLOUD_DATABASE_URL = productionConfig.DATABASE_URL;
+    } else if (fs.existsSync(defaultEnvPath)) {
+      const defaultConfig = dotenv.parse(fs.readFileSync(defaultEnvPath));
+      process.env.CLOUD_DATABASE_URL = defaultConfig.DATABASE_URL;
     }
 
-    // Load development environment for LOCAL_DATABASE_URL
-    const developmentEnvPath = path.resolve(process.cwd(), ".env.development");
     if (fs.existsSync(developmentEnvPath)) {
       const developmentConfig = dotenv.parse(
         fs.readFileSync(developmentEnvPath)
       );
       process.env.LOCAL_DATABASE_URL = developmentConfig.DATABASE_URL;
+    } else if (fs.existsSync(defaultEnvPath)) {
+      const defaultConfig = dotenv.parse(fs.readFileSync(defaultEnvPath));
+      process.env.LOCAL_DATABASE_URL = defaultConfig.DATABASE_URL;
     }
 
     // Validate environment
