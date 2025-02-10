@@ -1,5 +1,5 @@
+import env from "@/configs/environtment";
 import { PrismaClient } from "@prisma/client";
-import "dotenv/config";
 
 async function syncLocalToCloud() {
   const localDb = new PrismaClient({
