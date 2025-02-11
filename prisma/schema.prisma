@@ -4,9 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -157,7 +156,7 @@ model CarService {
 
 model PaymentMethod {
   id        String   @id @default(cuid()) @db.VarChar(30)
-  name      String   @db.VarChar(100)
+  name      String   @unique @db.VarChar(100)
   fee       Decimal  @db.Decimal(10, 2)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

@@ -60,11 +60,14 @@ export const createTransaction: RequestHandler = async (req, res) => {
   }
 };
 
+// Configuration for transaction retry
+const TRANSACTION_RETRY_ATTEMPTS = 3;
+const TRANSACTION_TIMEOUT = 5000; // 5 seconds
+
 export const confirmTransaction: RequestHandler = async (req, res) => {
   try {
     const callbackToken = req.headers["x-callback-token"];
     const payload: XenditWebhookPayload = req.body;
-    console.log(payload);
     console.log(`statusnya bang ${payload.status}`);
 
     // Early validation checks
@@ -73,16 +76,14 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
     }
 
     const { external_id: externalId } = payload;
-
-    // Early return for test case
     if (externalId === "invoice_123124123") {
       return createSuccessResponse(res, {}, "Testing webhook success", 200);
     }
 
-    // Handle different webhook statuses
+    // Handle different webhook statuses with retry logic
     const handleWebhookStatus = async (
       tx: Omit<
-        PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
+        PrismaClient,
         | "$connect"
         | "$disconnect"
         | "$on"
@@ -93,6 +94,7 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
     ) => {
       switch (payload.status) {
         case "PAID":
+          // First update transaction and order
           const updatedTransaction = await tx.transaction.update({
             where: { id: externalId },
             data: {
@@ -113,6 +115,7 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
             },
           });
 
+          // Then handle ticket creation
           const latestTicket = await tx.eTicket.findFirst({
             orderBy: {
               ticketNumber: "desc",
@@ -120,7 +123,6 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
           });
 
           const newTicketNumber = (latestTicket?.ticketNumber ?? 0) + 1;
-
           const ticket = await tx.eTicket.create({
             data: {
               userId: updatedTransaction.order.userId,
@@ -153,16 +155,45 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
       }
     };
 
-    // Single transaction to handle all scenarios
-    const response = await prisma.$transaction(async (tx) => {
-      return handleWebhookStatus(tx);
-    });
+    // Implement retry logic for the transaction
+    let lastError;
+    for (let attempt = 1; attempt <= TRANSACTION_RETRY_ATTEMPTS; attempt++) {
+      try {
+        const response = await prisma.$transaction(
+          async (tx) => handleWebhookStatus(tx),
+          {
+            timeout: TRANSACTION_TIMEOUT,
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable, // Ensure data consistency
+          }
+        );
 
-    return createSuccessResponse(
+        return createSuccessResponse(
+          res,
+          response,
+          "Webhook processed successfully",
+          200
+        );
+      } catch (error) {
+        lastError = error;
+        logger.error(`Transaction attempt ${attempt} failed:`, error);
+
+        if (attempt === TRANSACTION_RETRY_ATTEMPTS) {
+          break;
+        }
+
+        // Wait before retrying (exponential backoff)
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.pow(2, attempt) * 1000)
+        );
+      }
+    }
+
+    // If we get here, all retries failed
+    logger.error("All transaction attempts failed:", lastError);
+    return createErrorResponse(
       res,
-      response,
-      "Webhook processed successfully",
-      200
+      "Error processing webhook after retries",
+      500
     );
   } catch (error) {
     logger.error("Webhook processing error:", error);

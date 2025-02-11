@@ -9,6 +9,7 @@ import { parsePagination } from "@/utils/parse-pagination";
 import { User, UserProfile } from "@prisma/client";
 import { RequestHandler } from "express";
 import bcrypt from "bcrypt";
+import { faker } from "@faker-js/faker";
 
 // *======================= POST =======================*
 export const createManyUsers: RequestHandler = async (req, res) => {
@@ -63,7 +64,12 @@ export const createUser: RequestHandler = async (req, res) => {
     const hashedPassword = await bcrypt.hash(payload.password, salt);
 
     const createdUser = await prisma.user.create({
-      data: { ...payload, password: hashedPassword, userProfile: {} },
+      data: {
+        ...payload,
+        profileImage: faker.image.avatar(),
+        password: hashedPassword,
+        userProfile: {},
+      },
     });
 
     return createSuccessResponse(res, createdUser, "Created", 201);
