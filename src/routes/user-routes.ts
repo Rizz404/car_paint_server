@@ -14,6 +14,7 @@ import {
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
+import validateRole from "@/middlewares/validate-role";
 import {
   createUserSchema,
   createManyUserSchema,
@@ -30,6 +31,7 @@ userRouter
   .get(getUsers)
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     uploadSingle("profileImage", "profile-images"),
     validateBody(createUserSchema),
     createUser

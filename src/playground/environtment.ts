@@ -33,10 +33,28 @@ class EnvironmentLoader {
   }
 
   public loadEnvironment() {
-    const envPath = path.resolve(process.cwd(), ".env");
+    const productionEnvPath = path.resolve(process.cwd(), ".env.production");
+    const developmentEnvPath = path.resolve(process.cwd(), ".env.development");
+    const defaultEnvPath = path.resolve(process.cwd(), ".env");
 
-    if (fs.existsSync(envPath)) {
-      dotenv.config({ path: envPath });
+    let envPath: string | null = null;
+
+    if (process.env.NODE_ENV === "production") {
+      envPath = fs.existsSync(productionEnvPath)
+        ? productionEnvPath
+        : fs.existsSync(defaultEnvPath)
+          ? defaultEnvPath
+          : null;
+    } else {
+      envPath = fs.existsSync(developmentEnvPath)
+        ? developmentEnvPath
+        : fs.existsSync(defaultEnvPath)
+          ? defaultEnvPath
+          : null;
+    }
+
+    if (envPath) {
+      dotenv.config({ path: envPath, override: true });
       console.log(`[Environment] Loaded from ${envPath}`);
     } else {
       console.log("[Environment] No .env file found, using process.env only");
@@ -45,7 +63,7 @@ class EnvironmentLoader {
     try {
       this.currentEnv = this.envSchema.parse(process.env);
       console.log(
-        "[Environment] Loaded configuration successfully from process.env"
+        `[Environment] Loaded configuration successfully from process.env`
       );
       return this.currentEnv;
     } catch (error) {
@@ -61,12 +79,39 @@ class EnvironmentLoader {
     return this.currentEnv;
   }
 
-  public getDatabaseUrl(): string {
+  public getDatabaseUrl(type: "local" | "cloud"): string {
     const env = this.getEnv();
-    return env.DATABASE_URL;
+
+    if (env.NODE_ENV === "production") {
+      // In production, DATABASE_URL is the cloud database
+      return type === "cloud"
+        ? env.DATABASE_URL
+        : env.LOCAL_DATABASE_URL || env.DATABASE_URL;
+    } else {
+      // In development, DATABASE_URL is the local database
+      if (type === "local") {
+        return env.DATABASE_URL;
+      } else {
+        // For cloud in development, we use production database URL
+        const productionEnvPath = path.resolve(
+          process.cwd(),
+          ".env.production"
+        );
+        if (fs.existsSync(productionEnvPath)) {
+          const productionEnv = dotenv.parse(
+            fs.readFileSync(productionEnvPath)
+          );
+          return productionEnv.DATABASE_URL;
+        }
+        throw new Error(
+          "Could not find production database URL for cloud sync"
+        );
+      }
+    }
   }
 }
 
+// Create environment instance
 const environmentLoader = EnvironmentLoader.getInstance();
 const env = environmentLoader.loadEnvironment();
 

@@ -1,16 +1,13 @@
 import env from "@/configs/environtment";
 import { createErrorResponse } from "@/types/api-response";
+import { User } from "@prisma/client";
 import { NextFunction, Request, Response } from "express";
 import jwt, { TokenExpiredError } from "jsonwebtoken";
-
-interface ReqUser {
-  id: string;
-}
 
 declare global {
   namespace Express {
     interface Request {
-      user?: ReqUser;
+      user?: Pick<User, "id">;
     }
   }
 }
@@ -18,7 +15,7 @@ declare global {
 export const authMiddleware = (
   authType: "required" | "optional" = "required"
 ) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { authorization: authHeader } = req.headers;
 
@@ -38,8 +35,6 @@ export const authMiddleware = (
       ) as {
         userId: string;
       };
-
-      // * Debug dengan cara yang benar
 
       // * Validasi hasil decode
       if (!decoded || !decoded.userId) {
