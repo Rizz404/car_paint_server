@@ -13,6 +13,7 @@ import {
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
+import validateRole from "@/middlewares/validate-role";
 import {
   createTransactionSchema,
   createManyTransactionSchema,
@@ -27,10 +28,15 @@ transactionRouter
   .get(getTransactions)
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createTransactionSchema),
     createTransaction
   )
-  .delete(authMiddleware(), deleteAllTransaction);
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteAllTransaction
+  );
 
 transactionRouter.route("/webhook/xendit").post(confirmTransaction);
 
@@ -42,6 +48,7 @@ transactionRouter
   .route("/multiple")
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createManyTransactionSchema),
     createManyTransactions
   );
@@ -52,9 +59,14 @@ transactionRouter
   .get(getTransactionById)
   .patch(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(updateTransactionSchema),
     updateTransaction
   )
-  .delete(authMiddleware(), deleteTransaction);
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteTransaction
+  );
 
 export default transactionRouter;

@@ -20,7 +20,7 @@ import {
 } from "./utils/metrics";
 import { metricsMiddleware } from "./middlewares/metrics";
 import connectDb from "./utils/connect-db";
-import env, { reloadEnv } from "./configs/environtment";
+import env, { reloadEnv } from "./configs/environment";
 
 const PORT = env.PORT || 5000;
 const app = express();

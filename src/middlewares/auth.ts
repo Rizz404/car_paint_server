@@ -1,4 +1,4 @@
-import env from "@/configs/environtment";
+import env from "@/configs/environment";
 import { createErrorResponse } from "@/types/api-response";
 import { User } from "@prisma/client";
 import { NextFunction, Request, Response } from "express";

@@ -8,7 +8,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { User } from "@prisma/client";
 import { faker } from "@faker-js/faker";
-import env from "@/configs/environtment";
+import env from "@/configs/environment";
 
 export const register: RequestHandler = async (req, res) => {
   try {

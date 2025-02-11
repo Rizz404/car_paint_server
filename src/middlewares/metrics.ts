@@ -1,4 +1,4 @@
-import env from "@/configs/environtment";
+import env from "@/configs/environment";
 import { register } from "@/utils/metrics";
 import promBundle from "express-prom-bundle";
 

@@ -12,6 +12,7 @@ import {
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
+import validateRole from "@/middlewares/validate-role";
 import {
   createWorkshopSchema,
   createManyWorkshopSchema,
@@ -24,8 +25,17 @@ const workshopRouter = express.Router();
 workshopRouter
   .route("/")
   .get(getWorkshops)
-  .post(authMiddleware(), validateBody(createWorkshopSchema), createWorkshop)
-  .delete(authMiddleware(), deleteAllWorkshops);
+  .post(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    validateBody(createWorkshopSchema),
+    createWorkshop
+  )
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteAllWorkshops
+  );
 
 workshopRouter
   .route("/nearest")
@@ -35,6 +45,7 @@ workshopRouter
   .route("/multiple")
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createManyWorkshopSchema),
     createManyWorkshops
   );
@@ -43,7 +54,16 @@ workshopRouter.route("/search").get(searchWorkshops);
 workshopRouter
   .route("/:workshopId")
   .get(getWorkshopById)
-  .patch(authMiddleware(), validateBody(updateWorkshopSchema), updateWorkshop)
-  .delete(authMiddleware(), deleteWorkshop);
+  .patch(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    validateBody(updateWorkshopSchema),
+    updateWorkshop
+  )
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteWorkshop
+  );
 
 export default workshopRouter;

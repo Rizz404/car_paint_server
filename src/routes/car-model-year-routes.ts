@@ -12,6 +12,7 @@ import {
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
+import validateRole from "@/middlewares/validate-role";
 import {
   createCarModelYearSchema,
   createManyCarModelYearSchema,
@@ -26,10 +27,15 @@ carModelYearRouter
   .get(getCarModelYears)
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createCarModelYearSchema),
     createCarModelYear
   )
-  .delete(authMiddleware(), deleteAllCarModelYear);
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteAllCarModelYear
+  );
 
 carModelYearRouter
   .route("/car-model/:carModelId")
@@ -39,6 +45,7 @@ carModelYearRouter
   .route("/multiple")
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createManyCarModelYearSchema),
     createManyCarModelYears
   );
@@ -49,9 +56,14 @@ carModelYearRouter
   .get(getCarModelYearById)
   .patch(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(updateCarModelYearSchema),
     updateCarModelYear
   )
-  .delete(authMiddleware(), deleteCarModelYear);
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteCarModelYear
+  );
 
 export default carModelYearRouter;

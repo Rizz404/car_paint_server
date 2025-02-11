@@ -28,18 +28,27 @@ const userRouter = express.Router();
 
 userRouter
   .route("/")
-  .get(getUsers)
+  .get(authMiddleware(), validateRole(["ADMIN", "SUPER_ADMIN"]), getUsers)
   .post(
     authMiddleware(),
-    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    // validateRole(["ADMIN", "SUPER_ADMIN"]),
     uploadSingle("profileImage", "profile-images"),
     validateBody(createUserSchema),
     createUser
   )
-  .delete(authMiddleware(), deleteAllUser);
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteAllUser
+  );
 userRouter
   .route("/multiple")
-  .post(authMiddleware(), validateBody(createManyUserSchema), createManyUsers);
+  .post(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    validateBody(createManyUserSchema),
+    createManyUsers
+  );
 userRouter.route("/search").get(searchUsers);
 userRouter
   .route("/current")
@@ -60,7 +69,12 @@ userRouter
 userRouter
   .route("/:userId")
   .get(getUserById)
-  .patch(authMiddleware(), validateBody(updateUserSchema), updateUser)
-  .delete(authMiddleware(), deleteUser);
+  .patch(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    validateBody(updateUserSchema),
+    updateUser
+  )
+  .delete(authMiddleware(), validateRole(["ADMIN", "SUPER_ADMIN"]), deleteUser);
 
 export default userRouter;

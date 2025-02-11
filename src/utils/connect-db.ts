@@ -1,7 +1,7 @@
 import { prismaMetricsMiddleware } from "@/middlewares/prisma-metrics";
 import prisma from "@/configs/database";
 import logger from "./logger";
-import env from "@/configs/environtment";
+import env from "@/configs/environment";
 
 const connectDb = async () => {
   try {

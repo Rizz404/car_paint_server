@@ -2,10 +2,10 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { faker } from "@faker-js/faker";
 
 const generateColor = (): Prisma.ColorCreateManyInput => ({
-  name: faker.company.name().slice(0, 50),
+  name: faker.color.human(),
 });
 
-export const seedColors = async (prisma: PrismaClient, count = 40) => {
+export const seedColors = async (prisma: PrismaClient, count = 25) => {
   console.log("🌱 Seeding Colors...");
   await prisma.color.deleteMany();
   const data = Array.from({ length: count }, generateColor);

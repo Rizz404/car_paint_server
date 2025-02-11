@@ -48,7 +48,7 @@ const generateTransaction = (
   paymentInvoiceUrl: "",
 });
 
-export const seedTransactions = async (prisma: PrismaClient, count = 40) => {
+export const seedTransactions = async (prisma: PrismaClient, count = 25) => {
   console.log("🌱 Seeding Transactions...");
   await prisma.transaction.deleteMany();
   const users = await prisma.user.findMany({ select: { id: true } });

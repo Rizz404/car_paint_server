@@ -10,6 +10,7 @@ import {
 } from "@/controller/car-service-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { validateBody } from "@/middlewares/validate-body";
+import validateRole from "@/middlewares/validate-role";
 import {
   createCarServiceSchema,
   createManyCarServiceSchema,
@@ -24,15 +25,21 @@ carServiceRouter
   .get(getCarServices)
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createCarServiceSchema),
     createCarService
   )
-  .delete(authMiddleware(), deleteAllCarService);
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteAllCarService
+  );
 
 carServiceRouter
   .route("/multiple")
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createManyCarServiceSchema),
     createManyCarServices
   );
@@ -43,9 +50,14 @@ carServiceRouter
   .get(getCarServiceById)
   .patch(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(updateCarServiceSchema),
     updateCarService
   )
-  .delete(authMiddleware(), deleteCarService);
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteCarService
+  );
 
 export default carServiceRouter;

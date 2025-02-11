@@ -1,6 +1,16 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { faker } from "@faker-js/faker";
 
+const PRESERVED_USERNAMES = [
+  "rizz",
+  "rinn",
+  "admin",
+  "test",
+  "test-user",
+  "test-admin",
+  "test-super-admin",
+];
+
 const generateUser = (): Prisma.UserCreateManyInput => ({
   username: faker.internet.username(),
   email: faker.internet.email(),
@@ -23,11 +33,29 @@ const generateUserProfile = (
 
 export const seedUsersWithProfiles = async (
   prisma: PrismaClient,
-  count = 40
+  count = 25
 ) => {
   console.log("🌱 Seeding Users with UserProfiles using createMany...");
-  await prisma.userProfile.deleteMany();
-  await prisma.user.deleteMany();
+
+  // Delete profiles except for preserved users
+  await prisma.userProfile.deleteMany({
+    where: {
+      user: {
+        username: {
+          notIn: PRESERVED_USERNAMES,
+        },
+      },
+    },
+  });
+
+  // Delete users except for preserved usernames
+  await prisma.user.deleteMany({
+    where: {
+      username: {
+        notIn: PRESERVED_USERNAMES,
+      },
+    },
+  });
 
   const userDataArray: Prisma.UserCreateManyInput[] = [];
   for (let i = 0; i < count; i++) {
@@ -41,6 +69,11 @@ export const seedUsersWithProfiles = async (
   console.log(`✅ Seeded ${createdUsers.count} Users`);
 
   const users = await prisma.user.findMany({
+    where: {
+      username: {
+        notIn: PRESERVED_USERNAMES,
+      },
+    },
     select: { id: true },
   });
 

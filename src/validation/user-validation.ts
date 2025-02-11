@@ -1,3 +1,4 @@
+import { Role } from "@prisma/client";
 import { z } from "zod";
 
 export const createUserSchema = z.object({
@@ -12,6 +13,7 @@ export const createUserSchema = z.object({
       .string({ required_error: "Password is required" })
       .min(6, "Password must be at least 6 characters"),
     profileImage: z.string().optional(),
+    role: z.nativeEnum(Role).optional().default(Role.USER),
   }),
 });
 

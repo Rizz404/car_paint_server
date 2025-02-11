@@ -11,6 +11,7 @@ import {
 } from "@/controller/e-ticket-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { validateBody } from "@/middlewares/validate-body";
+import validateRole from "@/middlewares/validate-role";
 import {
   createETicketSchema,
   createManyETicketSchema,
@@ -23,8 +24,17 @@ const eTicketRouter = express.Router();
 eTicketRouter
   .route("/")
   .get(getETickets)
-  .post(authMiddleware(), validateBody(createETicketSchema), createETicket)
-  .delete(authMiddleware(), deleteAllETicket);
+  .post(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    validateBody(createETicketSchema),
+    createETicket
+  )
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteAllETicket
+  );
 
 eTicketRouter.route("/user").get(authMiddleware(), getCurrentUserETickets);
 
@@ -32,6 +42,7 @@ eTicketRouter
   .route("/multiple")
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createManyETicketSchema),
     createManyETickets
   );
@@ -40,7 +51,16 @@ eTicketRouter.route("/search").get(searchETickets);
 eTicketRouter
   .route("/:eTicketId")
   .get(getETicketById)
-  .patch(authMiddleware(), validateBody(updateETicketSchema), updateETicket)
-  .delete(authMiddleware(), deleteETicket);
+  .patch(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    validateBody(updateETicketSchema),
+    updateETicket
+  )
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteETicket
+  );
 
 export default eTicketRouter;

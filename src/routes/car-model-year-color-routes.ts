@@ -11,8 +11,8 @@ import {
   updateCarModelYearColor,
 } from "@/controller/car-model-year-color-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
+import validateRole from "@/middlewares/validate-role";
 import {
   createCarModelYearColorSchema,
   createManyCarModelYearColorSchema,
@@ -27,15 +27,21 @@ carModelYearColorRouter
   .get(getCarModelYearColors)
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createCarModelYearColorSchema),
     createCarModelYearColor
   )
-  .delete(authMiddleware(), deleteAllCarModelYearColor);
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteAllCarModelYearColor
+  );
 
 carModelYearColorRouter
   .route("/multiple")
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createManyCarModelYearColorSchema),
     createManyCarModelYearColors
   );
@@ -55,9 +61,14 @@ carModelYearColorRouter
   .get(getCarModelYearColorById)
   .patch(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(updateCarModelYearColorSchema),
     updateCarModelYearColor
   )
-  .delete(authMiddleware(), deleteCarModelYearColor);
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteCarModelYearColor
+  );
 
 export default carModelYearColorRouter;

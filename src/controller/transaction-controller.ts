@@ -1,5 +1,5 @@
 import prisma from "@/configs/database";
-import env from "@/configs/environtment";
+import env from "@/configs/environment";
 import {
   createErrorResponse,
   createPaginatedResponse,

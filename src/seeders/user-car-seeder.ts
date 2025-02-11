@@ -11,7 +11,7 @@ const generateUserCar = (
   carImages: [faker.image.urlLoremFlickr({ category: "transport" })],
 });
 
-export const seedUserCars = async (prisma: PrismaClient, count = 40) => {
+export const seedUserCars = async (prisma: PrismaClient, count = 25) => {
   console.log("🌱 Seeding UserCars...");
   await prisma.userCar.deleteMany();
   const users = await prisma.user.findMany({ select: { id: true } });

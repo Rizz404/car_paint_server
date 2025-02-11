@@ -11,6 +11,7 @@ import {
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
 import { validateBody } from "@/middlewares/validate-body";
+import validateRole from "@/middlewares/validate-role";
 import {
   createPaymentMethodSchema,
   createManyPaymentMethodSchema,
@@ -25,15 +26,21 @@ paymentMethodRouter
   .get(getPaymentMethods)
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createPaymentMethodSchema),
     createPaymentMethod
   )
-  .delete(authMiddleware(), deleteAllPaymentMethod);
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deleteAllPaymentMethod
+  );
 
 paymentMethodRouter
   .route("/multiple")
   .post(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(createManyPaymentMethodSchema),
     createManyPaymentMethods
   );
@@ -44,9 +51,14 @@ paymentMethodRouter
   .get(getPaymentMethodById)
   .patch(
     authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
     validateBody(updatePaymentMethodSchema),
     updatePaymentMethod
   )
-  .delete(authMiddleware(), deletePaymentMethod);
+  .delete(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    deletePaymentMethod
+  );
 
 export default paymentMethodRouter;

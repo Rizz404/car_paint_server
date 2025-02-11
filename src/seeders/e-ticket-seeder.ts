@@ -7,10 +7,10 @@ const generateETicket = (
 ): Prisma.ETicketCreateManyInput => ({
   userId,
   orderId,
-  ticketNumber: faker.number.int({ min: 1000, max: 9999 }),
+  ticketNumber: faker.number.int({ min: 1, max: 999999 }),
 });
 
-export const seedETickets = async (prisma: PrismaClient, count = 40) => {
+export const seedETickets = async (prisma: PrismaClient, count = 25) => {
   console.log("🌱 Seeding ETickets...");
   await prisma.eTicket.deleteMany();
   const users = await prisma.user.findMany({ select: { id: true } });
