@@ -8,7 +8,7 @@ import {
   calculateDistanceInKilometers,
   formatDistanceKmToM,
 } from "@/utils/location";
-import { parsePagination } from "@/utils/parse-pagination";
+import { parsePagination } from "@/utils/query";
 import { Workshop } from "@prisma/client";
 import { RequestHandler } from "express";
 

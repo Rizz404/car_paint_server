@@ -10,7 +10,7 @@ import {
   XenditWebhookPayload,
 } from "@/types/xendit-webhook";
 import logger from "@/utils/logger";
-import { parsePagination } from "@/utils/parse-pagination";
+import { parsePagination } from "@/utils/query";
 import {
   PaymentStatus,
   Prisma,
@@ -60,27 +60,19 @@ export const createTransaction: RequestHandler = async (req, res) => {
   }
 };
 
-// Configuration for transaction retry
-const TRANSACTION_RETRY_ATTEMPTS = 3;
-const TRANSACTION_TIMEOUT = 5000; // 5 seconds
-
 export const confirmTransaction: RequestHandler = async (req, res) => {
   try {
     const callbackToken = req.headers["x-callback-token"];
-    const payload: XenditWebhookPayload = req.body;
-    console.log(`statusnya bang ${payload.status}`);
+    const { external_id: orderId, status }: XenditWebhookPayload = req.body;
 
-    // Early validation checks
     if (!callbackToken || callbackToken !== env.XENDIT_CALLBACK_TOKEN) {
       return createErrorResponse(res, "Unauthorized webhook request", 401);
     }
 
-    const { external_id: externalId } = payload;
-    if (externalId === "invoice_123124123") {
+    if (orderId === "invoice_123124123") {
       return createSuccessResponse(res, {}, "Testing webhook success", 200);
     }
 
-    // Handle different webhook statuses with retry logic
     const handleWebhookStatus = async (
       tx: Omit<
         PrismaClient,
@@ -92,11 +84,18 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
         | "$extends"
       >
     ) => {
-      switch (payload.status) {
+      const transaction = await tx.transaction.findFirst({
+        where: { orderId },
+      });
+
+      if (!transaction) {
+        throw new Error(`No transaction found for order ID: ${orderId}`);
+      }
+
+      switch (status) {
         case "PAID":
-          // First update transaction and order
           const updatedTransaction = await tx.transaction.update({
-            where: { id: externalId },
+            where: { id: transaction.id },
             data: {
               paymentStatus: "SUCCESS",
               order: {
@@ -115,7 +114,6 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
             },
           });
 
-          // Then handle ticket creation
           const latestTicket = await tx.eTicket.findFirst({
             orderBy: {
               ticketNumber: "desc",
@@ -139,7 +137,7 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
         case "EXPIRED":
         case "STOPPED":
           return await tx.transaction.update({
-            where: { id: externalId },
+            where: { id: transaction.id },
             data: {
               paymentStatus: "CANCELLED",
               order: {
@@ -155,18 +153,16 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
       }
     };
 
-    // Implement retry logic for the transaction
     let lastError;
-    for (let attempt = 1; attempt <= TRANSACTION_RETRY_ATTEMPTS; attempt++) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const response = await prisma.$transaction(
           async (tx) => handleWebhookStatus(tx),
           {
-            timeout: TRANSACTION_TIMEOUT,
-            isolationLevel: Prisma.TransactionIsolationLevel.Serializable, // Ensure data consistency
+            timeout: 5000,
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
           }
         );
-
         return createSuccessResponse(
           res,
           response,
@@ -176,19 +172,13 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
       } catch (error) {
         lastError = error;
         logger.error(`Transaction attempt ${attempt} failed:`, error);
-
-        if (attempt === TRANSACTION_RETRY_ATTEMPTS) {
-          break;
-        }
-
-        // Wait before retrying (exponential backoff)
+        if (attempt === 3) break;
         await new Promise((resolve) =>
           setTimeout(resolve, Math.pow(2, attempt) * 1000)
         );
       }
     }
 
-    // If we get here, all retries failed
     logger.error("All transaction attempts failed:", lastError);
     return createErrorResponse(
       res,

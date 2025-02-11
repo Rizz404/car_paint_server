@@ -5,7 +5,7 @@ import {
   createSuccessResponse,
 } from "@/types/api-response";
 import logger from "@/utils/logger";
-import { parsePagination } from "@/utils/parse-pagination";
+import { parsePagination } from "@/utils/query";
 import { ETicket } from "@prisma/client";
 import { RequestHandler } from "express";
 

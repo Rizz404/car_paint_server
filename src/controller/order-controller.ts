@@ -6,7 +6,7 @@ import {
   createSuccessResponse,
 } from "@/types/api-response";
 import logger from "@/utils/logger";
-import { parsePagination } from "@/utils/parse-pagination";
+import { parsePagination } from "@/utils/query";
 import { createOrderSchema } from "@/validation/order-validation";
 import { Order, OrderStatus, Prisma, WorkStatus } from "@prisma/client";
 import { RequestHandler } from "express";
