@@ -5,7 +5,7 @@ import {
   createSuccessResponse,
 } from "@/types/api-response";
 import logger from "@/utils/logger";
-import { parsePagination } from "@/utils/query";
+import { parseOrderBy, parsePagination } from "@/utils/query";
 import { Color } from "@prisma/client";
 import { RequestHandler } from "express";
 
@@ -57,17 +57,30 @@ export const createColor: RequestHandler = async (req, res) => {
 // *======================= GET =======================*
 export const getColors: RequestHandler = async (req, res) => {
   try {
-    const { page = "1", limit = "10" } = req.query as unknown as {
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
       page: string;
       limit: string;
+      orderBy?: string;
+      orderDirection?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["name", "createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
 
     const colors = await prisma.color.findMany({
       skip: offset,
       take: +limit,
-      orderBy: { name: "asc" },
+      orderBy: { [field]: direction },
     });
     const totalColors = await prisma.color.count();
 

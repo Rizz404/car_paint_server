@@ -5,7 +5,7 @@ import {
   createSuccessResponse,
 } from "@/types/api-response";
 import logger from "@/utils/logger";
-import { parsePagination } from "@/utils/query";
+import { parseOrderBy, parsePagination } from "@/utils/query";
 import { CarModel } from "@prisma/client";
 import { RequestHandler } from "express";
 
@@ -58,12 +58,25 @@ export const createCarModel: RequestHandler = async (req, res) => {
 // *======================= GET =======================*
 export const getCarModels: RequestHandler = async (req, res) => {
   try {
-    const { page = "1", limit = "10" } = req.query as unknown as {
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
       page: string;
       limit: string;
+      orderBy?: string;
+      orderDirection?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["name", "createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
 
     const carModels = await prisma.carModel.findMany({
       include: {
@@ -71,7 +84,7 @@ export const getCarModels: RequestHandler = async (req, res) => {
       },
       skip: offset,
       take: +limit,
-      orderBy: { name: "asc" },
+      orderBy: { [field]: direction },
     });
     const totalCarModels = await prisma.carModel.count();
 
@@ -90,12 +103,25 @@ export const getCarModels: RequestHandler = async (req, res) => {
 export const getCarModelsByBrandId: RequestHandler = async (req, res) => {
   try {
     const { carBrandId } = req.params;
-    const { page = "1", limit = "10" } = req.query as unknown as {
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
       page: string;
       limit: string;
+      orderBy?: string;
+      orderDirection?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["name", "createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
 
     const carModels = await prisma.carModel.findMany({
       where: { carBrandId: carBrandId },
@@ -104,7 +130,7 @@ export const getCarModelsByBrandId: RequestHandler = async (req, res) => {
       },
       skip: offset,
       take: +limit,
-      orderBy: { name: "asc" },
+      orderBy: { [field]: direction },
     });
     const totalCarModels = await prisma.carModel.count({
       where: { carBrandId: carBrandId },
@@ -163,7 +189,6 @@ export const searchCarModels: RequestHandler = async (req, res) => {
       },
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
     });
     const totalCarModels = await prisma.carModel.count({
       where: { name: { contains: name } },

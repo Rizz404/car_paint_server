@@ -8,7 +8,7 @@ import {
   calculateDistanceInKilometers,
   formatDistanceKmToM,
 } from "@/utils/location";
-import { parsePagination } from "@/utils/query";
+import { parseOrderBy, parsePagination } from "@/utils/query";
 import { Workshop } from "@prisma/client";
 import { RequestHandler } from "express";
 
@@ -62,17 +62,30 @@ export const createWorkshop: RequestHandler = async (req, res) => {
 // *======================= GET =======================*
 export const getWorkshops: RequestHandler = async (req, res) => {
   try {
-    const { page = "1", limit = "10" } = req.query as unknown as {
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
       page: string;
       limit: string;
+      orderBy?: string;
+      orderDirection?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["name", "createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
 
     const workshops = await prisma.workshop.findMany({
       skip: offset,
       take: +limit,
-      orderBy: { name: "asc" },
+      orderBy: { [field]: direction },
     });
     const totalWorkshops = await prisma.workshop.count();
 
@@ -123,7 +136,6 @@ export const searchWorkshops: RequestHandler = async (req, res) => {
       where: { name: { contains: name } },
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
     });
     const totalWorkshops = await prisma.workshop.count({
       where: { name: { contains: name } },

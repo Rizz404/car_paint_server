@@ -5,7 +5,7 @@ import {
   createSuccessResponse,
 } from "@/types/api-response";
 import logger from "@/utils/logger";
-import { parsePagination } from "@/utils/query";
+import { parseOrderBy, parsePagination } from "@/utils/query";
 import { CarModelYear } from "@prisma/client";
 import { RequestHandler } from "express";
 
@@ -62,18 +62,31 @@ export const createCarModelYear: RequestHandler = async (req, res) => {
 // *======================= GET =======================*
 export const getCarModelYears: RequestHandler = async (req, res) => {
   try {
-    const { page = "1", limit = "10" } = req.query as unknown as {
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
       page: string;
       limit: string;
+      orderBy?: string;
+      orderDirection?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
 
     const carModelYears = await prisma.carModelYear.findMany({
       include: { carModel: { select: { name: true } } },
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
+      orderBy: { [field]: direction },
     });
     const totalCarModelYears = await prisma.carModelYear.count();
 
@@ -95,19 +108,32 @@ export const getCarModelYearsByCarModelId: RequestHandler = async (
 ) => {
   try {
     const { carModelId } = req.params;
-    const { page = "1", limit = "10" } = req.query as unknown as {
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
       page: string;
       limit: string;
+      orderBy?: string;
+      orderDirection?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
 
     const carModelYears = await prisma.carModelYear.findMany({
       where: { carModelId },
       include: { carModel: { select: { name: true } } },
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
+      orderBy: { [field]: direction },
     });
     const totalCarModelYears = await prisma.carModelYear.count({
       where: { carModelId },
@@ -187,7 +213,6 @@ export const searchCarModelYears: RequestHandler = async (req, res) => {
       include: { carModel: { select: { name: true } } },
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
     });
     const totalCarModelYears = await prisma.carModelYear.count({
       where: whereClause,

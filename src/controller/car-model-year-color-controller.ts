@@ -5,7 +5,7 @@ import {
   createSuccessResponse,
 } from "@/types/api-response";
 import logger from "@/utils/logger";
-import { parsePagination } from "@/utils/query";
+import { parseOrderBy, parsePagination } from "@/utils/query";
 import { CarModelYearColor } from "@prisma/client";
 import { RequestHandler } from "express";
 
@@ -74,12 +74,25 @@ export const createCarModelYearColor: RequestHandler = async (req, res) => {
 // *======================= GET =======================*
 export const getCarModelYearColors: RequestHandler = async (req, res) => {
   try {
-    const { page = "1", limit = "10" } = req.query as unknown as {
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
       page: string;
       limit: string;
+      orderBy?: string;
+      orderDirection?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
 
     const carModelYearColors = await prisma.carModelYearColor.findMany({
       include: {
@@ -88,7 +101,7 @@ export const getCarModelYearColors: RequestHandler = async (req, res) => {
       },
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
+      orderBy: { [field]: direction },
     });
     const totalCarModelYearColors = await prisma.carModelYearColor.count();
 
@@ -110,12 +123,25 @@ export const getCarModelYearColorsByCarModelYearId: RequestHandler = async (
 ) => {
   try {
     const { carModelYearId } = req.params;
-    const { page = "1", limit = "10" } = req.query as unknown as {
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
       page: string;
       limit: string;
+      orderBy?: string;
+      orderDirection?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
 
     const carModelYearColors = await prisma.carModelYearColor.findMany({
       where: { carModelYearId }, // Filter berdasarkan carModelYearId
@@ -125,7 +151,7 @@ export const getCarModelYearColorsByCarModelYearId: RequestHandler = async (
       },
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
+      orderBy: { [field]: direction },
     });
     const totalCarModelYearColors = await prisma.carModelYearColor.count({
       where: { carModelYearId }, // Count juga difilter
@@ -149,12 +175,25 @@ export const getCarModelYearColorsByColorId: RequestHandler = async (
 ) => {
   try {
     const { colorId } = req.params;
-    const { page = "1", limit = "10" } = req.query as unknown as {
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
       page: string;
       limit: string;
+      orderBy?: string;
+      orderDirection?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
 
     const carModelYearColors = await prisma.carModelYearColor.findMany({
       where: { colorId }, // Filter berdasarkan colorId
@@ -164,7 +203,7 @@ export const getCarModelYearColorsByColorId: RequestHandler = async (
       },
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
+      orderBy: { [field]: direction },
     });
     const totalCarModelYearColors = await prisma.carModelYearColor.count({
       where: { colorId }, // Count juga difilter
@@ -186,14 +225,27 @@ export const getCarModelYearColorsByCarModelYearIdAndColorId: RequestHandler =
   async (req, res) => {
     try {
       const { carModelYearId, colorId } = req.params;
-      const { page = "1", limit = "10" } = req.query as unknown as {
+      const {
+        page = "1",
+        limit = "10",
+        orderBy,
+        orderDirection,
+      } = req.query as unknown as {
         page: string;
         limit: string;
+        orderBy?: string;
+        orderDirection?: string;
       };
 
       const { currentPage, itemsPerPage, offset } = parsePagination(
         page,
         limit
+      );
+      const validFields = ["createdAt", "updatedAt"];
+      const { field, direction } = parseOrderBy(
+        orderBy,
+        orderDirection,
+        validFields
       );
 
       const carModelYearColors = await prisma.carModelYearColor.findMany({
@@ -207,7 +259,7 @@ export const getCarModelYearColorsByCarModelYearIdAndColorId: RequestHandler =
         },
         skip: offset,
         take: +limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: { [field]: direction },
       });
       const totalCarModelYearColors = await prisma.carModelYearColor.count({
         where: {

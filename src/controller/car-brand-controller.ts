@@ -149,7 +149,6 @@ export const searchCarBrands: RequestHandler = async (req, res) => {
       where: { name: { contains: name } },
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
     });
     const totalCarBrands = await prisma.carBrand.count({
       where: { name: { contains: name } },

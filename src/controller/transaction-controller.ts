@@ -10,7 +10,7 @@ import {
   XenditWebhookPayload,
 } from "@/types/xendit-webhook";
 import logger from "@/utils/logger";
-import { parsePagination } from "@/utils/query";
+import { parseOrderBy, parsePagination } from "@/utils/query";
 import {
   PaymentStatus,
   Prisma,
@@ -194,17 +194,30 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
 // *======================= GET =======================*
 export const getTransactions: RequestHandler = async (req, res) => {
   try {
-    const { page = "1", limit = "10" } = req.query as unknown as {
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
       page: string;
       limit: string;
+      orderBy?: string;
+      orderDirection?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["name", "createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
 
     const transactions = await prisma.transaction.findMany({
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
+      orderBy: { [field]: direction },
     });
     const totalTransactions = await prisma.transaction.count();
 
@@ -255,7 +268,6 @@ export const searchTransactions: RequestHandler = async (req, res) => {
       // where: { name: { contains: name } },
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
     });
     const totalTransactions = await prisma.transaction.count({
       // where: { name: { contains: name } },
@@ -346,6 +358,8 @@ export const getCurrentUserTransactions: RequestHandler = async (req, res) => {
     const {
       page = "1",
       limit = "10",
+      orderBy,
+      orderDirection,
       paymentStatus,
       paymentMethod,
     } = req.query as unknown as {
@@ -353,9 +367,17 @@ export const getCurrentUserTransactions: RequestHandler = async (req, res) => {
       limit: string;
       paymentStatus: PaymentStatus;
       paymentMethod: string;
+      orderBy: string;
+      orderDirection: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["name", "createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
 
     const transactions = await prisma.transaction.findMany({
       where: {
@@ -371,7 +393,7 @@ export const getCurrentUserTransactions: RequestHandler = async (req, res) => {
       },
       skip: offset,
       take: +limit,
-      orderBy: { createdAt: "desc" },
+      orderBy: { [field]: direction },
     });
     const totalTransactions = await prisma.transaction.count({
       where: { userId: id },
