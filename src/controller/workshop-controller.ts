@@ -223,7 +223,7 @@ export const getCurrentUserNearestWorkshops: RequestHandler = async (
   res
 ) => {
   try {
-    const { id } = req.user!;
+    const { latitude, longitude } = req.body;
     const {
       page = "1",
       limit = "10",
@@ -234,16 +234,11 @@ export const getCurrentUserNearestWorkshops: RequestHandler = async (
       maxDistance?: string;
     };
 
-    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
-
-    const currentUser = await prisma.userProfile.findUnique({
-      where: { userId: id },
-      select: { latitude: true, longitude: true },
-    });
-
-    if (!currentUser?.latitude || !currentUser?.longitude) {
-      return createErrorResponse(res, "Missing user coordinate", 400);
+    if (!latitude || !longitude) {
+      return createErrorResponse(res, "all field required", 400);
     }
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     // Using the custom function to find nearest workshops
     const workshops = await prisma.$queryRaw<
@@ -263,8 +258,8 @@ export const getCurrentUserNearestWorkshops: RequestHandler = async (
       SELECT 
         w.*,
         calculate_distance(
-          ${Number(currentUser.latitude)}, 
-          ${Number(currentUser.longitude)}, 
+          ${Number(latitude)}, 
+          ${Number(longitude)}, 
           w.latitude::decimal, 
           w.longitude::decimal
         )::text as distance
@@ -273,15 +268,15 @@ export const getCurrentUserNearestWorkshops: RequestHandler = async (
         CASE 
           WHEN ${maxDistance ? Number(maxDistance) : null}::decimal IS NOT NULL THEN
             calculate_distance(
-              ${Number(currentUser.latitude)}, 
-              ${Number(currentUser.longitude)}, 
+              ${Number(latitude)}, 
+              ${Number(longitude)}, 
               w.latitude::decimal, 
               w.longitude::decimal
             ) <= ${maxDistance ? Number(maxDistance) : null}::decimal
           ELSE TRUE
         END
       ORDER BY ST_SetSRID(ST_MakePoint(w.longitude::float8, w.latitude::float8), 4326)::geography <-> 
-               ST_SetSRID(ST_MakePoint(${Number(currentUser.longitude)}::float8, ${Number(currentUser.latitude)}::float8), 4326)::geography
+               ST_SetSRID(ST_MakePoint(${Number(longitude)}::float8, ${Number(latitude)}::float8), 4326)::geography
       LIMIT ${itemsPerPage}
       OFFSET ${offset}
     `;
@@ -294,8 +289,8 @@ export const getCurrentUserNearestWorkshops: RequestHandler = async (
         CASE 
           WHEN ${maxDistance ? Number(maxDistance) : null}::decimal IS NOT NULL THEN
             calculate_distance(
-              ${Number(currentUser.latitude)}, 
-              ${Number(currentUser.longitude)}, 
+              ${Number(latitude)}, 
+              ${Number(longitude)}, 
               w.latitude::decimal, 
               w.longitude::decimal
             ) <= ${maxDistance ? Number(maxDistance) : null}::decimal

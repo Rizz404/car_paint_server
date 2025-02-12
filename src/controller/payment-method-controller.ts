@@ -1,4 +1,5 @@
 import prisma from "@/configs/database";
+import { xenditPaymentMethodClient } from "@/configs/xendit";
 import {
   createErrorResponse,
   createPaginatedResponse,
@@ -96,6 +97,17 @@ export const getPaymentMethods: RequestHandler = async (req, res) => {
       itemsPerPage,
       totalPaymentMethods
     );
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const getPaymentMethodsFromXendit: RequestHandler = async (req, res) => {
+  try {
+    const paymentMethodsFromXendit =
+      await xenditPaymentMethodClient.getAllPaymentMethods({ limit: 1000 });
+
+    return createSuccessResponse(res, paymentMethodsFromXendit);
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }

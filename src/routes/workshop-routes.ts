@@ -39,7 +39,7 @@ workshopRouter
 
 workshopRouter
   .route("/nearest")
-  .get(authMiddleware(), getCurrentUserNearestWorkshops);
+  .post(authMiddleware(), getCurrentUserNearestWorkshops);
 
 workshopRouter
   .route("/multiple")

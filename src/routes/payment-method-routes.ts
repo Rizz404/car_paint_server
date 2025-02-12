@@ -7,6 +7,7 @@ import {
   getPaymentMethods,
   searchPaymentMethods,
   updatePaymentMethod,
+  getPaymentMethodsFromXendit,
 } from "@/controller/payment-method-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
@@ -44,6 +45,8 @@ paymentMethodRouter
     validateBody(createManyPaymentMethodSchema),
     createManyPaymentMethods
   );
+
+paymentMethodRouter.route("/xendit").get(getPaymentMethodsFromXendit);
 
 paymentMethodRouter.route("/search").get(searchPaymentMethods);
 paymentMethodRouter
