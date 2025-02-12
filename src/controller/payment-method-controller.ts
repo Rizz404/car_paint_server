@@ -26,7 +26,7 @@ export const createManyPaymentMethods: RequestHandler = async (req, res) => {
     return createSuccessResponse(
       res,
       createdPaymentMethods,
-      "Car brands Created",
+      "Payment methods Created",
       201
     );
   } catch (error) {
@@ -109,7 +109,7 @@ export const getPaymentMethodById: RequestHandler = async (req, res) => {
     });
 
     if (!paymentMethod) {
-      return createErrorResponse(res, "Car brand not found", 404);
+      return createErrorResponse(res, "Payment method not found", 404);
     }
 
     return createSuccessResponse(res, paymentMethod);
@@ -166,7 +166,7 @@ export const updatePaymentMethod: RequestHandler = async (req, res) => {
     });
 
     if (!paymentMethod) {
-      return createErrorResponse(res, "Car brand Not Found", 500);
+      return createErrorResponse(res, "Payment method Not Found", 500);
     }
 
     const updatedPaymentMethod = await prisma.paymentMethod.update({
@@ -192,7 +192,7 @@ export const deletePaymentMethod: RequestHandler = async (req, res) => {
     });
 
     if (!paymentMethod) {
-      return createErrorResponse(res, "Car brand Not Found", 500);
+      return createErrorResponse(res, "Payment method Not Found", 500);
     }
 
     const deletedPaymentMethod = await prisma.paymentMethod.delete({
