@@ -1,3 +1,10 @@
+import express from "express";
+import { authMiddleware } from "@/middlewares/auth";
+import {
+  createCarBrandSchema,
+  createManyCarBrandSchema,
+  updateCarBrandSchema,
+} from "@/validation/car-brand-validation";
 import {
   createCarBrand,
   createManyCarBrands,
@@ -8,16 +15,11 @@ import {
   searchCarBrands,
   updateCarBrand,
 } from "@/controller/car-brand-controller";
-import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
-import { validateBody } from "@/middlewares/validate-body";
-import validateRole from "@/middlewares/validate-role";
 import {
-  createCarBrandSchema,
-  createManyCarBrandSchema,
-  updateCarBrandSchema,
-} from "@/validation/car-brand-validation";
-import express from "express";
+  validateFormWithFile,
+  validateFormWithMultipleFiles,
+} from "@/middlewares/validate-request";
+import validateRole from "@/middlewares/validate-role";
 
 const carBrandRouter = express.Router();
 
@@ -27,8 +29,7 @@ carBrandRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    uploadSingle("logo", "car-brands"),
-    validateBody(createCarBrandSchema),
+    validateFormWithFile(createCarBrandSchema, "logo", "car-brands"),
     createCarBrand
   )
   .delete(
@@ -42,20 +43,24 @@ carBrandRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    uploadSingle("logo", "car-brands"),
-    validateBody(createManyCarBrandSchema),
+    validateFormWithMultipleFiles(
+      createManyCarBrandSchema,
+      "logo",
+      10,
+      "car-brands"
+    ),
     createManyCarBrands
   );
 
 carBrandRouter.route("/search").get(searchCarBrands);
+
 carBrandRouter
   .route("/:carBrandId")
   .get(getCarBrandById)
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    uploadSingle("logo", "car-brands"),
-    validateBody(updateCarBrandSchema),
+    validateFormWithFile(updateCarBrandSchema, "logo", "car-brands"),
     updateCarBrand
   )
   .delete(

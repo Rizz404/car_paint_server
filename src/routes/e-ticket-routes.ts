@@ -10,7 +10,7 @@ import {
   updateETicket,
 } from "@/controller/e-ticket-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { validateBody } from "@/middlewares/validate-body";
+import { validateBody } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createETicketSchema,

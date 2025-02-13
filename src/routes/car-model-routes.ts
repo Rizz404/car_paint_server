@@ -10,7 +10,7 @@ import {
   updateCarModel,
 } from "@/controller/car-model-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { validateBody } from "@/middlewares/validate-body";
+import { validateBody } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createCarModelSchema,

@@ -12,7 +12,7 @@ import {
 } from "@/controller/user-car-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadArray, uploadSingle } from "@/middlewares/upload-file";
-import { validateBody } from "@/middlewares/validate-body";
+import { validateBody } from "@/middlewares/validate-request";
 import {
   createUserCarSchema,
   createManyUserCarSchema,

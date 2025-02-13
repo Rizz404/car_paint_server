@@ -11,7 +11,7 @@ import {
   updateCarModelYearColor,
 } from "@/controller/car-model-year-color-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { validateBody } from "@/middlewares/validate-body";
+import { validateBody } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createCarModelYearColorSchema,
