@@ -23,7 +23,7 @@ export const createManyColors: RequestHandler = async (req, res) => {
       skipDuplicates: true,
     });
 
-    return createSuccessResponse(res, createdColors, "Car brands Created", 201);
+    return createSuccessResponse(res, createdColors, "Colors Created", 201);
   } catch (error) {
     logger.error("Error creating multiple colors:", error);
     return createErrorResponse(res, error, 500);
@@ -104,7 +104,7 @@ export const getColorById: RequestHandler = async (req, res) => {
     });
 
     if (!color) {
-      return createErrorResponse(res, "Car brand not found", 404);
+      return createErrorResponse(res, "Color not found", 404);
     }
 
     return createSuccessResponse(res, color);
@@ -162,7 +162,7 @@ export const updateColor: RequestHandler = async (req, res) => {
     });
 
     if (!color) {
-      return createErrorResponse(res, "Car brand Not Found", 500);
+      return createErrorResponse(res, "Color Not Found", 500);
     }
 
     const updatedColor = await prisma.color.update({
@@ -188,7 +188,7 @@ export const deleteColor: RequestHandler = async (req, res) => {
     });
 
     if (!color) {
-      return createErrorResponse(res, "Car brand Not Found", 500);
+      return createErrorResponse(res, "Color Not Found", 500);
     }
 
     const deletedColor = await prisma.color.delete({

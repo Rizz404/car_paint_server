@@ -28,7 +28,7 @@ export const createManyOrders: RequestHandler = async (req, res) => {
       skipDuplicates: true,
     });
 
-    return createSuccessResponse(res, createdOrders, "Car models Created", 201);
+    return createSuccessResponse(res, createdOrders, "Orders Created", 201);
   } catch (error) {
     logger.error("Error creating multiple orders:", error);
     return createErrorResponse(res, error, 500);
@@ -242,6 +242,49 @@ export const getOrders: RequestHandler = async (req, res) => {
   }
 };
 
+export const getOrdersByWorkshopId: RequestHandler = async (req, res) => {
+  try {
+    const { workshopId } = req.params;
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
+      page: string;
+      limit: string;
+      orderBy?: string;
+      orderDirection?: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
+
+    const orders = await prisma.order.findMany({
+      where: { workshopId },
+      skip: offset,
+      take: +limit,
+      orderBy: { [field]: direction },
+    });
+    const totalOrders = await prisma.order.count({ where: { workshopId } });
+
+    createPaginatedResponse(
+      res,
+      orders,
+      currentPage,
+      itemsPerPage,
+      totalOrders
+    );
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
 export const getOrderById: RequestHandler = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -250,7 +293,7 @@ export const getOrderById: RequestHandler = async (req, res) => {
     });
 
     if (!order) {
-      return createErrorResponse(res, "Car model not found", 404);
+      return createErrorResponse(res, "Order not found", 404);
     }
 
     return createSuccessResponse(res, order);
@@ -307,7 +350,7 @@ export const updateOrder: RequestHandler = async (req, res) => {
     });
 
     if (!order) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Order Not Found", 500);
     }
 
     const updatedOrder = await prisma.order.update({
@@ -333,7 +376,7 @@ export const deleteOrder: RequestHandler = async (req, res) => {
     });
 
     if (!order) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Order Not Found", 500);
     }
 
     const deletedOrder = await prisma.order.delete({

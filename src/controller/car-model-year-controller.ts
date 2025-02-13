@@ -26,7 +26,7 @@ export const createManyCarModelYears: RequestHandler = async (req, res) => {
     return createSuccessResponse(
       res,
       createdCarModelYears,
-      "Car models Created",
+      "Car model years Created",
       201
     );
   } catch (error) {
@@ -160,7 +160,7 @@ export const getCarModelYearById: RequestHandler = async (req, res) => {
     });
 
     if (!carModelYear) {
-      return createErrorResponse(res, "Car model not found", 404);
+      return createErrorResponse(res, "Car model year not found", 404);
     }
 
     return createSuccessResponse(res, carModelYear);
@@ -243,7 +243,7 @@ export const updateCarModelYear: RequestHandler = async (req, res) => {
     });
 
     if (!carModelYear) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model year Not Found", 500);
     }
 
     const updatedCarModelYear = await prisma.carModelYear.update({
@@ -269,7 +269,7 @@ export const deleteCarModelYear: RequestHandler = async (req, res) => {
     });
 
     if (!carModelYear) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car model year Not Found", 500);
     }
 
     const deletedCarModelYear = await prisma.carModelYear.delete({
