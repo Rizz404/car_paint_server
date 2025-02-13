@@ -1,5 +1,5 @@
 import prisma from "@/configs/database";
-import { xenditInvoiceClient } from "@/configs/xendit";
+import { xenditInvoiceClient, xenditRefundClient } from "@/configs/xendit";
 import {
   createErrorResponse,
   createPaginatedResponse,
@@ -165,7 +165,10 @@ export const createOrder: RequestHandler = async (req, res) => {
 
         updatedTransaction = await tx.transaction.update({
           where: { id: createTransaction.id },
-          data: { paymentInvoiceUrl: createInvoice.invoiceUrl },
+          data: {
+            paymentInvoiceUrl: createInvoice.invoiceUrl,
+            invoiceId: createInvoice.id,
+          },
           include: {
             order: {
               select: {
@@ -360,6 +363,101 @@ export const updateOrder: RequestHandler = async (req, res) => {
 
     return createSuccessResponse(res, updatedOrder, "Updated");
   } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const cancelOrder: RequestHandler = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { id: userId } = req.user!;
+
+    // Cari order beserta transaksinya
+    const order = await prisma.order.findUnique({
+      where: {
+        id: orderId,
+        userId: userId, // Memastikan order milik user yang sedang login
+      },
+      include: {
+        transaction: true,
+      },
+    });
+
+    if (!order) {
+      return createErrorResponse(res, "Order not found", 404);
+    }
+
+    // Cek apakah order sudah dalam status yang tidak bisa dibatalkan
+    if (
+      order.orderStatus === "COMPLETED" ||
+      order.orderStatus === "CANCELLED"
+    ) {
+      return createErrorResponse(
+        res,
+        `Order cannot be cancelled because it's already ${order.orderStatus}`,
+        400
+      );
+    }
+
+    if (!order.transaction.invoiceId) {
+      return createErrorResponse(res, `Invoice id not found`, 404);
+    }
+
+    // Mulai proses pembatalan dengan transaction untuk konsistensi data
+    const result = await prisma.$transaction(async (tx) => {
+      // Update status order
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          orderStatus: "CANCELLED",
+          workStatus: "CANCELLED",
+        },
+      });
+
+      // Jika ada transaksi terkait
+      if (order.transaction) {
+        if (order.transaction.paymentStatus === "PENDING") {
+          // Jika pembayaran masih pending, cukup update status
+          await tx.transaction.update({
+            where: { id: order.transaction.id },
+            data: {
+              paymentStatus: "FAILED",
+            },
+          });
+        } else if (order.transaction.paymentStatus === "SUCCESS") {
+          try {
+            // Lakukan refund melalui Xendit
+            await xenditRefundClient.createRefund({
+              data: {
+                invoiceId: order.transaction.invoiceId ?? undefined,
+                amount: Number(order.transaction.totalPrice),
+                reason: "REQUESTED_BY_CUSTOMER",
+                currency: "IDR",
+              },
+            });
+
+            // Update status transaksi
+            await tx.transaction.update({
+              where: { id: order.transaction.id },
+              data: {
+                paymentStatus: "REFUNDED",
+                refundAmount: order.transaction.totalPrice,
+                refundedAt: new Date(),
+              },
+            });
+          } catch (error) {
+            logger.error("Error processing refund:", error);
+            throw new Error("Gagal memproses refund pembayaran");
+          }
+        }
+      }
+
+      return updatedOrder;
+    });
+
+    return createSuccessResponse(res, result, "Order berhasil dibatalkan", 200);
+  } catch (error) {
+    logger.error("Error cancelling order:", error);
     return createErrorResponse(res, error, 500);
   }
 };
