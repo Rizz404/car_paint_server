@@ -167,22 +167,23 @@ model PaymentMethod {
 }
 
 model Order {
-  id          String      @id @default(cuid()) @db.VarChar(30)
-  userId      String      @map("user_id") @db.VarChar(30)
-  userCarId   String      @map("user_car_id") @db.VarChar(30)
-  workshopId  String      @map("workshop_id") @db.VarChar(30)
-  workStatus  WorkStatus? @map("work_status")
-  orderStatus OrderStatus @default(PENDING) @map("order_status")
-  note        String      @db.Text
-  totalPrice  Decimal     @map("total_price") @db.Decimal(10, 2)
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
+  id            String      @id @default(cuid()) @db.VarChar(30)
+  userId        String      @map("user_id") @db.VarChar(30)
+  userCarId     String      @map("user_car_id") @db.VarChar(30)
+  workshopId    String      @map("workshop_id") @db.VarChar(30)
+  transactionId String      @map("transaction_id") @db.VarChar(30)
+  workStatus    WorkStatus? @map("work_status")
+  orderStatus   OrderStatus @default(DRAFT) @map("order_status")
+  note          String      @db.Text
+  totalPrice    Decimal     @map("total_price") @db.Decimal(10, 2)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
 
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userCar     UserCar       @relation(fields: [userCarId], references: [id], onDelete: Cascade)
-  workshop    Workshop      @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userCar     UserCar      @relation(fields: [userCarId], references: [id], onDelete: Cascade)
+  workshop    Workshop     @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  transaction Transaction  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   carServices CarService[]
-  transaction Transaction[]
   eTicket     ETicket[]
 
   @@map("orders")
@@ -192,18 +193,20 @@ model Transaction {
   id                String        @id @default(cuid()) @db.VarChar(30)
   userId            String        @map("user_id") @db.VarChar(30)
   paymentMethodId   String        @map("payment_method_id") @db.VarChar(30)
-  orderId           String        @map("order_id") @db.VarChar(30)
+  invoiceId         String?       @map("invoice_id") @db.VarChar(30)
   adminFee          Decimal       @map("admin_fee") @db.Decimal(10, 2)
   paymentMethodFee  Decimal       @map("payment_method_fee") @db.Decimal(10, 2)
   totalPrice        Decimal       @map("total_price") @db.Decimal(10, 2)
+  refundAmount      Decimal?      @map("refund_amount") @db.Decimal(10, 2)
   paymentStatus     PaymentStatus @default(PENDING) @map("payment_status")
   paymentInvoiceUrl String        @db.Text
+  refundedAt        DateTime?
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
-  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order         Order[]
 
   @@map("transactions")
 }
@@ -223,26 +226,32 @@ model ETicket {
 }
 
 enum WorkStatus {
+  QUEUED
   INSPECTION
   PUTTY
   SURFACER
   APPLICATION_COLOR_BASE
   APPLICATION_CLEAR_COAT
   POLISHING
-  FINALQC
-  DONE
+  FINAL_QC
+  COMPLETED
+  CANCELLED
 }
 
 enum OrderStatus {
-  PENDING
-  ACCEPTED
+  DRAFT
+  CONFIRMED
+  PROCESSING
+  COMPLETED
   CANCELLED
 }
 
 enum PaymentStatus {
   PENDING
   SUCCESS
-  CANCELLED
+  EXPIRED
+  FAILED
+  REFUNDED
 }
 
 enum Role {

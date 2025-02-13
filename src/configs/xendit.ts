@@ -2,6 +2,7 @@ import {
   Xendit,
   Invoice as InvoiceClient,
   PaymentMethod as PaymentMethodClient,
+  Refund as RefundClient,
 } from "xendit-node";
 import env from "./environment";
 
@@ -16,3 +17,5 @@ export const xenditInvoiceClient = new InvoiceClient({
 });
 
 export const xenditPaymentMethodClient = new PaymentMethodClient({ secretKey });
+
+export const xenditRefundClient = new RefundClient({ secretKey });

@@ -1,5 +1,5 @@
 import prisma from "@/configs/database";
-import { xenditInvoiceClient } from "@/configs/xendit";
+import { xenditInvoiceClient, xenditRefundClient } from "@/configs/xendit";
 import {
   createErrorResponse,
   createPaginatedResponse,
@@ -28,7 +28,7 @@ export const createManyOrders: RequestHandler = async (req, res) => {
       skipDuplicates: true,
     });
 
-    return createSuccessResponse(res, createdOrders, "Car models Created", 201);
+    return createSuccessResponse(res, createdOrders, "Orders Created", 201);
   } catch (error) {
     logger.error("Error creating multiple orders:", error);
     return createErrorResponse(res, error, 500);
@@ -45,6 +45,15 @@ export const createOrder: RequestHandler = async (req, res) => {
       workshopId,
       note,
     }: CreateOrderDTO & { paymentMethodId: string } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, username: true, email: true },
+    });
+
+    if (!user) {
+      return createErrorResponse(res, "User not found", 404);
+    }
 
     const carServicesData = await prisma.carService.findMany({
       where: {
@@ -102,39 +111,30 @@ export const createOrder: RequestHandler = async (req, res) => {
       .add(paymentMethodFee);
 
     const result = await prisma.$transaction(async (tx) => {
-      const createOrder = await tx.order.create({
+      let updatedTransaction;
+      const createTransaction = await tx.transaction.create({
         data: {
-          userId,
-          userCarId,
-          workshopId,
-          workStatus: "INSPECTION",
-          orderStatus: "PENDING",
-          note: note ?? "",
-          totalPrice: orderTotalPrice,
-          carServices: {
-            connect: carServicesData.map(({ id }) => ({ id })),
-          },
-          transaction: {
+          userId: user.id,
+          paymentMethodId,
+          adminFee,
+          paymentMethodFee,
+          totalPrice: transactionTotalPrice,
+          paymentStatus: "PENDING",
+          paymentInvoiceUrl: "",
+          order: {
             create: {
-              userId,
-              paymentMethodId,
-              adminFee,
-              paymentMethodFee,
-              totalPrice: transactionTotalPrice,
-              paymentStatus: "PENDING",
-              paymentInvoiceUrl: "",
+              userId: user.id,
+              userCarId,
+              workshopId,
+              workStatus: "INSPECTION",
+              orderStatus: "DRAFT",
+              note: note ?? "",
+              totalPrice: orderTotalPrice,
+              carServices: {
+                connect: carServicesData.map(({ id }) => ({ id })),
+              },
             },
           },
-        },
-        include: {
-          carServices: { select: { name: true, price: true } },
-          workshop: {
-            select: {
-              name: true,
-              address: true,
-            },
-          },
-          transaction: true,
         },
       });
 
@@ -142,7 +142,8 @@ export const createOrder: RequestHandler = async (req, res) => {
         const createInvoice = await xenditInvoiceClient.createInvoice({
           data: {
             amount: Number(transactionTotalPrice),
-            externalId: createOrder.id,
+            externalId: createTransaction.id,
+            payerEmail: user.email,
             currency: "IDR",
             invoiceDuration: "172800", // * 48 jam
             reminderTime: 1,
@@ -154,19 +155,41 @@ export const createOrder: RequestHandler = async (req, res) => {
               category: "car service",
               referenceId: carserviceData.id,
             })),
+            successRedirectUrl:
+              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors",
+            failureRedirectUrl:
+              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors",
+            shouldSendEmail: true,
           },
         });
 
-        await tx.transaction.update({
-          where: { id: createOrder.transaction[0].id },
-          data: { paymentInvoiceUrl: createInvoice.invoiceUrl },
+        updatedTransaction = await tx.transaction.update({
+          where: { id: createTransaction.id },
+          data: {
+            paymentInvoiceUrl: createInvoice.invoiceUrl,
+            invoiceId: createInvoice.id,
+          },
+          include: {
+            order: {
+              select: {
+                carServices: { select: { name: true, price: true } },
+                workshop: {
+                  select: {
+                    name: true,
+                    address: true,
+                  },
+                },
+              },
+            },
+            paymentMethod: { select: { name: true } },
+          },
         });
       } catch (error) {
         logger.error("Error creating Xendit invoice:", error);
         throw new Error("Failed to create invoice with Xendit.");
       }
 
-      return createOrder;
+      return updatedTransaction;
     });
 
     return createSuccessResponse(
@@ -222,6 +245,49 @@ export const getOrders: RequestHandler = async (req, res) => {
   }
 };
 
+export const getOrdersByWorkshopId: RequestHandler = async (req, res) => {
+  try {
+    const { workshopId } = req.params;
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
+      page: string;
+      limit: string;
+      orderBy?: string;
+      orderDirection?: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["createdAt", "updatedAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
+
+    const orders = await prisma.order.findMany({
+      where: { workshopId },
+      skip: offset,
+      take: +limit,
+      orderBy: { [field]: direction },
+    });
+    const totalOrders = await prisma.order.count({ where: { workshopId } });
+
+    createPaginatedResponse(
+      res,
+      orders,
+      currentPage,
+      itemsPerPage,
+      totalOrders
+    );
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
 export const getOrderById: RequestHandler = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -230,7 +296,7 @@ export const getOrderById: RequestHandler = async (req, res) => {
     });
 
     if (!order) {
-      return createErrorResponse(res, "Car model not found", 404);
+      return createErrorResponse(res, "Order not found", 404);
     }
 
     return createSuccessResponse(res, order);
@@ -287,7 +353,7 @@ export const updateOrder: RequestHandler = async (req, res) => {
     });
 
     if (!order) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Order Not Found", 500);
     }
 
     const updatedOrder = await prisma.order.update({
@@ -297,6 +363,101 @@ export const updateOrder: RequestHandler = async (req, res) => {
 
     return createSuccessResponse(res, updatedOrder, "Updated");
   } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const cancelOrder: RequestHandler = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { id: userId } = req.user!;
+
+    // Cari order beserta transaksinya
+    const order = await prisma.order.findUnique({
+      where: {
+        id: orderId,
+        userId: userId, // Memastikan order milik user yang sedang login
+      },
+      include: {
+        transaction: true,
+      },
+    });
+
+    if (!order) {
+      return createErrorResponse(res, "Order not found", 404);
+    }
+
+    // Cek apakah order sudah dalam status yang tidak bisa dibatalkan
+    if (
+      order.orderStatus === "COMPLETED" ||
+      order.orderStatus === "CANCELLED"
+    ) {
+      return createErrorResponse(
+        res,
+        `Order cannot be cancelled because it's already ${order.orderStatus}`,
+        400
+      );
+    }
+
+    if (!order.transaction.invoiceId) {
+      return createErrorResponse(res, `Invoice id not found`, 404);
+    }
+
+    // Mulai proses pembatalan dengan transaction untuk konsistensi data
+    const result = await prisma.$transaction(async (tx) => {
+      // Update status order
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          orderStatus: "CANCELLED",
+          workStatus: "CANCELLED",
+        },
+      });
+
+      // Jika ada transaksi terkait
+      if (order.transaction) {
+        if (order.transaction.paymentStatus === "PENDING") {
+          // Jika pembayaran masih pending, cukup update status
+          await tx.transaction.update({
+            where: { id: order.transaction.id },
+            data: {
+              paymentStatus: "FAILED",
+            },
+          });
+        } else if (order.transaction.paymentStatus === "SUCCESS") {
+          try {
+            // Lakukan refund melalui Xendit
+            await xenditRefundClient.createRefund({
+              data: {
+                invoiceId: order.transaction.invoiceId ?? undefined,
+                amount: Number(order.transaction.totalPrice),
+                reason: "REQUESTED_BY_CUSTOMER",
+                currency: "IDR",
+              },
+            });
+
+            // Update status transaksi
+            await tx.transaction.update({
+              where: { id: order.transaction.id },
+              data: {
+                paymentStatus: "REFUNDED",
+                refundAmount: order.transaction.totalPrice,
+                refundedAt: new Date(),
+              },
+            });
+          } catch (error) {
+            logger.error("Error processing refund:", error);
+            throw new Error("Gagal memproses refund pembayaran");
+          }
+        }
+      }
+
+      return updatedOrder;
+    });
+
+    return createSuccessResponse(res, result, "Order berhasil dibatalkan", 200);
+  } catch (error) {
+    logger.error("Error cancelling order:", error);
     return createErrorResponse(res, error, 500);
   }
 };
@@ -313,7 +474,7 @@ export const deleteOrder: RequestHandler = async (req, res) => {
     });
 
     if (!order) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Order Not Found", 500);
     }
 
     const deletedOrder = await prisma.order.delete({

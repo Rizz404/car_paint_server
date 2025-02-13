@@ -29,8 +29,8 @@ async function main() {
     await seedCarModelYearColors(prisma);
     await seedUserCars(prisma);
     await seedPaymentMethods(prisma);
-    await seedOrders(prisma);
     await seedTransactions(prisma);
+    await seedOrders(prisma);
     await seedETickets(prisma);
 
     console.log("✅ Database seeding completed");

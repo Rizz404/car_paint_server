@@ -26,7 +26,7 @@ export const createManyETickets: RequestHandler = async (req, res) => {
     return createSuccessResponse(
       res,
       createdETickets,
-      "Car models Created",
+      "E-tickets Created",
       201
     );
   } catch (error) {
@@ -99,7 +99,7 @@ export const getETicketById: RequestHandler = async (req, res) => {
     });
 
     if (!eTicket) {
-      return createErrorResponse(res, "Car model not found", 404);
+      return createErrorResponse(res, "E-ticket not found", 404);
     }
 
     return createSuccessResponse(res, eTicket);
@@ -154,7 +154,7 @@ export const updateETicket: RequestHandler = async (req, res) => {
     });
 
     if (!eTicket) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "E-ticket Not Found", 500);
     }
 
     const updatedETicket = await prisma.eTicket.update({
@@ -180,7 +180,7 @@ export const deleteETicket: RequestHandler = async (req, res) => {
     });
 
     if (!eTicket) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "E-ticket Not Found", 500);
     }
 
     const deletedETicket = await prisma.eTicket.delete({

@@ -37,7 +37,7 @@ export const createManyTransactions: RequestHandler = async (req, res) => {
     return createSuccessResponse(
       res,
       createdTransactions,
-      "Car models Created",
+      "Transactions Created",
       201
     );
   } catch (error) {
@@ -63,13 +63,14 @@ export const createTransaction: RequestHandler = async (req, res) => {
 export const confirmTransaction: RequestHandler = async (req, res) => {
   try {
     const callbackToken = req.headers["x-callback-token"];
-    const { external_id: orderId, status }: XenditWebhookPayload = req.body;
+    const { external_id: transactionId, status }: XenditWebhookPayload =
+      req.body;
 
     if (!callbackToken || callbackToken !== env.XENDIT_CALLBACK_TOKEN) {
       return createErrorResponse(res, "Unauthorized webhook request", 401);
     }
 
-    if (orderId === "invoice_123124123") {
+    if (transactionId === "invoice_123124123") {
       return createSuccessResponse(res, {}, "Testing webhook success", 200);
     }
 
@@ -85,11 +86,11 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
       >
     ) => {
       const transaction = await tx.transaction.findFirst({
-        where: { orderId },
+        where: { id: transactionId },
       });
 
       if (!transaction) {
-        throw new Error(`No transaction found for order ID: ${orderId}`);
+        throw new Error(`No transaction found: ${transactionId}`);
       }
 
       switch (status) {
@@ -99,8 +100,9 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
             data: {
               paymentStatus: "SUCCESS",
               order: {
-                update: {
-                  orderStatus: "ACCEPTED",
+                updateMany: {
+                  where: { transactionId },
+                  data: { orderStatus: "DRAFT" },
                 },
               },
             },
@@ -123,8 +125,8 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
           const newTicketNumber = (latestTicket?.ticketNumber ?? 0) + 1;
           const ticket = await tx.eTicket.create({
             data: {
-              userId: updatedTransaction.order.userId,
-              orderId: updatedTransaction.order.id,
+              userId: updatedTransaction.userId,
+              orderId: updatedTransaction.order[0].id,
               ticketNumber: newTicketNumber,
             },
           });
@@ -135,14 +137,28 @@ export const confirmTransaction: RequestHandler = async (req, res) => {
           };
 
         case "EXPIRED":
+          return await tx.transaction.update({
+            where: { id: transaction.id },
+            data: {
+              paymentStatus: "EXPIRED",
+              order: {
+                updateMany: {
+                  where: { transactionId },
+                  data: { orderStatus: "CANCELLED" },
+                },
+              },
+            },
+          });
+
         case "STOPPED":
           return await tx.transaction.update({
             where: { id: transaction.id },
             data: {
-              paymentStatus: "CANCELLED",
+              paymentStatus: "FAILED",
               order: {
-                update: {
-                  orderStatus: "CANCELLED",
+                updateMany: {
+                  where: { transactionId },
+                  data: { orderStatus: "CANCELLED" },
                 },
               },
             },
@@ -241,7 +257,7 @@ export const getTransactionById: RequestHandler = async (req, res) => {
     });
 
     if (!transaction) {
-      return createErrorResponse(res, "Car model not found", 404);
+      return createErrorResponse(res, "Transaction not found", 404);
     }
 
     return createSuccessResponse(res, transaction);
@@ -298,7 +314,7 @@ export const updateTransaction: RequestHandler = async (req, res) => {
     });
 
     if (!transaction) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Transaction Not Found", 500);
     }
 
     const updatedTransaction = await prisma.transaction.update({
@@ -324,7 +340,7 @@ export const deleteTransaction: RequestHandler = async (req, res) => {
     });
 
     if (!transaction) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Transaction Not Found", 500);
     }
 
     const deletedTransaction = await prisma.transaction.delete({

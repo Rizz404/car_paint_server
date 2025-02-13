@@ -13,6 +13,7 @@ import orderRouter from "./routes/order-routes";
 import transactionRouter from "./routes/transaction-routes";
 import eTicketRouter from "./routes/e-ticket-routes";
 import carModelYearColorRouter from "./routes/car-model-year-color-routes";
+import historyRouter from "./routes/histories-routes";
 
 const routes = express.Router();
 
@@ -29,6 +30,7 @@ routes.use("/workshops", workshopRouter);
 routes.use("/payment-methods", paymentMethodRouter);
 routes.use("/orders", orderRouter);
 routes.use("/transactions", transactionRouter);
+routes.use("/histories", historyRouter);
 routes.use("/e-tickets", eTicketRouter);
 
 export default routes;

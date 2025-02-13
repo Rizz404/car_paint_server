@@ -26,7 +26,7 @@ export const createManyCarServices: RequestHandler = async (req, res) => {
     return createSuccessResponse(
       res,
       createdCarServices,
-      "Car models Created",
+      "Car services Created",
       201
     );
   } catch (error) {
@@ -109,7 +109,7 @@ export const getCarServiceById: RequestHandler = async (req, res) => {
     });
 
     if (!carService) {
-      return createErrorResponse(res, "Car model not found", 404);
+      return createErrorResponse(res, "Car service not found", 404);
     }
 
     return createSuccessResponse(res, carService);
@@ -167,7 +167,7 @@ export const updateCarService: RequestHandler = async (req, res) => {
     });
 
     if (!carService) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car service Not Found", 500);
     }
 
     const updatedCarService = await prisma.carService.update({
@@ -193,7 +193,7 @@ export const deleteCarService: RequestHandler = async (req, res) => {
     });
 
     if (!carService) {
-      return createErrorResponse(res, "Car model Not Found", 500);
+      return createErrorResponse(res, "Car service Not Found", 500);
     }
 
     const deletedCarService = await prisma.carService.delete({
