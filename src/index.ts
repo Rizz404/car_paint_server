@@ -20,7 +20,7 @@ import {
 } from "./utils/metrics";
 import { metricsMiddleware } from "./middlewares/metrics";
 import connectDb from "./utils/connect-db";
-import env, { reloadEnv } from "./configs/environment";
+import env, { isDevelopment, reloadEnv } from "./configs/environment";
 
 const PORT = env.PORT || 5000;
 const app = express();
@@ -62,7 +62,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // * Logging
 app.use(
-  morgan(env.NODE_ENV === "production" ? "combined" : "dev", {
+  morgan(isDevelopment ? "combined" : "dev", {
     stream: { write: (message) => logger.info(message.trim()) },
   })
 );

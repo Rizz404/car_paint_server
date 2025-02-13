@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { isDevelopment } from "./environment";
 
 declare global {
   var prisma: PrismaClient | undefined;
@@ -7,7 +8,7 @@ declare global {
 const prisma =
   global.prisma ||
   new PrismaClient({
-    log: ["info", "query", "warn", "error"],
+    ...(isDevelopment && { log: ["info", "query", "warn", "error"] }),
   });
 
 global.prisma = prisma;

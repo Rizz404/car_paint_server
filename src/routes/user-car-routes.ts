@@ -12,7 +12,7 @@ import {
 } from "@/controller/user-car-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadArray, uploadSingle } from "@/middlewares/upload-file";
-import { validateBody } from "@/middlewares/validate-body";
+import { validateBody } from "@/middlewares/validate-request";
 import {
   createUserCarSchema,
   createManyUserCarSchema,
@@ -44,13 +44,13 @@ userCarRouter
 userCarRouter.route("/search").get(authMiddleware(), searchUserCars);
 userCarRouter
   .route("/car-images/:userCarId/index/:index")
-  .delete(authMiddleware(), addUserCarImage);
+  .delete(authMiddleware(), deleteUserCarImage);
 userCarRouter
   .route("/car-images/:userCarId")
   .post(
     authMiddleware(),
     uploadArray("carImages", 5, "car-images"),
-    deleteUserCarImage
+    addUserCarImage
   );
 userCarRouter
   .route("/:userCarId")

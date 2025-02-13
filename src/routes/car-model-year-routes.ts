@@ -11,7 +11,7 @@ import {
 } from "@/controller/car-model-year-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/middlewares/upload-file";
-import { validateBody } from "@/middlewares/validate-body";
+import { validateBody } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createCarModelYearSchema,
