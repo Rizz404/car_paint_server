@@ -35,12 +35,10 @@ const generateTransactionTotalPrice = (): Prisma.Decimal => {
 
 const generateTransaction = (
   userId: string,
-  paymentMethodId: string,
-  orderId: string
+  paymentMethodId: string
 ): Prisma.TransactionCreateManyInput => ({
   userId,
   paymentMethodId,
-  orderId,
   adminFee: generateFee(),
   paymentMethodFee: generateFee(),
   totalPrice: generateTransactionTotalPrice(),
@@ -67,8 +65,7 @@ export const seedTransactions = async (prisma: PrismaClient, count = 25) => {
     data.push(
       generateTransaction(
         users[Math.floor(Math.random() * users.length)].id,
-        paymentMethods[Math.floor(Math.random() * paymentMethods.length)].id,
-        orders[Math.floor(Math.random() * orders.length)].id
+        paymentMethods[Math.floor(Math.random() * paymentMethods.length)].id
       )
     );
   }

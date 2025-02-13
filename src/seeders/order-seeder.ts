@@ -20,22 +20,25 @@ const generateOrderTotalPrice = (): Prisma.Decimal => {
 const generateOrder = (
   userId: string,
   userCarId: string,
-  workshopId: string
+  workshopId: string,
+  transactionId: string
 ): Prisma.OrderCreateManyInput => ({
   userId,
   userCarId,
   workshopId,
+  transactionId,
   workStatus: faker.helpers.arrayElement([
+    "QUEUED",
     "INSPECTION",
     "PUTTY",
     "SURFACER",
     "APPLICATION_COLOR_BASE",
     "APPLICATION_CLEAR_COAT",
     "POLISHING",
-    "FINALQC",
-    "DONE",
+    "FINAL_QC",
+    "COMPLETED",
   ]) as Prisma.OrderCreateInput["workStatus"],
-  orderStatus: "PENDING",
+  orderStatus: "DRAFT",
   note: faker.lorem.sentence(),
   totalPrice: generateOrderTotalPrice(),
 });
@@ -46,8 +49,14 @@ export const seedOrders = async (prisma: PrismaClient, count = 25) => {
   const users = await prisma.user.findMany({ select: { id: true } });
   const userCars = await prisma.userCar.findMany({ select: { id: true } });
   const workshops = await prisma.workshop.findMany({ select: { id: true } });
+  const orders = await prisma.order.findMany({ select: { id: true } });
 
-  if (!users.length || !userCars.length || !workshops.length) {
+  if (
+    !users.length ||
+    !userCars.length ||
+    !workshops.length ||
+    !orders.length
+  ) {
     console.warn("⚠️ Missing dependencies for Orders. Skipping seeding.");
     return;
   }
@@ -58,7 +67,8 @@ export const seedOrders = async (prisma: PrismaClient, count = 25) => {
       generateOrder(
         users[Math.floor(Math.random() * users.length)].id,
         userCars[Math.floor(Math.random() * userCars.length)].id,
-        workshops[Math.floor(Math.random() * workshops.length)].id
+        workshops[Math.floor(Math.random() * workshops.length)].id,
+        orders[Math.floor(Math.random() * orders.length)].id
       )
     );
   }
