@@ -46,6 +46,15 @@ export const createOrder: RequestHandler = async (req, res) => {
       note,
     }: CreateOrderDTO & { paymentMethodId: string } = req.body;
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, username: true, email: true },
+    });
+
+    if (!user) {
+      return createErrorResponse(res, "User not found", 404);
+    }
+
     const carServicesData = await prisma.carService.findMany({
       where: {
         id: {
@@ -102,39 +111,30 @@ export const createOrder: RequestHandler = async (req, res) => {
       .add(paymentMethodFee);
 
     const result = await prisma.$transaction(async (tx) => {
-      const createOrder = await tx.order.create({
+      let updatedTransaction;
+      const createTransaction = await tx.transaction.create({
         data: {
-          userId,
-          userCarId,
-          workshopId,
-          workStatus: "INSPECTION",
-          orderStatus: "PENDING",
-          note: note ?? "",
-          totalPrice: orderTotalPrice,
-          carServices: {
-            connect: carServicesData.map(({ id }) => ({ id })),
-          },
-          transaction: {
+          userId: user.id,
+          paymentMethodId,
+          adminFee,
+          paymentMethodFee,
+          totalPrice: transactionTotalPrice,
+          paymentStatus: "PENDING",
+          paymentInvoiceUrl: "",
+          order: {
             create: {
-              userId,
-              paymentMethodId,
-              adminFee,
-              paymentMethodFee,
-              totalPrice: transactionTotalPrice,
-              paymentStatus: "PENDING",
-              paymentInvoiceUrl: "",
+              userId: user.id,
+              userCarId,
+              workshopId,
+              workStatus: "INSPECTION",
+              orderStatus: "DRAFT",
+              note: note ?? "",
+              totalPrice: orderTotalPrice,
+              carServices: {
+                connect: carServicesData.map(({ id }) => ({ id })),
+              },
             },
           },
-        },
-        include: {
-          carServices: { select: { name: true, price: true } },
-          workshop: {
-            select: {
-              name: true,
-              address: true,
-            },
-          },
-          transaction: true,
         },
       });
 
@@ -142,7 +142,8 @@ export const createOrder: RequestHandler = async (req, res) => {
         const createInvoice = await xenditInvoiceClient.createInvoice({
           data: {
             amount: Number(transactionTotalPrice),
-            externalId: createOrder.id,
+            externalId: createTransaction.id,
+            payerEmail: user.email,
             currency: "IDR",
             invoiceDuration: "172800", // * 48 jam
             reminderTime: 1,
@@ -154,19 +155,38 @@ export const createOrder: RequestHandler = async (req, res) => {
               category: "car service",
               referenceId: carserviceData.id,
             })),
+            successRedirectUrl:
+              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors",
+            failureRedirectUrl:
+              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors",
+            shouldSendEmail: true,
           },
         });
 
-        await tx.transaction.update({
-          where: { id: createOrder.transaction[0].id },
+        updatedTransaction = await tx.transaction.update({
+          where: { id: createTransaction.id },
           data: { paymentInvoiceUrl: createInvoice.invoiceUrl },
+          include: {
+            order: {
+              select: {
+                carServices: { select: { name: true, price: true } },
+                workshop: {
+                  select: {
+                    name: true,
+                    address: true,
+                  },
+                },
+              },
+            },
+            paymentMethod: { select: { name: true } },
+          },
         });
       } catch (error) {
         logger.error("Error creating Xendit invoice:", error);
         throw new Error("Failed to create invoice with Xendit.");
       }
 
-      return createOrder;
+      return updatedTransaction;
     });
 
     return createSuccessResponse(
