@@ -28,7 +28,7 @@ async function main() {
     await seedCarModelYears(prisma);
     await seedCarModelYearColors(prisma);
     await seedUserCars(prisma);
-    // await seedPaymentMethods(prisma);
+    await seedPaymentMethods(prisma);
     await seedTransactions(prisma);
     await seedOrders(prisma);
     await seedETickets(prisma);

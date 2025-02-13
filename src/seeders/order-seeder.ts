@@ -49,13 +49,15 @@ export const seedOrders = async (prisma: PrismaClient, count = 25) => {
   const users = await prisma.user.findMany({ select: { id: true } });
   const userCars = await prisma.userCar.findMany({ select: { id: true } });
   const workshops = await prisma.workshop.findMany({ select: { id: true } });
-  const orders = await prisma.order.findMany({ select: { id: true } });
+  const transactions = await prisma.transaction.findMany({
+    select: { id: true },
+  });
 
   if (
     !users.length ||
     !userCars.length ||
     !workshops.length ||
-    !orders.length
+    !transactions.length
   ) {
     console.warn("⚠️ Missing dependencies for Orders. Skipping seeding.");
     return;
@@ -68,7 +70,7 @@ export const seedOrders = async (prisma: PrismaClient, count = 25) => {
         users[Math.floor(Math.random() * users.length)].id,
         userCars[Math.floor(Math.random() * userCars.length)].id,
         workshops[Math.floor(Math.random() * workshops.length)].id,
-        orders[Math.floor(Math.random() * orders.length)].id
+        transactions[Math.floor(Math.random() * transactions.length)].id
       )
     );
   }

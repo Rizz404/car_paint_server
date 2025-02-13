@@ -53,9 +53,8 @@ export const seedTransactions = async (prisma: PrismaClient, count = 25) => {
   const paymentMethods = await prisma.paymentMethod.findMany({
     select: { id: true },
   });
-  const orders = await prisma.order.findMany({ select: { id: true } });
 
-  if (!users.length || !paymentMethods.length || !orders.length) {
+  if (!users.length || !paymentMethods.length) {
     console.warn("⚠️ Missing dependencies for Transactions. Skipping seeding.");
     return;
   }
