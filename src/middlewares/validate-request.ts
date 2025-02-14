@@ -4,6 +4,23 @@ import { createErrorResponse } from "@/types/api-response";
 import { uploadArray, uploadSingle } from "./upload-file";
 import { MulterError } from "multer";
 
+export const validateRequest = (schema: AnyZodObject) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await schema.parseAsync({
+        body: req.body,
+        query: req.query,
+        params: req.params,
+        files: req.files,
+        file: req.file,
+      });
+      return next();
+    } catch (error) {
+      return createErrorResponse(res, error, 400);
+    }
+  };
+};
+
 export const validateBody = (schema: AnyZodObject) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {

@@ -1,7 +1,6 @@
 import { UploadApiResponse } from "cloudinary";
 import { NextFunction, Request, Response } from "express";
 import multer, { MulterError } from "multer"; // Import MulterError
-
 import cloudinary from "@/configs/cloudinary";
 
 // * Deklarasi tipe untuk Cloudinary response

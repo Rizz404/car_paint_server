@@ -4,6 +4,11 @@ import {
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
+import {
+  deleteCloudinaryImage,
+  deleteCloudinaryImages,
+  isCloudinaryUrl,
+} from "@/utils/cloudinary";
 import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import { UserCar } from "@prisma/client";
@@ -257,7 +262,12 @@ export const deleteUserCar: RequestHandler = async (req, res) => {
     });
 
     if (!userCar) {
-      return createErrorResponse(res, "User Car Not Found", 500);
+      return createErrorResponse(res, "User Car Not Found", 404);
+    }
+
+    // Delete images from Cloudinary if they exist
+    if (userCar.carImages && userCar.carImages.length > 0) {
+      await deleteCloudinaryImages(userCar.carImages);
     }
 
     const deletedUserCar = await prisma.userCar.delete({
@@ -274,15 +284,26 @@ export const deleteAllUserCar: RequestHandler = async (req, res) => {
   try {
     const { id } = req.user!;
 
+    // Get all user cars first to delete their images
+    const userCars = await prisma.userCar.findMany({
+      where: { userId: id },
+      select: { carImages: true },
+    });
+
+    // Collect all image URLs and delete them from Cloudinary
+    const allImages = userCars
+      .flatMap((car) => car.carImages || [])
+      .filter((url) => url); // Remove null/undefined
+
+    if (allImages.length > 0) {
+      await deleteCloudinaryImages(allImages);
+    }
+
     const deletedAllUserCars = await prisma.userCar.deleteMany({
       where: { userId: id },
     });
 
-    return createSuccessResponse(
-      res,
-      deletedAllUserCars,
-      "All car models deleted"
-    );
+    return createSuccessResponse(res, deletedAllUserCars, "All cars deleted");
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }
@@ -360,6 +381,14 @@ export const deleteUserCarImage: RequestHandler = async (req, res) => {
         "Image index out of bounds or no images available",
         400
       );
+    }
+
+    // Get the image URL that will be deleted
+    const imageToDelete = userCar.carImages[imageIndex];
+
+    // Delete from Cloudinary if it's a Cloudinary URL
+    if (isCloudinaryUrl(imageToDelete)) {
+      await deleteCloudinaryImage(imageToDelete);
     }
 
     const updatedCarImages = userCar.carImages.filter(

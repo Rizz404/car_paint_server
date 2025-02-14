@@ -12,7 +12,8 @@ import {
 } from "@/controller/user-car-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadArray, uploadSingle } from "@/middlewares/upload-file";
-import { validateBody } from "@/middlewares/validate-request";
+import { validateBody, validateRequest } from "@/middlewares/validate-request";
+import { parseFiles, uploadFilesToCloudinary } from "@/playground/upload-file";
 import {
   createUserCarSchema,
   createManyUserCarSchema,
@@ -27,8 +28,9 @@ userCarRouter
   .get(authMiddleware(), getUserCars)
   .post(
     authMiddleware(),
-    uploadArray("carImages", 5, "car-images"),
-    validateBody(createUserCarSchema),
+    parseFiles.array("carImages", 5),
+    validateRequest(createUserCarSchema),
+    uploadFilesToCloudinary("car-images"),
     createUserCar
   )
   .delete(authMiddleware(), deleteAllUserCar);
@@ -37,7 +39,7 @@ userCarRouter
   .route("/multiple")
   .post(
     authMiddleware(),
-    validateBody(createManyUserCarSchema),
+    validateRequest(createManyUserCarSchema),
     createManyUserCars
   );
 
@@ -50,6 +52,7 @@ userCarRouter
   .post(
     authMiddleware(),
     uploadArray("carImages", 5, "car-images"),
+    validateRequest(createUserCarSchema),
     addUserCarImage
   );
 userCarRouter
