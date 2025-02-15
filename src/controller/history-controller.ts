@@ -62,7 +62,7 @@ export const getHistories: RequestHandler = async (req, res) => {
           select: {
             note: true,
             orderStatus: true,
-            totalPrice: true,
+            subtotalPrice: true,
             workshop: { select: { name: true, address: true } },
             carServices: { select: { name: true, price: true } },
             eTicket: { select: { ticketNumber: true } },
@@ -106,7 +106,7 @@ export const getHistoryById: RequestHandler = async (req, res) => {
           select: {
             note: true,
             orderStatus: true,
-            totalPrice: true,
+            subtotalPrice: true,
             workshop: { select: { name: true, address: true } },
             carServices: { select: { name: true, price: true } },
             eTicket: { select: { ticketNumber: true } },
@@ -171,7 +171,7 @@ export const getCurrentUserHistories: RequestHandler = async (req, res) => {
           select: {
             note: true,
             orderStatus: true,
-            totalPrice: true,
+            subtotalPrice: true,
             workshop: { select: { name: true, address: true } },
             carServices: { select: { name: true, price: true } },
             eTicket: { select: { ticketNumber: true } },

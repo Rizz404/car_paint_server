@@ -175,7 +175,7 @@ model Order {
   workStatus    WorkStatus? @map("work_status")
   orderStatus   OrderStatus @default(DRAFT) @map("order_status")
   note          String      @db.Text
-  totalPrice    Decimal     @map("total_price") @db.Decimal(10, 2)
+  subtotalPrice Decimal     @map("subtotal_price") @db.Decimal(10, 2)
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 

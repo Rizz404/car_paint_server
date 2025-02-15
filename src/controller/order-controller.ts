@@ -129,7 +129,7 @@ export const createOrder: RequestHandler = async (req, res) => {
               workStatus: "INSPECTION",
               orderStatus: "DRAFT",
               note: note ?? "",
-              totalPrice: orderTotalPrice,
+              subtotalPrice: orderTotalPrice,
               carServices: {
                 connect: carServicesData.map(({ id }) => ({ id })),
               },
