@@ -7,6 +7,7 @@ const connectDb = async () => {
   try {
     await prisma.$connect();
     logger.info("Database connected successfully");
+    // logger.info(`Connected to database ${env.DATABASE_URL}`);
     logger.info(`Connected to database ${env.DATABASE_URL}`);
     // * Start Prisma metrics collection
     prismaMetricsMiddleware();

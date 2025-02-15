@@ -11,8 +11,8 @@ import {
   confirmTransaction,
 } from "@/controller/transaction-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
-import { validateBody } from "@/middlewares/validate-request";
+import { uploadSingle } from "@/playground/upload-file";
+import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createTransactionSchema,
@@ -29,7 +29,7 @@ transactionRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createTransactionSchema),
+    validateRequest(createTransactionSchema),
     createTransaction
   )
   .delete(
@@ -49,7 +49,7 @@ transactionRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createManyTransactionSchema),
+    validateRequest(createManyTransactionSchema),
     createManyTransactions
   );
 
@@ -60,7 +60,7 @@ transactionRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(updateTransactionSchema),
+    validateRequest(updateTransactionSchema),
     updateTransaction
   )
   .delete(

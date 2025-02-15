@@ -1,196 +1,218 @@
 import { UploadApiResponse } from "cloudinary";
 import { NextFunction, Request, Response } from "express";
-import multer, { MulterError } from "multer"; // Import MulterError
-
+import multer, { MulterError } from "multer";
 import cloudinary from "@/configs/cloudinary";
+import { createErrorResponse } from "@/types/api-response";
+import { imagekit } from "@/configs/imagekit";
 
-// * Deklarasi tipe untuk Cloudinary response
 declare global {
   namespace Express {
     namespace Multer {
       interface File {
         cloudinary?: UploadApiResponse;
+        imagekit?: {
+          url: string;
+          fileId: string;
+          width: number;
+          height: number;
+          size: number;
+          fileType: string;
+        };
       }
     }
   }
 }
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const ALLOWED_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-// * Fungsi Upload ke Cloudinary
+const storage = multer.memoryStorage();
+
+const createMulterConfig = () => {
+  return {
+    storage,
+    limits: {
+      fileSize: MAX_FILE_SIZE,
+    },
+    fileFilter: (
+      req: Request,
+      file: Express.Multer.File,
+      cb: multer.FileFilterCallback
+    ) => {
+      if (!file.mimetype) {
+        cb(new Error("No mime type detected"));
+        return;
+      }
+
+      if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(
+          new Error(
+            `Invalid file type. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`
+          )
+        );
+      }
+    },
+  };
+};
+
+const multerUpload = multer(createMulterConfig());
+
 const uploadToCloudinary = async (
   buffer: Buffer,
-  folder = "default_folder",
-  filename?: string
+  folder: string
 ): Promise<UploadApiResponse> => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder,
-        public_id: filename,
+        public_id: `${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         transformation: [
-          {
-            width: 800,
-            height: 800,
-            crop: "limit",
-          },
-          {
-            quality: "auto",
-            fetch_format: "auto",
-          },
+          { width: 800, height: 800, crop: "limit" },
+          { quality: "auto", fetch_format: "auto" },
         ],
       },
       (error, result) => {
-        if (error) {
-          console.error("Cloudinary Upload Error:", error); // Logging error Cloudinary
-          return reject(error);
-        }
-        if (result) {
-          return resolve(result);
-        } // Ini untuk jaga-jaga jika tidak ada error dan tidak ada result (seharusnya tidak terjadi)
-        reject(new Error("No result or error from Cloudinary upload"));
+        if (error) return reject(error);
+        if (!result) return reject(new Error("Upload failed"));
+        resolve(result);
       }
     );
     uploadStream.end(buffer);
   });
 };
 
-// * Middleware untuk Single File (Opsional)
-const uploadSingle =
-  (fieldName: string, folder?: string) =>
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const singleUpload = upload.single(fieldName);
-    singleUpload(req, res, async (err) => {
-      if (err instanceof MulterError) {
-        // Menggunakan MulterError import
-        console.error("Multer Error (Single):", err);
-        return res.status(400).json({ error: err.message });
-      } else if (err) {
-        console.error("Unknown Error (Single):", err);
-        return res.status(500).json({ error: "Internal server error" });
-      }
+export const uploadFilesToCloudinary = (folder: string) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    // Handle both single file and multiple files
+    const files = (req.files as Express.Multer.File[]) || [
+      req.file as Express.Multer.File,
+    ];
 
-      try {
-        // Jika ada file, upload ke Cloudinary
-        if (req.file) {
-          const result = await uploadToCloudinary(
-            req.file.buffer,
-            folder,
-            req.file.originalname.split(".")[0]
-          );
-          req.file.cloudinary = result;
-        }
-        next();
-      } catch (error: any) {
-        console.error("Error in uploadSingle middleware:", error); // Logging error middleware
-        return res.status(500).json({ error: error.message });
+    if (!files || files.length === 0 || !files[0]) {
+      return next();
+    }
+
+    try {
+      await Promise.all(
+        files.map(async (file) => {
+          file.cloudinary = await uploadToCloudinary(file.buffer, folder);
+        })
+      );
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
+const uploadToImageKit = async (
+  buffer: Buffer,
+  folder: string
+): Promise<any> => {
+  try {
+    const result = await imagekit.upload({
+      file: buffer.toString("base64"),
+      fileName: `${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      folder,
+      useUniqueFileName: false,
+    });
+
+    return {
+      url: result.url,
+      fileId: result.fileId,
+      width: result.width,
+      height: result.height,
+      size: result.size,
+      fileType: result.fileType,
+    };
+  } catch (error) {
+    throw new Error("Image upload failed");
+  }
+};
+
+export const uploadFilesToImageKit = (folder: string) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const files = req.files as Express.Multer.File[];
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      return next();
+    }
+
+    try {
+      await Promise.all(
+        files.map(async (file) => {
+          file.imagekit = await uploadToImageKit(file.buffer, folder);
+        })
+      );
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
+const handleMulterError = (err: any, res: Response, maxCount?: number) => {
+  if (err instanceof MulterError) {
+    switch (err.code) {
+      case "LIMIT_FILE_SIZE":
+        return createErrorResponse(
+          res,
+          `File size must be less than ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+          400
+        );
+      case "LIMIT_FILE_COUNT":
+      case "LIMIT_UNEXPECTED_FILE":
+        return createErrorResponse(
+          res,
+          `Maximum ${maxCount} file${maxCount === 1 ? "" : "s"} allowed`,
+          400
+        );
+      default:
+        return createErrorResponse(res, err.message, 400);
+    }
+  }
+  return createErrorResponse(res, err.message, 400);
+};
+
+export const handleSingleFileUpload = (fieldName: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const upload = multerUpload.single(fieldName);
+
+    upload(req, res, (err: any) => {
+      if (err) {
+        return handleMulterError(err, res, 1);
       }
+      next();
     });
   };
+};
 
-// * Middleware untuk Multiple Files (Opsional)
-const uploadArray =
-  (fieldName: string, maxCount: number, folder?: string) =>
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const arrayUpload = upload.array(fieldName, maxCount);
-    arrayUpload(req, res, async (err) => {
-      if (err instanceof MulterError) {
-        // Menggunakan MulterError import
-        console.error("Multer Error (Array):", err);
-        return res.status(400).json({ error: err.message });
-      } else if (err) {
-        console.error("Unknown Error (Array):", err);
-        return res.status(500).json({ error: "Internal server error" });
-      }
+export const handleMultipleFileUpload = (
+  fieldName: string,
+  maxCount: number
+) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const upload = multerUpload.array(fieldName, maxCount);
 
-      try {
-        // Jika ada files, upload ke Cloudinary
-        if (req.files && req.files instanceof Array && req.files.length > 0) {
-          const results = await Promise.all(
-            req.files.map(async (file) => {
-              // Tambahkan async disini
-              try {
-                return await uploadToCloudinary(
-                  // Tambahkan return disini
-                  file.buffer,
-                  folder,
-                  file.originalname.split(".")[0]
-                );
-              } catch (error: any) {
-                console.error(
-                  "Error during uploadToCloudinary (Array):",
-                  error
-                ); // Logging error di dalam Promise.all
-                throw error; // Re-throw error agar Promise.all reject jika salah satu upload gagal
-              }
-            })
-          );
-          req.files.forEach((file, index) => {
-            file.cloudinary = results[index];
-          });
-        }
-        next();
-      } catch (error: any) {
-        console.error("Error in uploadArray middleware:", error); // Logging error middleware
-        return res.status(500).json({ error: error.message });
+    upload(req, res, (err: any) => {
+      if (err) {
+        return handleMulterError(err, res, maxCount);
       }
+      next();
     });
   };
+};
 
-// * Middleware untuk Upload Fields (Opsional)
-const uploadFields =
-  (fields: { name: string; maxCount?: number }[], folder?: string) =>
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const fieldsUpload = upload.fields(fields);
-    fieldsUpload(req, res, async (err) => {
-      if (err instanceof MulterError) {
-        // Menggunakan MulterError import
-        console.error("Multer Error (Fields):", err);
-        return res.status(400).json({ error: err.message });
-      } else if (err) {
-        console.error("Unknown Error (Fields):", err);
-        return res.status(500).json({ error: "Internal server error" });
-      }
-
-      try {
-        if (req.files && typeof req.files === "object") {
-          // Proses setiap field satu per satu
-          for (const [fieldName, files] of Object.entries(req.files)) {
-            if (Array.isArray(files) && files.length > 0) {
-              // Upload semua file dalam field ini ke Cloudinary
-              const results = await Promise.all(
-                files.map(async (file) => {
-                  // Tambahkan async disini
-                  try {
-                    return await uploadToCloudinary(
-                      // Tambahkan return disini
-                      file.buffer,
-                      folder,
-                      file.originalname.split(".")[0]
-                    );
-                  } catch (error: any) {
-                    console.error(
-                      `Error during uploadToCloudinary (Fields - ${fieldName}):`,
-                      error
-                    ); // Logging error di dalam Promise.all dengan fieldName
-                    throw error; // Re-throw error agar Promise.all reject jika salah satu upload gagal
-                  }
-                })
-              ); // Assign hasil cloudinary ke masing-masing file
-
-              files.forEach((file, index) => {
-                file.cloudinary = results[index];
-              });
-            }
-          }
-        }
-        next();
-      } catch (error: any) {
-        console.error("Error in uploadFields middleware:", error); // Logging error middleware
-        return res.status(500).json({ error: error.message });
-      }
-    });
-  };
-
-export { uploadArray, uploadFields, uploadSingle };
+export const parseFiles = {
+  single: (fieldName: string) => handleSingleFileUpload(fieldName),
+  array: (fieldName: string, maxCount: number) =>
+    handleMultipleFileUpload(fieldName, maxCount),
+};

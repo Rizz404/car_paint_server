@@ -10,6 +10,11 @@ import { User, UserProfile } from "@prisma/client";
 import { RequestHandler } from "express";
 import bcrypt from "bcrypt";
 import { faker } from "@faker-js/faker";
+import {
+  deleteCloudinaryImage,
+  deleteCloudinaryImages,
+  isCloudinaryUrl,
+} from "@/utils/cloudinary";
 
 // *======================= POST =======================*
 export const createManyUsers: RequestHandler = async (req, res) => {
@@ -49,6 +54,7 @@ export const createManyUsers: RequestHandler = async (req, res) => {
 export const createUser: RequestHandler = async (req, res) => {
   try {
     const payload: User = req.body;
+    const profileImage = req.file as Express.Multer.File;
 
     const existingUser = await prisma.user.findFirst({
       where: {
@@ -66,7 +72,8 @@ export const createUser: RequestHandler = async (req, res) => {
     const createdUser = await prisma.user.create({
       data: {
         ...payload,
-        profileImage: faker.image.avatar(),
+        profileImage:
+          profileImage.cloudinary?.secure_url ?? faker.image.avatar(),
         password: hashedPassword,
         userProfile: {},
       },
@@ -165,6 +172,7 @@ export const updateUser: RequestHandler = async (req, res) => {
   try {
     const { userId } = req.params;
     const payload: User = req.body;
+    const profileImage = req.file as Express.Multer.File;
 
     const user = await prisma.user.findUnique({
       where: {
@@ -174,6 +182,18 @@ export const updateUser: RequestHandler = async (req, res) => {
 
     if (!user) {
       return createErrorResponse(res, "User Not Found", 500);
+    }
+
+    if (
+      profileImage &&
+      profileImage.cloudinary &&
+      profileImage.cloudinary.secure_url
+    ) {
+      const imageToDelete = user.profileImage;
+
+      if (isCloudinaryUrl(imageToDelete)) {
+        await deleteCloudinaryImage(imageToDelete);
+      }
     }
 
     const updatedUser = await prisma.user.update({
@@ -202,6 +222,12 @@ export const deleteUser: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "User Not Found", 500);
     }
 
+    const imageToDelete = user.profileImage;
+
+    if (isCloudinaryUrl(imageToDelete)) {
+      await deleteCloudinaryImage(imageToDelete);
+    }
+
     const deletedUser = await prisma.user.delete({
       where: { id: userId },
     });
@@ -214,13 +240,21 @@ export const deleteUser: RequestHandler = async (req, res) => {
 
 export const deleteAllUser: RequestHandler = async (req, res) => {
   try {
+    const users = await prisma.user.findMany({
+      select: { profileImage: true },
+    });
+
+    const allImages = users
+      .flatMap((user) => user.profileImage)
+      .filter((url) => url); // Remove null/undefined
+
+    if (allImages.length > 0) {
+      await deleteCloudinaryImages(allImages);
+    }
+
     const deletedAllUsers = await prisma.user.deleteMany();
 
-    return createSuccessResponse(
-      res,
-      deletedAllUsers,
-      "All car brands deleted"
-    );
+    return createSuccessResponse(res, deletedAllUsers, "All user deleted");
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }
@@ -261,6 +295,18 @@ export const updateCurrentUser: RequestHandler = async (req, res) => {
 
     if (!currentUser) {
       return createErrorResponse(res, "Current user not found", 404);
+    }
+
+    if (
+      profileImage &&
+      profileImage.cloudinary &&
+      profileImage.cloudinary.secure_url
+    ) {
+      const imageToDelete = currentUser.profileImage;
+
+      if (isCloudinaryUrl(imageToDelete)) {
+        await deleteCloudinaryImage(imageToDelete);
+      }
     }
 
     const updatedCurrentUser = await prisma.user.update({

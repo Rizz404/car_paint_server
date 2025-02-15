@@ -4,6 +4,11 @@ import {
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
+import {
+  isCloudinaryUrl,
+  deleteCloudinaryImage,
+  deleteCloudinaryImages,
+} from "@/utils/cloudinary";
 import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import { CarBrand } from "@prisma/client";
@@ -187,6 +192,14 @@ export const updateCarBrand: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Car brand Not Found", 404);
     }
 
+    if (logo && logo.cloudinary && logo.cloudinary.secure_url) {
+      const imageToDelete = carBrand.logo;
+
+      if (isCloudinaryUrl(imageToDelete)) {
+        await deleteCloudinaryImage(imageToDelete);
+      }
+    }
+
     const updatedCarBrand = await prisma.carBrand.update({
       data: {
         ...payload,
@@ -216,6 +229,12 @@ export const deleteCarBrand: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Car brand Not Found", 404);
     }
 
+    const imageToDelete = carBrand.logo;
+
+    if (isCloudinaryUrl(imageToDelete)) {
+      await deleteCloudinaryImage(imageToDelete);
+    }
+
     const deletedCarBrand = await prisma.carBrand.delete({
       where: { id: carBrandId },
     });
@@ -228,6 +247,16 @@ export const deleteCarBrand: RequestHandler = async (req, res) => {
 
 export const deleteAllCarBrand: RequestHandler = async (req, res) => {
   try {
+    const carBrands = await prisma.carBrand.findMany({
+      select: { logo: true },
+    });
+
+    const allImages = carBrands.flatMap((car) => car.logo).filter((url) => url); // Remove null/undefined
+
+    if (allImages.length > 0) {
+      await deleteCloudinaryImages(allImages);
+    }
+
     const deletedAllCarBrands = await prisma.carBrand.deleteMany();
 
     return createSuccessResponse(

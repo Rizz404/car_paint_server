@@ -10,8 +10,8 @@ import {
   updateCarModelYear,
 } from "@/controller/car-model-year-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
-import { validateBody } from "@/middlewares/validate-request";
+import { uploadSingle } from "@/playground/upload-file";
+import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createCarModelYearSchema,
@@ -28,7 +28,7 @@ carModelYearRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createCarModelYearSchema),
+    validateRequest(createCarModelYearSchema),
     createCarModelYear
   )
   .delete(
@@ -46,7 +46,7 @@ carModelYearRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createManyCarModelYearSchema),
+    validateRequest(createManyCarModelYearSchema),
     createManyCarModelYears
   );
 
@@ -57,7 +57,7 @@ carModelYearRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(updateCarModelYearSchema),
+    validateRequest(updateCarModelYearSchema),
     updateCarModelYear
   )
   .delete(

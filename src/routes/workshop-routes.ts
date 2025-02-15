@@ -10,8 +10,8 @@ import {
   getCurrentUserNearestWorkshops,
 } from "@/controller/workshop-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
-import { validateBody } from "@/middlewares/validate-request";
+import { uploadSingle } from "@/playground/upload-file";
+import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createWorkshopSchema,
@@ -28,7 +28,7 @@ workshopRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createWorkshopSchema),
+    validateRequest(createWorkshopSchema),
     createWorkshop
   )
   .delete(
@@ -46,7 +46,7 @@ workshopRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createManyWorkshopSchema),
+    validateRequest(createManyWorkshopSchema),
     createManyWorkshops
   );
 
@@ -57,7 +57,7 @@ workshopRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(updateWorkshopSchema),
+    validateRequest(updateWorkshopSchema),
     updateWorkshop
   )
   .delete(

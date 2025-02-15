@@ -12,8 +12,8 @@ import {
   updateCurrentUserPassword,
 } from "@/controller/user-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
-import { validateBody } from "@/middlewares/validate-request";
+import { parseFiles, uploadFilesToCloudinary } from "@/middlewares/upload-file";
+import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createUserSchema,
@@ -32,8 +32,9 @@ userRouter
   .post(
     authMiddleware(),
     // validateRole(["ADMIN", "SUPER_ADMIN"]),
-    uploadSingle("profileImage", "profile-images"),
-    validateBody(createUserSchema),
+    parseFiles.single("profileImage"),
+    validateRequest(createUserSchema),
+    uploadFilesToCloudinary("profile-images"),
     createUser
   )
   .delete(
@@ -46,7 +47,7 @@ userRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createManyUserSchema),
+    validateRequest(createManyUserSchema),
     createManyUsers
   );
 userRouter.route("/search").get(searchUsers);
@@ -55,15 +56,16 @@ userRouter
   .get(authMiddleware(), getCurrentUser)
   .patch(
     authMiddleware(),
-    uploadSingle("profileImage", "profile-images"),
-    validateBody(updateCurrentUserSchema),
+    parseFiles.single("profileImage"),
+    validateRequest(updateCurrentUserSchema),
+    uploadFilesToCloudinary("profile-images"),
     updateCurrentUser
   );
 userRouter
   .route("/current/password")
   .patch(
     authMiddleware(),
-    validateBody(updateCurrentUserPasswordSchema),
+    validateRequest(updateCurrentUserPasswordSchema),
     updateCurrentUserPassword
   );
 userRouter
@@ -72,7 +74,9 @@ userRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(updateUserSchema),
+    parseFiles.single("profileImage"),
+    validateRequest(updateUserSchema),
+    uploadFilesToCloudinary("profile-images"),
     updateUser
   )
   .delete(authMiddleware(), validateRole(["ADMIN", "SUPER_ADMIN"]), deleteUser);

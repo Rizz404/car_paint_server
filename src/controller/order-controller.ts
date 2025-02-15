@@ -14,7 +14,7 @@ import { z } from "zod";
 
 type CreateOrderDTO = z.infer<typeof createOrderSchema>["body"];
 
-// *======================= POST =======================*
+// * *======================= POST =======================*
 export const createManyOrders: RequestHandler = async (req, res) => {
   try {
     const payloads: Order[] = req.body;
@@ -68,12 +68,12 @@ export const createOrder: RequestHandler = async (req, res) => {
       },
     });
 
-    // * Buat map untuk mempermudah pengecekan harga
+    // * * Buat map untuk mempermudah pengecekan harga
     const carServicePriceMap = new Map(
       carServicesData.map((service) => [service.id, service.price])
     );
 
-    // * Validasi car services yang tidak ditemukan
+    // * * Validasi car services yang tidak ditemukan
     const missingServices = carServices.filter(
       (service) => !carServicePriceMap.has(service.carServiceId)
     );
@@ -86,7 +86,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       );
     }
 
-    // * Hitung total harga order tanpa quantity (diasumsikan 1 per service)
+    // * * Hitung total harga order tanpa quantity (diasumsikan 1 per service)
     const orderTotalPrice = carServices.reduce((sum, service) => {
       const price = carServicePriceMap.get(service.carServiceId)!;
       return sum.add(price);
@@ -101,11 +101,11 @@ export const createOrder: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Payment method not found", 404);
     }
 
-    // * Fee admin saat ini 0
+    // * * Fee admin saat ini 0
     const adminFee = new Prisma.Decimal(0);
     const paymentMethodFee = new Prisma.Decimal(paymentMethod.fee);
 
-    // * Hitung total harga transaksi
+    // * * Hitung total harga transaksi
     const transactionTotalPrice = orderTotalPrice
       .add(adminFee)
       .add(paymentMethodFee);
@@ -129,7 +129,7 @@ export const createOrder: RequestHandler = async (req, res) => {
               workStatus: "INSPECTION",
               orderStatus: "DRAFT",
               note: note ?? "",
-              totalPrice: orderTotalPrice,
+              subtotalPrice: orderTotalPrice,
               carServices: {
                 connect: carServicesData.map(({ id }) => ({ id })),
               },
@@ -145,7 +145,7 @@ export const createOrder: RequestHandler = async (req, res) => {
             externalId: createTransaction.id,
             payerEmail: user.email,
             currency: "IDR",
-            invoiceDuration: "172800", // * 48 jam
+            invoiceDuration: "172800", // * * 48 jam
             reminderTime: 1,
             paymentMethods: [paymentMethod.name],
             items: carServicesData.map((carserviceData) => ({
@@ -156,9 +156,9 @@ export const createOrder: RequestHandler = async (req, res) => {
               referenceId: carserviceData.id,
             })),
             successRedirectUrl:
-              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors",
+              "https:// *familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors",
             failureRedirectUrl:
-              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors",
+              "https:// *familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors",
             shouldSendEmail: true,
           },
         });
@@ -203,7 +203,7 @@ export const createOrder: RequestHandler = async (req, res) => {
   }
 };
 
-// *======================= GET =======================*
+// * *======================= GET =======================*
 export const getOrders: RequestHandler = async (req, res) => {
   try {
     const {
@@ -320,12 +320,12 @@ export const searchOrders: RequestHandler = async (req, res) => {
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const orders = await prisma.order.findMany({
-      // where: { name: { contains: name } },
+      // * where: { name: { contains: name } },
       skip: offset,
       take: +limit,
     });
     const totalOrders = await prisma.order.count({
-      // where: { name: { contains: name } },
+      // * where: { name: { contains: name } },
     });
 
     createPaginatedResponse(
@@ -340,7 +340,7 @@ export const searchOrders: RequestHandler = async (req, res) => {
   }
 };
 
-// *======================= PATCH =======================*
+// * *======================= PATCH =======================*
 export const updateOrder: RequestHandler = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -372,11 +372,11 @@ export const cancelOrder: RequestHandler = async (req, res) => {
     const { orderId } = req.params;
     const { id: userId } = req.user!;
 
-    // Cari order beserta transaksinya
+    // * Cari order beserta transaksinya
     const order = await prisma.order.findUnique({
       where: {
         id: orderId,
-        userId: userId, // Memastikan order milik user yang sedang login
+        userId: userId, // * Memastikan order milik user yang sedang login
       },
       include: {
         transaction: true,
@@ -387,7 +387,7 @@ export const cancelOrder: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Order not found", 404);
     }
 
-    // Cek apakah order sudah dalam status yang tidak bisa dibatalkan
+    // * Cek apakah order sudah dalam status yang tidak bisa dibatalkan
     if (
       order.orderStatus === "COMPLETED" ||
       order.orderStatus === "CANCELLED"
@@ -403,9 +403,9 @@ export const cancelOrder: RequestHandler = async (req, res) => {
       return createErrorResponse(res, `Invoice id not found`, 404);
     }
 
-    // Mulai proses pembatalan dengan transaction untuk konsistensi data
+    // * Mulai proses pembatalan dengan transaction untuk konsistensi data
     const result = await prisma.$transaction(async (tx) => {
-      // Update status order
+      // * Update status order
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: {
@@ -414,10 +414,10 @@ export const cancelOrder: RequestHandler = async (req, res) => {
         },
       });
 
-      // Jika ada transaksi terkait
+      // * Jika ada transaksi terkait
       if (order.transaction) {
         if (order.transaction.paymentStatus === "PENDING") {
-          // Jika pembayaran masih pending, cukup update status
+          // * Jika pembayaran masih pending, cukup update status
           await tx.transaction.update({
             where: { id: order.transaction.id },
             data: {
@@ -426,7 +426,7 @@ export const cancelOrder: RequestHandler = async (req, res) => {
           });
         } else if (order.transaction.paymentStatus === "SUCCESS") {
           try {
-            // Lakukan refund melalui Xendit
+            // * Lakukan refund melalui Xendit
             await xenditRefundClient.createRefund({
               data: {
                 invoiceId: order.transaction.invoiceId ?? undefined,
@@ -436,7 +436,7 @@ export const cancelOrder: RequestHandler = async (req, res) => {
               },
             });
 
-            // Update status transaksi
+            // * Update status transaksi
             await tx.transaction.update({
               where: { id: order.transaction.id },
               data: {
@@ -462,7 +462,7 @@ export const cancelOrder: RequestHandler = async (req, res) => {
   }
 };
 
-// *======================= DELETE =======================*
+// * *======================= DELETE =======================*
 export const deleteOrder: RequestHandler = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -501,7 +501,7 @@ export const deleteAllOrder: RequestHandler = async (req, res) => {
   }
 };
 
-// * Current user operations
+// * * Current user operations
 export const getCurrentUserOrders: RequestHandler = async (req, res) => {
   try {
     const { id } = req.user!;

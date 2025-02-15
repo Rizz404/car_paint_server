@@ -10,7 +10,7 @@ import {
   updateETicket,
 } from "@/controller/e-ticket-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { validateBody } from "@/middlewares/validate-request";
+import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createETicketSchema,
@@ -27,7 +27,7 @@ eTicketRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createETicketSchema),
+    validateRequest(createETicketSchema),
     createETicket
   )
   .delete(
@@ -43,7 +43,7 @@ eTicketRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createManyETicketSchema),
+    validateRequest(createManyETicketSchema),
     createManyETickets
   );
 
@@ -54,7 +54,7 @@ eTicketRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(updateETicketSchema),
+    validateRequest(updateETicketSchema),
     updateETicket
   )
   .delete(

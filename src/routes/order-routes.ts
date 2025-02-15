@@ -10,8 +10,8 @@ import {
   getCurrentUserOrders,
 } from "@/controller/order-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
-import { validateBody } from "@/middlewares/validate-request";
+import { uploadSingle } from "@/playground/upload-file";
+import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createOrderSchema,
@@ -25,7 +25,7 @@ const orderRouter = express.Router();
 orderRouter
   .route("/")
   .get(getOrders)
-  .post(authMiddleware(), validateBody(createOrderSchema), createOrder)
+  .post(authMiddleware(), validateRequest(createOrderSchema), createOrder)
   .delete(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
@@ -39,7 +39,7 @@ orderRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createManyOrderSchema),
+    validateRequest(createManyOrderSchema),
     createManyOrders
   );
 
@@ -50,7 +50,7 @@ orderRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(updateOrderSchema),
+    validateRequest(updateOrderSchema),
     updateOrder
   )
   .delete(
