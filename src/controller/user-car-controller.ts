@@ -48,7 +48,32 @@ export const createUserCar: RequestHandler = async (req, res) => {
 
     const carImageUrls =
       carImages
-        ?.map((carImage) => carImage.cloudinary?.url)
+        ?.map((carImage) => carImage.cloudinary?.secure_url)
+        .filter((url): url is string => typeof url === "string") || [];
+
+    const createdUserCar = await prisma.userCar.create({
+      data: {
+        ...payload,
+        userId: id,
+        carImages: carImageUrls,
+      },
+    });
+
+    return createSuccessResponse(res, createdUserCar, "Created", 201);
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const createUserCarWithImagekit: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.user!;
+    const payload: UserCar = req.body;
+    const carImages = req.files as Express.Multer.File[];
+
+    const carImageUrls =
+      carImages
+        ?.map((carImage) => carImage.imagekit?.url)
         .filter((url): url is string => typeof url === "string") || [];
 
     const createdUserCar = await prisma.userCar.create({
@@ -318,7 +343,46 @@ export const addUserCarImage: RequestHandler = async (req, res) => {
 
     const carImageUrls =
       carImages
-        ?.map((carImage) => carImage.cloudinary?.url)
+        ?.map((carImage) => carImage.cloudinary?.secure_url)
+        .filter((url): url is string => typeof url === "string") || [];
+
+    const userCar = await prisma.userCar.findUnique({
+      where: {
+        id: userCarId,
+        userId: id,
+      },
+    });
+
+    if (!userCar) {
+      return createErrorResponse(res, "User Car Not Found", 404);
+    }
+
+    const existingCarImages = userCar.carImages || [];
+
+    const updatedCarImages = [...existingCarImages, ...carImageUrls];
+
+    const updatedUserCar = await prisma.userCar.update({
+      where: { id: userCarId },
+      data: {
+        carImages: updatedCarImages,
+      },
+    });
+
+    return createSuccessResponse(res, updatedUserCar, "Car Image Added");
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const addUserCarImageWithImagekit: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.user!;
+    const { userCarId } = req.params;
+    const carImages = req.files as Express.Multer.File[];
+
+    const carImageUrls =
+      carImages
+        ?.map((carImage) => carImage.imagekit?.url)
         .filter((url): url is string => typeof url === "string") || [];
 
     const userCar = await prisma.userCar.findUnique({

@@ -22,6 +22,9 @@ class EnvironmentLoader {
       JWT_ACCESS_TOKEN: z.string().optional(),
       XENDIT_SECRET_KEY: z.string().optional(),
       XENDIT_CALLBACK_TOKEN: z.string().optional(),
+      IMAGEKIT_PUBLIC_KEY: z.string().optional(),
+      IMAGEKIT_PRIVATE_KEY: z.string().optional(),
+      IMAGEKIT_URL_ENDPOINT: z.string().optional(),
     });
   }
 

@@ -1,8 +1,15 @@
 import { z } from "zod";
 
 // File type validation
-const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_FILE_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+] as const;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Single file validation schema
 export const fileSchema = z.object({
