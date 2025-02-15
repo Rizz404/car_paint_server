@@ -13,17 +13,17 @@ import {
   createUserCarWithImagekit,
 } from "@/controller/user-car-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadArray, uploadSingle } from "@/middlewares/upload-file";
-import { validateBody, validateRequest } from "@/middlewares/validate-request";
+import { validateRequest } from "@/middlewares/validate-request";
 import {
   parseFiles,
   uploadFilesToCloudinary,
-} from "@/playground/upload-file-cloudinary";
-import { uploadFilesToImageKit } from "@/playground/upload-file-imagekit";
+  uploadFilesToImageKit,
+} from "@/middlewares/upload-file";
 import {
   createUserCarSchema,
   createManyUserCarSchema,
   updateUserCarSchema,
+  addUserCarImageSchema,
 } from "@/validation/user-car-validation";
 import express from "express";
 
@@ -70,7 +70,7 @@ userCarRouter
   .post(
     authMiddleware(),
     parseFiles.array("carImages", 5),
-    validateRequest(createUserCarSchema),
+    validateRequest(addUserCarImageSchema),
     uploadFilesToCloudinary("car-images"),
     addUserCarImage
   );
@@ -80,7 +80,7 @@ userCarRouter
   .post(
     authMiddleware(),
     parseFiles.array("carImages", 5),
-    validateRequest(createUserCarSchema),
+    validateRequest(addUserCarImageSchema),
     uploadFilesToImageKit("car-images"),
     addUserCarImageWithImagekit
   );
@@ -88,7 +88,7 @@ userCarRouter
 userCarRouter
   .route("/:userCarId")
   .get(authMiddleware(), getUserCarById)
-  .patch(authMiddleware(), validateBody(updateUserCarSchema), updateUserCar)
+  .patch(authMiddleware(), validateRequest(updateUserCarSchema), updateUserCar)
   .delete(authMiddleware(), deleteUserCar);
 
 export default userCarRouter;

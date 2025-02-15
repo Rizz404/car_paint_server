@@ -10,8 +10,8 @@ import {
   getPaymentMethodsFromXendit,
 } from "@/controller/payment-method-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/middlewares/upload-file";
-import { validateBody } from "@/middlewares/validate-request";
+import { uploadSingle } from "@/playground/upload-file";
+import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createPaymentMethodSchema,
@@ -28,7 +28,7 @@ paymentMethodRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createPaymentMethodSchema),
+    validateRequest(createPaymentMethodSchema),
     createPaymentMethod
   )
   .delete(
@@ -42,7 +42,7 @@ paymentMethodRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createManyPaymentMethodSchema),
+    validateRequest(createManyPaymentMethodSchema),
     createManyPaymentMethods
   );
 
@@ -55,7 +55,7 @@ paymentMethodRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(updatePaymentMethodSchema),
+    validateRequest(updatePaymentMethodSchema),
     updatePaymentMethod
   )
   .delete(

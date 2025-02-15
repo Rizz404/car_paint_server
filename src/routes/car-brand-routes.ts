@@ -15,11 +15,9 @@ import {
   searchCarBrands,
   updateCarBrand,
 } from "@/controller/car-brand-controller";
-import {
-  validateFormWithFile,
-  validateFormWithMultipleFiles,
-} from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
+import { validateRequest } from "@/middlewares/validate-request";
+import { uploadFilesToCloudinary, parseFiles } from "@/middlewares/upload-file";
 
 const carBrandRouter = express.Router();
 
@@ -29,7 +27,9 @@ carBrandRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateFormWithFile(createCarBrandSchema, "logo", "car-brands"),
+    parseFiles.single("logo"),
+    validateRequest(createCarBrandSchema),
+    uploadFilesToCloudinary("car-brand"),
     createCarBrand
   )
   .delete(
@@ -43,12 +43,6 @@ carBrandRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateFormWithMultipleFiles(
-      createManyCarBrandSchema,
-      "logo",
-      10,
-      "car-brands"
-    ),
     createManyCarBrands
   );
 
@@ -60,7 +54,9 @@ carBrandRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateFormWithFile(updateCarBrandSchema, "logo", "car-brands"),
+    parseFiles.single("logo"),
+    validateRequest(updateCarBrandSchema),
+    uploadFilesToCloudinary("car-brand"),
     updateCarBrand
   )
   .delete(

@@ -1,18 +1,7 @@
-import { UploadApiResponse } from "cloudinary";
 import { NextFunction, Request, Response } from "express";
 import multer, { MulterError } from "multer";
-import cloudinary from "@/configs/cloudinary";
 import { createErrorResponse } from "@/types/api-response";
-
-declare global {
-  namespace Express {
-    namespace Multer {
-      interface File {
-        cloudinary?: UploadApiResponse;
-      }
-    }
-  }
-}
+import { imagekit } from "@/configs/imagekit";
 
 const ALLOWED_MIME_TYPES = [
   "image/png",
@@ -31,7 +20,7 @@ const createMulterUpload = (maxCount: number) => {
     storage,
     limits: {
       fileSize: MAX_FILE_SIZE,
-      files: maxCount, // Add explicit files limit
+      files: maxCount,
     },
     fileFilter: (req, file, cb) => {
       if (!file.mimetype) {
@@ -52,31 +41,32 @@ const createMulterUpload = (maxCount: number) => {
   });
 };
 
-const uploadToCloudinary = async (
+const uploadToImageKit = async (
   buffer: Buffer,
   folder: string
-): Promise<UploadApiResponse> => {
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        public_id: `${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        transformation: [
-          { width: 800, height: 800, crop: "limit" },
-          { quality: "auto", fetch_format: "auto" },
-        ],
-      },
-      (error, result) => {
-        if (error) return reject(error);
-        if (!result) return reject(new Error("Upload failed"));
-        resolve(result);
-      }
-    );
-    uploadStream.end(buffer);
-  });
+): Promise<any> => {
+  try {
+    const result = await imagekit.upload({
+      file: buffer.toString("base64"),
+      fileName: `${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      folder,
+      useUniqueFileName: false,
+    });
+
+    return {
+      url: result.url,
+      fileId: result.fileId,
+      width: result.width,
+      height: result.height,
+      size: result.size,
+      fileType: result.fileType,
+    };
+  } catch (error) {
+    throw new Error("Image upload failed");
+  }
 };
 
-export const uploadFilesToCloudinary = (folder: string) => {
+export const uploadFilesToImageKit = (folder: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     const files = req.files as Express.Multer.File[];
     if (!files || !Array.isArray(files) || files.length === 0) {
@@ -86,7 +76,7 @@ export const uploadFilesToCloudinary = (folder: string) => {
     try {
       await Promise.all(
         files.map(async (file) => {
-          file.cloudinary = await uploadToCloudinary(file.buffer, folder);
+          file.imagekit = await uploadToImageKit(file.buffer, folder);
         })
       );
       next();
@@ -98,7 +88,6 @@ export const uploadFilesToCloudinary = (folder: string) => {
 
 export const handleFileUpload = (fieldName: string, maxCount: number = 1) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    // Create a new multer instance with the specific maxCount
     const multerUpload = createMulterUpload(maxCount);
     const upload = multerUpload.array(fieldName, maxCount);
 

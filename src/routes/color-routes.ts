@@ -9,7 +9,7 @@ import {
   updateColor,
 } from "@/controller/color-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { validateBody } from "@/middlewares/validate-request";
+import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createColorSchema,
@@ -26,7 +26,7 @@ colorRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createColorSchema),
+    validateRequest(createColorSchema),
     createColor
   )
   .delete(
@@ -40,7 +40,7 @@ colorRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createManyColorSchema),
+    validateRequest(createManyColorSchema),
     createManyColors
   );
 
@@ -51,7 +51,7 @@ colorRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(updateColorSchema),
+    validateRequest(updateColorSchema),
     updateColor
   )
   .delete(

@@ -10,7 +10,7 @@ import {
   updateCarModel,
 } from "@/controller/car-model-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { validateBody } from "@/middlewares/validate-request";
+import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createCarModelSchema,
@@ -27,7 +27,7 @@ carModelRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createCarModelSchema),
+    validateRequest(createCarModelSchema),
     createCarModel
   )
   .delete(
@@ -43,7 +43,7 @@ carModelRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(createManyCarModelSchema),
+    validateRequest(createManyCarModelSchema),
     createManyCarModels
   );
 
@@ -55,7 +55,7 @@ carModelRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateBody(updateCarModelSchema),
+    validateRequest(updateCarModelSchema),
     updateCarModel
   )
   .delete(

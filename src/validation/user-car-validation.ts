@@ -12,22 +12,15 @@ export const createUserCarSchema = z.object({
 });
 
 export const updateUserCarSchema = z.object({
-  body: z.object({
-    carModelYearColorId: z.string().optional(),
-    licensePlate: z.string().optional(),
-  }),
-  files: filesArraySchema.optional(),
+  body: createUserCarSchema.omit({ files: true }).shape.body.partial(),
 });
 
 export const createManyUserCarSchema = z.object({
   body: z
-    .array(
-      z.object({
-        carModelYearColorId: z.string({
-          required_error: "Car Model Year Color ID is required",
-        }),
-        licensePlate: z.string({ required_error: "License plate is required" }),
-      })
-    )
+    .array(createUserCarSchema.omit({ files: true }).shape.body)
     .min(1, "At least one user car is required"),
+});
+
+export const addUserCarImageSchema = z.object({
+  files: filesArraySchema,
 });

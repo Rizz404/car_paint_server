@@ -1,3 +1,4 @@
+import { fileSchema } from "@/utils/file-vallidation";
 import { Role } from "@prisma/client";
 import { z } from "zod";
 
@@ -12,9 +13,9 @@ export const createUserSchema = z.object({
     password: z
       .string({ required_error: "Password is required" })
       .min(6, "Password must be at least 6 characters"),
-    profileImage: z.string().optional(),
     role: z.nativeEnum(Role).optional().default(Role.USER),
   }),
+  file: fileSchema.optional(),
 });
 
 export const updateUserSchema = z.object({
@@ -23,7 +24,11 @@ export const updateUserSchema = z.object({
 
 export const createManyUserSchema = z.object({
   body: z
-    .array(createUserSchema.shape.body)
+    .array(
+      createUserSchema
+        .omit({ file: true })
+        .shape.body.extend({ profileImage: z.string().optional() })
+    )
     .min(1, "At least one user is required"),
 });
 
@@ -45,8 +50,8 @@ export const updateCurrentUserSchema = z.object({
     address: z.string().optional(),
     longitude: z.coerce.number().min(-180).max(180).optional(),
     latitude: z.coerce.number().min(-90).max(90).optional(),
-    profileImage: z.string().url().optional(),
   }),
+  file: fileSchema.optional(),
 });
 
 export const updateCurrentUserPasswordSchema = z.object({

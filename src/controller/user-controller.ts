@@ -54,6 +54,7 @@ export const createManyUsers: RequestHandler = async (req, res) => {
 export const createUser: RequestHandler = async (req, res) => {
   try {
     const payload: User = req.body;
+    const profileImage = req.file as Express.Multer.File;
 
     const existingUser = await prisma.user.findFirst({
       where: {
@@ -71,7 +72,8 @@ export const createUser: RequestHandler = async (req, res) => {
     const createdUser = await prisma.user.create({
       data: {
         ...payload,
-        profileImage: faker.image.avatar(),
+        profileImage:
+          profileImage.cloudinary?.secure_url ?? faker.image.avatar(),
         password: hashedPassword,
         userProfile: {},
       },
