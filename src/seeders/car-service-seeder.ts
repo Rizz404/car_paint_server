@@ -26,9 +26,16 @@ const generateCarService = (): Prisma.CarServiceCreateManyInput => ({
   price: generateCarServicePrice(),
 });
 
-export const seedCarServices = async (prisma: PrismaClient, count = 25) => {
+export const seedCarServices = async (
+  prisma: PrismaClient,
+  count = 25,
+  deleteFirst = true
+) => {
   console.log("🌱 Seeding CarServices...");
-  await prisma.carService.deleteMany();
+
+  if (deleteFirst) {
+    await prisma.carService.deleteMany();
+  }
 
   const data = Array.from({ length: count }, () => generateCarService());
 

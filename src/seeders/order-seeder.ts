@@ -43,9 +43,15 @@ const generateOrder = (
   subtotalPrice: generateOrderTotalPrice(),
 });
 
-export const seedOrders = async (prisma: PrismaClient, count = 25) => {
+export const seedOrders = async (
+  prisma: PrismaClient,
+  count = 25,
+  deleteFirst = true
+) => {
   console.log("🌱 Seeding Orders...");
-  await prisma.order.deleteMany();
+  if (deleteFirst) {
+    await prisma.order.deleteMany();
+  }
   const users = await prisma.user.findMany({ select: { id: true } });
   const userCars = await prisma.userCar.findMany({ select: { id: true } });
   const workshops = await prisma.workshop.findMany({ select: { id: true } });

@@ -7,9 +7,15 @@ const generateCarBrand = (): Prisma.CarBrandCreateManyInput => ({
   country: faker.location.country(),
 });
 
-export const seedCarBrands = async (prisma: PrismaClient, count = 25) => {
+export const seedCarBrands = async (
+  prisma: PrismaClient,
+  count = 25,
+  deleteFirst = true
+) => {
   console.log("🌱 Seeding CarBrands...");
-  await prisma.carBrand.deleteMany();
+  if (deleteFirst) {
+    await prisma.carBrand.deleteMany();
+  }
   const data = Array.from({ length: count }, generateCarBrand);
   const result = await prisma.carBrand.createMany({
     data,

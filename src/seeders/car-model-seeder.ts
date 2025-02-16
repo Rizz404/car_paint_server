@@ -10,10 +10,13 @@ const generateCarModel = (
 
 export const seedCarModels = async (
   prisma: PrismaClient,
-  modelsPerBrand = 2
+  modelsPerBrand = 2,
+  deleteFirst = true
 ) => {
   console.log("🌱 Seeding CarModels...");
-  await prisma.carModel.deleteMany();
+  if (deleteFirst) {
+    await prisma.carModel.deleteMany();
+  }
   const carBrands = await prisma.carBrand.findMany({ select: { id: true } });
   if (!carBrands.length) {
     console.warn("⚠️ No CarBrands found. Skipping CarModels seeding.");

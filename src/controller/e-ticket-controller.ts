@@ -73,6 +73,31 @@ export const getETickets: RequestHandler = async (req, res) => {
     );
 
     const eTickets = await prisma.eTicket.findMany({
+      include: {
+        order: {
+          select: {
+            workshop: { select: { name: true } },
+            userCar: {
+              select: {
+                carModelYearColor: {
+                  select: {
+                    carModelYear: {
+                      select: {
+                        carModel: {
+                          select: {
+                            name: true,
+                            carBrand: { select: { name: true } },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       skip: offset,
       take: +limit,
       orderBy: { [field]: direction },
@@ -95,6 +120,31 @@ export const getETicketById: RequestHandler = async (req, res) => {
   try {
     const { eTicketId } = req.params;
     const eTicket = await prisma.eTicket.findUnique({
+      include: {
+        order: {
+          select: {
+            workshop: { select: { name: true } },
+            userCar: {
+              select: {
+                carModelYearColor: {
+                  select: {
+                    carModelYear: {
+                      select: {
+                        carModel: {
+                          select: {
+                            name: true,
+                            carBrand: { select: { name: true } },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       where: { id: eTicketId },
     });
 
@@ -124,6 +174,31 @@ export const searchETickets: RequestHandler = async (req, res) => {
 
     const eTickets = await prisma.eTicket.findMany({
       // where: { name: { contains: name } },
+      include: {
+        order: {
+          select: {
+            workshop: { select: { name: true } },
+            userCar: {
+              select: {
+                carModelYearColor: {
+                  select: {
+                    carModelYear: {
+                      select: {
+                        carModel: {
+                          select: {
+                            name: true,
+                            carBrand: { select: { name: true } },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       skip: offset,
       take: +limit,
     });
@@ -233,6 +308,31 @@ export const getCurrentUserETickets: RequestHandler = async (req, res) => {
 
     const eTickets = await prisma.eTicket.findMany({
       where: { userId: id },
+      include: {
+        order: {
+          select: {
+            workshop: { select: { name: true } },
+            userCar: {
+              select: {
+                carModelYearColor: {
+                  select: {
+                    carModelYear: {
+                      select: {
+                        carModel: {
+                          select: {
+                            name: true,
+                            carBrand: { select: { name: true } },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       skip: offset,
       take: +limit,
       orderBy: { [field]: direction },

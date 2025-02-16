@@ -10,10 +10,13 @@ const generateCarModelYear = (
 
 export const seedCarModelYears = async (
   prisma: PrismaClient,
-  yearsPerModel = 2
+  yearsPerModel = 2,
+  deleteFirst = true
 ) => {
   console.log("🌱 Seeding CarModelYears...");
-  await prisma.carModelYear.deleteMany();
+  if (deleteFirst) {
+    await prisma.carModelYear.deleteMany();
+  }
   const carModels = await prisma.carModel.findMany({ select: { id: true } });
   if (!carModels.length) {
     console.warn("⚠️ No CarModels found. Skipping CarModelYears seeding.");

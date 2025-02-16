@@ -33,29 +33,32 @@ const generateUserProfile = (
 
 export const seedUsersWithProfiles = async (
   prisma: PrismaClient,
-  count = 25
+  count = 25,
+  deleteFirst = true
 ) => {
   console.log("🌱 Seeding Users with UserProfiles using createMany...");
 
-  // Delete profiles except for preserved users
-  await prisma.userProfile.deleteMany({
-    where: {
-      user: {
+  if (deleteFirst) {
+    // Delete profiles except for preserved users
+    await prisma.userProfile.deleteMany({
+      where: {
+        user: {
+          username: {
+            notIn: PRESERVED_USERNAMES,
+          },
+        },
+      },
+    });
+
+    // Delete users except for preserved usernames
+    await prisma.user.deleteMany({
+      where: {
         username: {
           notIn: PRESERVED_USERNAMES,
         },
       },
-    },
-  });
-
-  // Delete users except for preserved usernames
-  await prisma.user.deleteMany({
-    where: {
-      username: {
-        notIn: PRESERVED_USERNAMES,
-      },
-    },
-  });
+    });
+  }
 
   const userDataArray: Prisma.UserCreateManyInput[] = [];
   for (let i = 0; i < count; i++) {

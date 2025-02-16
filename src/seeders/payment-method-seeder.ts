@@ -22,9 +22,15 @@ const generatePaymentMethod = (): Prisma.PaymentMethodCreateManyInput => ({
   fee: generatePaymentMethodFee(),
 });
 
-export const seedPaymentMethods = async (prisma: PrismaClient, count = 25) => {
+export const seedPaymentMethods = async (
+  prisma: PrismaClient,
+  count = 25,
+  deleteFirst = true
+) => {
   console.log("🌱 Seeding PaymentMethods...");
-  await prisma.paymentMethod.deleteMany();
+  if (deleteFirst) {
+    await prisma.paymentMethod.deleteMany();
+  }
   const data = Array.from({ length: count }, generatePaymentMethod);
   const result = await prisma.paymentMethod.createMany({
     data,
