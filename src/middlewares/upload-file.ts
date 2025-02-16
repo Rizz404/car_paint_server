@@ -53,15 +53,15 @@ const createMulterConfig = () => {
         return;
       }
 
-      if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-        cb(null, true);
-      } else {
-        cb(
-          new Error(
-            `Invalid file type. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`
-          )
-        );
-      }
+      // if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      //   cb(null, true);
+      // } else {
+      //   cb(
+      //     new Error(
+      //       `Invalid file type. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`
+      //     )
+      //   );
+      // }
     },
   };
 };

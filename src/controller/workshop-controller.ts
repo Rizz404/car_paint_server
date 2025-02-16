@@ -246,12 +246,12 @@ export const getCurrentUserNearestWorkshops: RequestHandler = async (
         id: string;
         name: string;
         email: string;
-        phoneNumber: string;
+        phone_number: string;
         address: string;
         latitude: string;
         longitude: string;
-        createdAt: Date;
-        updatedAt: Date;
+        created_at: Date;
+        updated_at: Date;
         distance: string;
       }>
     >`
@@ -269,7 +269,7 @@ export const getCurrentUserNearestWorkshops: RequestHandler = async (
           WHEN ${maxDistance ? Number(maxDistance) : null}::decimal IS NOT NULL THEN
             calculate_distance(
               ${Number(latitude)}, 
-              ${Number(longitude)}, 
+              ${Number(longitude)},
               w.latitude::decimal, 
               w.longitude::decimal
             ) <= ${maxDistance ? Number(maxDistance) : null}::decimal
@@ -298,10 +298,17 @@ export const getCurrentUserNearestWorkshops: RequestHandler = async (
         END
     `;
 
-    const formattedWorkshops = workshops.map((workshop) => ({
-      ...workshop,
-      distance: formatDistanceKmToM(workshop.distance),
-    }));
+    const formattedWorkshops = workshops.map((workshop) => {
+      const { phone_number, created_at, updated_at, ...rest } = workshop;
+
+      return {
+        ...rest,
+        phoneNumber: phone_number,
+        createdAt: created_at,
+        updatedAt: updated_at,
+        distance: formatDistanceKmToM(workshop.distance),
+      };
+    });
 
     createPaginatedResponse(
       res,
