@@ -8,6 +8,10 @@ import {
   searchOrders,
   updateOrder,
   getCurrentUserOrders,
+  createOrderMobile,
+  cancelOrder,
+  cancelCurrentUserOrder,
+  createOrderWithPaymentRequest,
 } from "@/controller/order-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/playground/upload-file";
@@ -32,7 +36,10 @@ orderRouter
     deleteAllOrder
   );
 
-orderRouter.route("/user").get(authMiddleware(), getCurrentUserOrders);
+orderRouter
+  .route("/payment-request")
+  .post(authMiddleware(), createOrderWithPaymentRequest);
+orderRouter.route("/mobile").post(authMiddleware(), createOrderMobile);
 
 orderRouter
   .route("/multiple")
@@ -44,6 +51,17 @@ orderRouter
   );
 
 orderRouter.route("/search").get(searchOrders);
+
+orderRouter
+  .route("/cancel/:orderId")
+  .patch(authMiddleware(), validateRole(["ADMIN", "SUPER_ADMIN"]), cancelOrder);
+
+orderRouter.route("/user").get(authMiddleware(), getCurrentUserOrders);
+
+orderRouter
+  .route("/user/cancel/:orderId")
+  .patch(authMiddleware(), cancelCurrentUserOrder);
+
 orderRouter
   .route("/:orderId")
   .get(getOrderById)
