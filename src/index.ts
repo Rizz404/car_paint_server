@@ -21,6 +21,7 @@ import {
 import { metricsMiddleware } from "./middlewares/metrics";
 import connectDb from "./utils/connect-db";
 import env, { isDevelopment, reloadEnv } from "./configs/environment";
+import figlet from "figlet";
 
 const PORT = env.PORT || 5000;
 const app = express();
@@ -66,6 +67,34 @@ app.use(
     stream: { write: (message) => logger.info(message.trim()) },
   })
 );
+
+app.get("/", async (req, res) => {
+  figlet("Welcome to the API!", (err, data) => {
+    if (err) {
+      return res.status(500).send("Error generating ASCII art");
+    }
+    res.setHeader("Content-Type", "text/plain");
+    res.send(
+      `${data}\n\n🔥 This is the backend API. Please use the routes below:\n API: /api/v1`
+    );
+  });
+});
+
+app.use("/api/v1", (req, res, next) => {
+  if (req.path === "/") {
+    figlet("API v1", (err, data) => {
+      if (err) {
+        return res.status(500).send("Error generating ASCII art");
+      }
+      res.setHeader("Content-Type", "text/plain");
+      res.send(
+        `${data}\n\n📌 Available routes:\n/auth\n/users\n/car-brands\n/car-models\n/car-services\n/colors\n/car-model-years\n/car-model-year-colors\n/user-cars\n/workshops\n/payment-methods\n/orders\n/transactions\n/histories\n/e-tickets`
+      );
+    });
+  } else {
+    next();
+  }
+});
 
 // * METRICS ENDPOINTS
 app.get("/metrics", async (req: Request, res: Response) => {

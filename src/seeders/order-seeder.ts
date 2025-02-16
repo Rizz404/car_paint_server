@@ -40,7 +40,7 @@ const generateOrder = (
   ]) as Prisma.OrderCreateInput["workStatus"],
   orderStatus: "DRAFT",
   note: faker.lorem.sentence(),
-  totalPrice: generateOrderTotalPrice(),
+  subtotalPrice: generateOrderTotalPrice(),
 });
 
 export const seedOrders = async (prisma: PrismaClient, count = 25) => {
