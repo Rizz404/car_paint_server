@@ -73,6 +73,7 @@ export const getETickets: RequestHandler = async (req, res) => {
     );
 
     const eTickets = await prisma.eTicket.findMany({
+      include: { order: { select: { workshop: { select: { name: true } } } } },
       skip: offset,
       take: +limit,
       orderBy: { [field]: direction },

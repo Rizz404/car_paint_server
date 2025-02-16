@@ -30,6 +30,8 @@ const ALLOWED_MIME_TYPES = [
   "image/gif",
   "image/webp",
   "image/svg+xml",
+  "image/pjpeg", // Progressive JPEG
+  "image/x-png", // Older PNG format
 ];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 

@@ -19,19 +19,19 @@ async function main() {
   try {
     console.log("🌱 Starting database seeding...");
 
-    await seedUsersWithProfiles(prisma);
-    await seedCarBrands(prisma);
-    await seedCarModels(prisma);
-    await seedWorkshops(prisma);
-    await seedCarServices(prisma);
-    await seedColors(prisma);
-    await seedCarModelYears(prisma);
-    await seedCarModelYearColors(prisma);
-    await seedUserCars(prisma);
-    await seedPaymentMethods(prisma);
-    await seedTransactions(prisma);
-    await seedOrders(prisma);
-    await seedETickets(prisma);
+    await seedUsersWithProfiles(prisma, undefined, false);
+    await seedCarBrands(prisma, undefined, false);
+    await seedCarModels(prisma, undefined, false);
+    await seedWorkshops(prisma, undefined, false);
+    await seedCarServices(prisma, undefined, false);
+    await seedColors(prisma, undefined, false);
+    await seedCarModelYears(prisma, undefined, false);
+    await seedCarModelYearColors(prisma, undefined, false);
+    await seedUserCars(prisma, undefined, false);
+    await seedPaymentMethods(prisma, undefined, false);
+    await seedTransactions(prisma, undefined, false);
+    await seedOrders(prisma, undefined, false);
+    await seedETickets(prisma, undefined, false);
 
     console.log("✅ Database seeding completed");
   } catch (error) {

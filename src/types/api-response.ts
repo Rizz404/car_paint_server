@@ -20,6 +20,8 @@ export interface ValidationError {
   field: string;
   message: string;
   code?: string;
+  affectedColumns?: string[];
+  target?: string;
 }
 
 export interface ApiErrorResponse {
@@ -120,33 +122,72 @@ export const createErrorResponse = (
   let validationErrors: ValidationError[] | undefined;
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    // Extract meta information if available
+    const meta = error.meta || {};
+    const affectedColumns =
+      "target" in meta
+        ? Array.isArray(meta.target)
+          ? (meta.target as string[])
+          : [meta.target as string]
+        : undefined;
+
+    // Get the model name if available
+    const modelName = (error.meta?.modelName as string) || "";
+
     // Handling known Prisma errors with specific error codes
     switch (error.code) {
-      case "P2000":
-        message = "The provided value is too long for the column";
+      case "P2000": {
+        const column = affectedColumns?.[0] || "Unknown column";
+        const length = meta.length ? ` (max: ${meta.length})` : "";
+        message = `The provided value is too long for column "${column}"${length}`;
         statusCode = 400;
         break;
-      case "P2001":
-        message = "The requested record was not found";
+      }
+      case "P2001": {
+        const where = meta.where
+          ? ` (filter: ${JSON.stringify(meta.where)})`
+          : "";
+        message = `Record in "${modelName}" not found${where}`;
         statusCode = 404;
         break;
-      case "P2002":
-        message = "Unique constraint failed";
+      }
+      case "P2002": {
+        const fields = affectedColumns?.join(", ") || "Unknown field";
+        message = `Unique constraint failed on field(s): ${fields}`;
         statusCode = 400;
         break;
-      case "P2003":
-        message = "Foreign key constraint failed";
+      }
+      case "P2003": {
+        const field = affectedColumns?.[0] || "Unknown field";
+        const foreignModel = meta.field_name
+          ? meta.field_name.toString().split("_").slice(0, -2).join("_")
+          : "related table";
+        message = `Foreign key constraint failed on field "${field}" (references "${foreignModel}")`;
         statusCode = 400;
         break;
-      case "P2025":
-        message = "The record to update or delete was not found";
+      }
+      case "P2025": {
+        const details = meta.cause ? `: ${meta.cause}` : "";
+        message = `Record to update or delete in "${modelName}" was not found${details}`;
         statusCode = 404;
         break;
+      }
       default:
-        message = "A database error occurred";
+        message = `Database error (${error.code}): ${error.message}`;
         statusCode = 500;
         break;
     }
+
+    // Create a validation error with the additional information
+    validationErrors = [
+      {
+        field: modelName || "database",
+        message,
+        code: error.code,
+        affectedColumns,
+        target: typeof meta.target === "string" ? meta.target : undefined,
+      },
+    ];
   } else if (error instanceof ZodError) {
     // Handling validation errors from Zod
     message = "Validation failed";
