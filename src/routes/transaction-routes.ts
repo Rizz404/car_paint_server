@@ -25,7 +25,11 @@ const transactionRouter = express.Router();
 
 transactionRouter
   .route("/")
-  .get(getTransactions)
+  .get(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    getTransactions
+  )
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
