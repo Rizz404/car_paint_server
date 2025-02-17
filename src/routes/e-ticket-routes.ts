@@ -23,7 +23,7 @@ const eTicketRouter = express.Router();
 
 eTicketRouter
   .route("/")
-  .get(getETickets)
+  .get(authMiddleware(), validateRole(["ADMIN", "SUPER_ADMIN"]), getETickets)
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),

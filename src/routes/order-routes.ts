@@ -28,7 +28,7 @@ const orderRouter = express.Router();
 
 orderRouter
   .route("/")
-  .get(getOrders)
+  .get(authMiddleware(), validateRole(["ADMIN", "SUPER_ADMIN"]), getOrders)
   .post(authMiddleware(), validateRequest(createOrderSchema), createOrder)
   .delete(
     authMiddleware(),
@@ -52,15 +52,15 @@ orderRouter
 
 orderRouter.route("/search").get(searchOrders);
 
-orderRouter
-  .route("/cancel/:orderId")
-  .patch(authMiddleware(), validateRole(["ADMIN", "SUPER_ADMIN"]), cancelOrder);
-
 orderRouter.route("/user").get(authMiddleware(), getCurrentUserOrders);
 
 orderRouter
   .route("/user/cancel/:orderId")
   .patch(authMiddleware(), cancelCurrentUserOrder);
+
+orderRouter
+  .route("/cancel/:orderId")
+  .patch(authMiddleware(), validateRole(["ADMIN", "SUPER_ADMIN"]), cancelOrder);
 
 orderRouter
   .route("/:orderId")
