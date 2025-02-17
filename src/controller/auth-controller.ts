@@ -4,7 +4,7 @@ import {
   createSuccessResponse,
 } from "@/types/api-response";
 import { RequestHandler } from "express";
-import bcrypt from "bcrypt";
+// import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { User } from "@prisma/client";
 import { faker } from "@faker-js/faker";
@@ -14,8 +14,8 @@ export const register: RequestHandler = async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // const salt = await bcrypt.genSalt();
+    // const hashedPassword = await bcrypt.hash(password, salt);
 
     const emailExist = await prisma.user.findUnique({
       where: {
@@ -40,7 +40,7 @@ export const register: RequestHandler = async (req, res) => {
       data: {
         username,
         email,
-        password: hashedPassword,
+        password,
         profileImage: faker.image.avatar(),
         userProfile: { create: {} },
       },
@@ -62,11 +62,11 @@ export const login: RequestHandler = async (req, res) => {
 
     if (!user) return createErrorResponse(res, "Credentials not match", 400);
 
-    const passwordMatch = await bcrypt.compare(password, user.password!);
+    // const passwordMatch = await bcrypt.compare(password, user.password!);
 
-    if (!passwordMatch) {
-      return createErrorResponse(res, "Password not match", 400);
-    }
+    // if (!passwordMatch) {
+    //   return createErrorResponse(res, "Password not match", 400);
+    // }
 
     const newAccessToken = jwt.sign(
       { userId: user.id },

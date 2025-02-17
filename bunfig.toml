@@ -1,0 +1,18 @@
+[install]
+# Gunakan registry npm default
+registry = "https://registry.npmjs.org"
+
+[build]
+# Opsi kompilasi untuk Node.js
+target = "node"
+minify = true
+
+[dev]
+# Port untuk development server
+port = 5000
+# Otomatis restart server saat file berubah
+hot = true
+
+[test]
+# Mode watch untuk testing
+watch = false

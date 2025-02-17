@@ -8,7 +8,7 @@ import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import { User, UserProfile } from "@prisma/client";
 import { RequestHandler } from "express";
-import bcrypt from "bcrypt";
+// import bcrypt from "bcrypt";
 import { faker } from "@faker-js/faker";
 import {
   deleteCloudinaryImage,
@@ -23,12 +23,12 @@ export const createManyUsers: RequestHandler = async (req, res) => {
 
     const usersToCreate = await Promise.all(
       payloads.map(async (payload) => {
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash(payload.password, salt);
+        // const salt = await bcrypt.genSalt();
+        // const hashedPassword = await bcrypt.hash(payload.password, salt);
 
         return {
           ...payload,
-          password: hashedPassword,
+          // password: hashedPassword,
           userProfile: {},
         };
       })
@@ -66,15 +66,15 @@ export const createUser: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "User already exist", 400);
     }
 
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(payload.password, salt);
+    // const salt = await bcrypt.genSalt();
+    // const hashedPassword = await bcrypt.hash(payload.password, salt);
 
     const createdUser = await prisma.user.create({
       data: {
         ...payload,
         profileImage:
           profileImage.cloudinary?.secure_url ?? faker.image.avatar(),
-        password: hashedPassword,
+        // password: hashedPassword,
         userProfile: {},
       },
     });
@@ -350,17 +350,20 @@ export const updateCurrentUserPassword: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Current user not found", 404);
     }
 
-    const match = await bcrypt.compare(currentPassword, currentUser.password);
+    // const match = await bcrypt.compare(currentPassword, currentUser.password);
 
-    if (!match) {
-      return createErrorResponse(res, "Password not match", 400);
-    }
+    // if (!match) {
+    //   return createErrorResponse(res, "Password not match", 400);
+    // }
 
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    // const salt = await bcrypt.genSalt();
+    // const hashedPassword = await bcrypt.hash(newPassword, salt);
 
     const updatedCurrentUser = await prisma.user.update({
-      data: { password: hashedPassword },
+      data: {
+        //  password: hashedPassword,
+        password: newPassword,
+      },
       where: { id },
     });
 
