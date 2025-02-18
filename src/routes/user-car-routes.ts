@@ -88,7 +88,13 @@ userCarRouter
 userCarRouter
   .route("/:userCarId")
   .get(authMiddleware(), getUserCarById)
-  .patch(authMiddleware(), validateRequest(updateUserCarSchema), updateUserCar)
+  .patch(
+    authMiddleware(),
+    parseFiles.array("carImages", 5),
+    validateRequest(updateUserCarSchema),
+    uploadFilesToCloudinary("car-images"),
+    updateUserCar
+  )
   .delete(authMiddleware(), deleteUserCar);
 
 export default userCarRouter;

@@ -704,6 +704,12 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
       201
     );
   } catch (error) {
+    console.error("❌ Create Order Error:", error);
+    console.error(
+      "❌ Error Details:",
+      // @ts-expect-error
+      error?.response || error?.rawResponse || error?.message
+    );
     return createErrorResponse(res, error, 500);
   }
 };
