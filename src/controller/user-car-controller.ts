@@ -248,8 +248,17 @@ export const updateUserCar: RequestHandler = async (req, res) => {
   try {
     const { id } = req.user!;
     const { userCarId } = req.params;
+    const { deleteImages, ...payload } = req.body;
 
-    const payload: Omit<UserCar, "carImages"> = req.body;
+    const carImages = req.files as Express.Multer.File[];
+    const addImages =
+      carImages
+        ?.map((carImage) => carImage.cloudinary?.secure_url)
+        .filter((url): url is string => typeof url === "string") || [];
+
+    if (deleteImages && !Array.isArray(deleteImages)) {
+      return createErrorResponse(res, "Invalid deleteImages format", 400);
+    }
 
     const userCar = await prisma.userCar.findUnique({
       where: {
@@ -259,12 +268,28 @@ export const updateUserCar: RequestHandler = async (req, res) => {
     });
 
     if (!userCar) {
-      return createErrorResponse(res, "User Car Not Found", 500);
+      return createErrorResponse(res, "User Car Not Found", 404);
+    }
+
+    let updatedImages = [...userCar.carImages];
+
+    if (deleteImages && deleteImages.length > 0) {
+      updatedImages = updatedImages.filter(
+        (img) => !deleteImages.includes(img)
+      );
+      await deleteCloudinaryImages(deleteImages);
+    }
+
+    if (addImages.length > 0) {
+      updatedImages = [...updatedImages, ...addImages];
     }
 
     const updatedUserCar = await prisma.userCar.update({
-      data: payload,
       where: { id: userCarId },
+      data: {
+        ...payload,
+        carImages: updatedImages,
+      },
     });
 
     return createSuccessResponse(res, updatedUserCar, "Updated");
