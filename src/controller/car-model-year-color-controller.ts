@@ -96,8 +96,20 @@ export const getCarModelYearColors: RequestHandler = async (req, res) => {
 
     const carModelYearColors = await prisma.carModelYearColor.findMany({
       include: {
-        carModelYear: { select: { year: true } },
-        color: { select: { name: true } },
+        carModelYear: {
+          select: {
+            id: true,
+            year: true,
+            carModel: {
+              select: {
+                id: true,
+                name: true,
+                carBrand: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+        color: { select: { id: true, name: true } },
       },
       skip: offset,
       take: +limit,
@@ -146,8 +158,20 @@ export const getCarModelYearColorsByCarModelYearId: RequestHandler = async (
     const carModelYearColors = await prisma.carModelYearColor.findMany({
       where: { carModelYearId }, // Filter berdasarkan carModelYearId
       include: {
-        carModelYear: { select: { year: true } },
-        color: { select: { name: true } },
+        carModelYear: {
+          select: {
+            id: true,
+            year: true,
+            carModel: {
+              select: {
+                id: true,
+                name: true,
+                carBrand: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+        color: { select: { id: true, name: true } },
       },
       skip: offset,
       take: +limit,
@@ -198,8 +222,20 @@ export const getCarModelYearColorsByColorId: RequestHandler = async (
     const carModelYearColors = await prisma.carModelYearColor.findMany({
       where: { colorId }, // Filter berdasarkan colorId
       include: {
-        carModelYear: { select: { year: true } },
-        color: { select: { name: true } },
+        carModelYear: {
+          select: {
+            id: true,
+            year: true,
+            carModel: {
+              select: {
+                id: true,
+                name: true,
+                carBrand: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+        color: { select: { id: true, name: true } },
       },
       skip: offset,
       take: +limit,
@@ -286,8 +322,20 @@ export const getCarModelYearColorById: RequestHandler = async (req, res) => {
     const carModelYearColor = await prisma.carModelYearColor.findUnique({
       where: { id: carModelYearColorId },
       include: {
-        carModelYear: { select: { year: true } },
-        color: { select: { name: true } },
+        carModelYear: {
+          select: {
+            id: true,
+            year: true,
+            carModel: {
+              select: {
+                id: true,
+                name: true,
+                carBrand: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+        color: { select: { id: true, name: true } },
       },
     });
 
