@@ -195,19 +195,24 @@ model Order {
 }
 
 model Transaction {
-  id                String        @id @default(cuid()) @db.VarChar(30)
-  userId            String        @map("user_id") @db.VarChar(30)
-  paymentMethodId   String        @map("payment_method_id") @db.VarChar(30)
-  invoiceId         String?       @map("invoice_id") @db.VarChar(30)
-  adminFee          Decimal       @map("admin_fee") @db.Decimal(10, 2)
-  paymentMethodFee  Decimal       @map("payment_method_fee") @db.Decimal(10, 2)
-  totalPrice        Decimal       @map("total_price") @db.Decimal(10, 2)
-  refundAmount      Decimal?      @map("refund_amount") @db.Decimal(10, 2)
-  paymentStatus     PaymentStatus @default(PENDING) @map("payment_status")
-  paymentInvoiceUrl String        @db.Text
-  refundedAt        DateTime?
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
+  id                 String              @id @default(cuid()) @db.VarChar(30)
+  userId             String              @map("user_id") @db.VarChar(30)
+  paymentMethodId    String              @map("payment_method_id") @db.VarChar(30)
+  invoiceId          String?             @map("invoice_id") @db.VarChar(30)
+  adminFee           Decimal             @map("admin_fee") @db.Decimal(10, 2)
+  paymentMethodFee   Decimal             @map("payment_method_fee") @db.Decimal(10, 2)
+  totalPrice         Decimal             @map("total_price") @db.Decimal(10, 2)
+  refundAmount       Decimal?            @map("refund_amount") @db.Decimal(10, 2)
+  paymentStatus      PaymentStatus       @default(PENDING) @map("payment_status")
+  paymentInvoiceUrl  String?             @map("payment_invoice_url") @db.Text
+  mobileUrl          String?             @map("mobile_url") @db.Text
+  webUrl             String?             @map("web_url") @db.Text
+  refundedAt         DateTime?           @map("refunded_at")
+  cancellationReason CancellationReason? @map("cancellation_reason")
+  cancellationNotes  String?             @map("cancellation_notes") @db.Text
+  cancelledBy        String?             @map("cancelled_by") @db.VarChar(30)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
@@ -271,4 +276,21 @@ enum PaymentMethodType {
   CREDIT_CARD
   RETAIL_OUTLET
   QRIS
+}
+
+enum CancellationReason {
+  CUSTOMER_REQUEST
+  WORKSHOP_UNAVAILABLE
+  SERVICE_UNAVAILABLE
+  SCHEDULING_CONFLICT
+  PAYMENT_ISSUE
+  VEHICLE_ISSUE
+  PRICE_DISAGREEMENT
+  WORKSHOP_OVERBOOKED
+  DUPLICATE_ORDER
+  PARTS_UNAVAILABLE
+  CUSTOMER_NO_SHOW
+  FORCE_MAJEURE
+  SERVICE_INCOMPATIBILITY
+  OTHER
 }

@@ -601,7 +601,7 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
 
     if (!paymentMethod) {
       return createErrorResponse(res, "Payment method not found", 404);
-    } // * Fee admin saat ini 0
+    }
 
     const adminFee = new Prisma.Decimal(0);
     const paymentMethodFee = new Prisma.Decimal(paymentMethod.fee); // * Hitung total harga transaksi
@@ -612,6 +612,7 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
 
     const result = await prisma.$transaction(async (tx) => {
       let updatedTransaction;
+      let testPayment;
       const createTransaction = await tx.transaction.create({
         data: {
           userId: user.id,
@@ -647,12 +648,20 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
               referenceId: createTransaction.id, // * Use referenceId instead of externalId
               amount: Number(transactionTotalPrice),
               currency: "IDR" as const, // * Use "IDR" as PaymentRequestCurrency enum
-              // paymentMethodId: paymentMethod.xenditPaymentMethodId, // * Use xenditPaymentMethodId
+              paymentMethod: {
+                type: "EWALLET",
+                ewallet: {
+                  channelCode: "DANA",
+                  channelProperties: {
+                    successReturnUrl:
+                      "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors",
+                    failureReturnUrl:
+                      "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors",
+                  },
+                },
+                reusability: "ONE_TIME_USE",
+              },
               description: "Order Payment", // * Add description
-              // successRedirectUrl:
-              //   "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors", // * Replace with your success URL
-              // failureRedirectUrl:
-              //   "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app/api/v1/colors", // * Replace with your failure URL
               items: carServicesData.map((carserviceData) => ({
                 name: carserviceData.name,
                 price: Number(carserviceData.price),
@@ -660,6 +669,7 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
                 category: "car service",
                 referenceId: carserviceData.id,
                 currency: "IDR",
+                type: "SERVICE",
               })),
             },
           });
@@ -668,7 +678,9 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
           (action) => action.urlType === "DEEPLINK"
         )?.url;
 
-        updatedTransaction = await tx.transaction.update({
+        testPayment = { deeplinkUrl, action: createPaymentRequest.actions };
+
+        /*  updatedTransaction = await tx.transaction.update({
           where: { id: createTransaction.id },
           data: {
             ...(deeplinkUrl && { paymentInvoiceUrl: deeplinkUrl }),
@@ -688,13 +700,28 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
             },
             paymentMethod: { select: { name: true } },
           },
-        });
-      } catch (error) {
-        logger.error("Error creating Xendit Payment Request:", error);
-        throw new Error("Failed to create Payment Request with Xendit.");
+        }); */
+      } catch (error: any) {
+        // Force error output to console
+        console.error("RAW ERROR OBJECT:", error);
+        console.error("ERROR CONSTRUCTOR:", error?.constructor?.name);
+        console.error("ERROR PROPERTIES:", Object.keys(error || {}));
+        console.error("ERROR PROTOTYPE:", Object.getPrototypeOf(error));
+
+        // For axios-like errors
+        if (error?.response) {
+          console.error("RESPONSE STATUS:", error.response.status);
+          console.error("RESPONSE DATA:", error.response.data);
+        }
+
+        // For SDK-specific errors
+        if (error?.details) console.error("ERROR DETAILS:", error.details);
+        if (error?.message) console.error("ERROR MESSAGE:", error.message);
+
+        throw error; // Re-throw to preserve the original error
       }
 
-      return updatedTransaction;
+      return testPayment;
     });
 
     return createSuccessResponse(
@@ -704,12 +731,6 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
       201
     );
   } catch (error) {
-    console.error("❌ Create Order Error:", error);
-    console.error(
-      "❌ Error Details:",
-      // @ts-expect-error
-      error?.response || error?.rawResponse || error?.message
-    );
     return createErrorResponse(res, error, 500);
   }
 };
@@ -945,7 +966,7 @@ export const cancelOrder: RequestHandler = async (req, res) => {
               data: {
                 invoiceId: order.transaction.invoiceId ?? undefined,
                 amount: Number(order.transaction.totalPrice),
-                reason: "REQUESTED_BY_CUSTOMER",
+                reason: "CANCELLATION",
                 currency: "IDR",
               },
             });
