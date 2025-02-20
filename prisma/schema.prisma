@@ -155,16 +155,20 @@ model CarService {
 }
 
 model PaymentMethod {
-  id                    String            @id @default(cuid()) @db.VarChar(30)
-  name                  String            @unique @db.VarChar(100)
-  xenditPaymentMethodId String?           @map("xendit_payment_method_id") @db.VarChar(100)
-  type                  PaymentMethodType @default(EWALLET) @map("type")
-  fee                   Decimal           @db.Decimal(10, 2)
-  description           String?           @db.Text
-  logoUrl               String?           @map("logo_url") @db.Text
-  isActive              Boolean           @default(true) @map("is_active")
-  createdAt             DateTime          @default(now()) @map("created_at")
-  updatedAt             DateTime          @updatedAt @map("updated_at")
+  id               String             @id @default(cuid()) @db.VarChar(30)
+  name             String             @unique @db.VarChar(100)
+  type             PaymentMethodType  @default(EWALLET) @map("type")
+  channelCode      String?            @map("channel_code") @db.VarChar(50)
+  reusability      PaymentReusability @default(ONE_TIME_USE) @map("reusability")
+  fee              Decimal            @db.Decimal(10, 2)
+  description      String?            @db.Text
+  logoUrl          String?            @map("logo_url") @db.Text
+  successReturnUrl String?            @map("success_return_url") @db.Text
+  failureReturnUrl String?            @map("failure_return_url") @db.Text
+  // channelProperties Json?              @map("channel_properties")
+  isActive         Boolean            @default(true) @map("is_active")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
 
   transaction Transaction[]
 
@@ -195,19 +199,24 @@ model Order {
 }
 
 model Transaction {
-  id                String        @id @default(cuid()) @db.VarChar(30)
-  userId            String        @map("user_id") @db.VarChar(30)
-  paymentMethodId   String        @map("payment_method_id") @db.VarChar(30)
-  invoiceId         String?       @map("invoice_id") @db.VarChar(30)
-  adminFee          Decimal       @map("admin_fee") @db.Decimal(10, 2)
-  paymentMethodFee  Decimal       @map("payment_method_fee") @db.Decimal(10, 2)
-  totalPrice        Decimal       @map("total_price") @db.Decimal(10, 2)
-  refundAmount      Decimal?      @map("refund_amount") @db.Decimal(10, 2)
-  paymentStatus     PaymentStatus @default(PENDING) @map("payment_status")
-  paymentInvoiceUrl String        @db.Text
-  refundedAt        DateTime?
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
+  id                 String              @id @default(cuid()) @db.VarChar(30)
+  userId             String              @map("user_id") @db.VarChar(30)
+  paymentMethodId    String              @map("payment_method_id") @db.VarChar(30)
+  invoiceId          String?             @map("invoice_id") @db.VarChar(30)
+  adminFee           Decimal             @map("admin_fee") @db.Decimal(10, 2)
+  paymentMethodFee   Decimal             @map("payment_method_fee") @db.Decimal(10, 2)
+  totalPrice         Decimal             @map("total_price") @db.Decimal(10, 2)
+  refundAmount       Decimal?            @map("refund_amount") @db.Decimal(10, 2)
+  paymentStatus      PaymentStatus       @default(PENDING) @map("payment_status")
+  paymentInvoiceUrl  String?             @map("payment_invoice_url") @db.Text
+  mobileUrl          String?             @map("mobile_url") @db.Text
+  webUrl             String?             @map("web_url") @db.Text
+  refundedAt         DateTime?           @map("refunded_at")
+  cancellationReason CancellationReason? @map("cancellation_reason")
+  cancellationNotes  String?             @map("cancellation_notes") @db.Text
+  cancelledBy        String?             @map("cancelled_by") @db.VarChar(30)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
@@ -266,9 +275,33 @@ enum Role {
 }
 
 enum PaymentMethodType {
+  CARD
+  DIRECT_DEBIT
   EWALLET
-  BANK_TRANSFER
-  CREDIT_CARD
-  RETAIL_OUTLET
-  QRIS
+  OVER_THE_COUNTER
+  QR_CODE
+  VIRTUAL_ACCOUNT
+  UNKNOWN_ENUM_VALUE
+}
+
+enum PaymentReusability {
+  ONE_TIME_USE
+  MULTIPLE_USE
+}
+
+enum CancellationReason {
+  CUSTOMER_REQUEST
+  WORKSHOP_UNAVAILABLE
+  SERVICE_UNAVAILABLE
+  SCHEDULING_CONFLICT
+  PAYMENT_ISSUE
+  VEHICLE_ISSUE
+  PRICE_DISAGREEMENT
+  WORKSHOP_OVERBOOKED
+  DUPLICATE_ORDER
+  PARTS_UNAVAILABLE
+  CUSTOMER_NO_SHOW
+  FORCE_MAJEURE
+  SERVICE_INCOMPATIBILITY
+  OTHER
 }

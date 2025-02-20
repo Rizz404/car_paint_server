@@ -151,12 +151,12 @@ export const searchCarBrands: RequestHandler = async (req, res) => {
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const carBrands = await prisma.carBrand.findMany({
-      where: { name: { contains: name } },
+      where: { name: { mode: "insensitive", contains: name } },
       skip: offset,
       take: +limit,
     });
     const totalCarBrands = await prisma.carBrand.count({
-      where: { name: { contains: name } },
+      where: { name: { mode: "insensitive", contains: name } },
     });
 
     createPaginatedResponse(

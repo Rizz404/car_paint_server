@@ -173,7 +173,7 @@ export const searchETickets: RequestHandler = async (req, res) => {
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const eTickets = await prisma.eTicket.findMany({
-      // where: { name: { contains: name } },
+      // where: { name: {mode: "insensitive", contains: name } },
       include: {
         order: {
           select: {

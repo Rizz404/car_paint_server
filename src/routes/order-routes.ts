@@ -8,7 +8,6 @@ import {
   searchOrders,
   updateOrder,
   getCurrentUserOrders,
-  createOrderMobile,
   cancelOrder,
   cancelCurrentUserOrder,
   createOrderWithPaymentRequest,
@@ -39,7 +38,6 @@ orderRouter
 orderRouter
   .route("/payment-request")
   .post(authMiddleware(), createOrderWithPaymentRequest);
-orderRouter.route("/mobile").post(authMiddleware(), createOrderMobile);
 
 orderRouter
   .route("/multiple")

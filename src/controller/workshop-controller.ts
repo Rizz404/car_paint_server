@@ -133,12 +133,12 @@ export const searchWorkshops: RequestHandler = async (req, res) => {
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const workshops = await prisma.workshop.findMany({
-      where: { name: { contains: name } },
+      where: { name: { mode: "insensitive", contains: name } },
       skip: offset,
       take: +limit,
     });
     const totalWorkshops = await prisma.workshop.count({
-      where: { name: { contains: name } },
+      where: { name: { mode: "insensitive", contains: name } },
     });
 
     createPaginatedResponse(

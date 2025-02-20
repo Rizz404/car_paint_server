@@ -153,12 +153,12 @@ export const searchUsers: RequestHandler = async (req, res) => {
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const users = await prisma.user.findMany({
-      where: { username: { contains: username } },
+      where: { username: { mode: "insensitive", contains: username } },
       skip: offset,
       take: +limit,
     });
     const totalUsers = await prisma.user.count({
-      where: { username: { contains: username } },
+      where: { username: { mode: "insensitive", contains: username } },
     });
 
     createPaginatedResponse(res, users, currentPage, itemsPerPage, totalUsers);
