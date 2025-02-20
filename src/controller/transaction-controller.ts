@@ -404,7 +404,7 @@ export const getCurrentUserTransactions: RequestHandler = async (req, res) => {
         ],
       },
       include: {
-        paymentMethod: { select: { name: true, fee: true } },
+        paymentMethod: { select: { id: true, name: true, fee: true } },
         order: true,
       },
       skip: offset,

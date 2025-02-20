@@ -121,16 +121,23 @@ export const getUserCars: RequestHandler = async (req, res) => {
           select: {
             carModelYear: {
               select: {
+                id: true,
                 year: true,
                 carModel: {
-                  select: { name: true, carBrand: { select: { name: true } } },
+                  select: {
+                    id: true,
+                    name: true,
+                    carBrand: { select: { id: true, name: true } },
+                  },
                 },
               },
             },
-            color: { select: { name: true } },
+            color: { select: { id: true, name: true } },
           },
         },
-        user: { select: { username: true, email: true, profileImage: true } },
+        user: {
+          select: { id: true, username: true, email: true, profileImage: true },
+        },
       },
       skip: offset,
       take: +limit,
@@ -162,16 +169,23 @@ export const getUserCarById: RequestHandler = async (req, res) => {
           select: {
             carModelYear: {
               select: {
+                id: true,
                 year: true,
                 carModel: {
-                  select: { name: true, carBrand: { select: { name: true } } },
+                  select: {
+                    id: true,
+                    name: true,
+                    carBrand: { select: { id: true, name: true } },
+                  },
                 },
               },
             },
-            color: { select: { name: true } },
+            color: { select: { id: true, name: true } },
           },
         },
-        user: { select: { username: true, email: true, profileImage: true } },
+        user: {
+          select: { id: true, username: true, email: true, profileImage: true },
+        },
       },
     });
 
@@ -210,16 +224,23 @@ export const searchUserCars: RequestHandler = async (req, res) => {
           select: {
             carModelYear: {
               select: {
+                id: true,
                 year: true,
                 carModel: {
-                  select: { name: true, carBrand: { select: { name: true } } },
+                  select: {
+                    id: true,
+                    name: true,
+                    carBrand: { select: { id: true, name: true } },
+                  },
                 },
               },
             },
-            color: { select: { name: true } },
+            color: { select: { id: true, name: true } },
           },
         },
-        user: { select: { username: true, email: true, profileImage: true } },
+        user: {
+          select: { id: true, username: true, email: true, profileImage: true },
+        },
       },
       skip: offset,
       take: +limit,
@@ -328,7 +349,6 @@ export const deleteUserCar: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "User Car Not Found", 404);
     }
 
-    // Delete images from Cloudinary if they exist
     if (userCar.carImages && userCar.carImages.length > 0) {
       await deleteCloudinaryImages(userCar.carImages);
     }

@@ -57,15 +57,16 @@ export const getHistories: RequestHandler = async (req, res) => {
         ],
       },
       include: {
-        paymentMethod: { select: { name: true, fee: true } },
+        paymentMethod: { select: { id: true, name: true, fee: true } },
         order: {
           select: {
+            id: true,
             note: true,
             orderStatus: true,
             subtotalPrice: true,
-            workshop: { select: { name: true, address: true } },
-            carServices: { select: { name: true, price: true } },
-            eTicket: { select: { ticketNumber: true } },
+            workshop: { select: { id: true, name: true, address: true } },
+            carServices: { select: { id: true, name: true, price: true } },
+            eTicket: { select: { id: true, ticketNumber: true } },
           },
         },
       },
@@ -101,15 +102,16 @@ export const getHistoryById: RequestHandler = async (req, res) => {
     const transaction = await prisma.transaction.findUnique({
       where: { id: historyId },
       include: {
-        paymentMethod: { select: { name: true, fee: true } },
+        paymentMethod: { select: { id: true, name: true, fee: true } },
         order: {
           select: {
+            id: true,
             note: true,
             orderStatus: true,
             subtotalPrice: true,
-            workshop: { select: { name: true, address: true } },
-            carServices: { select: { name: true, price: true } },
-            eTicket: { select: { ticketNumber: true } },
+            workshop: { select: { id: true, name: true, address: true } },
+            carServices: { select: { id: true, name: true, price: true } },
+            eTicket: { select: { id: true, ticketNumber: true } },
           },
         },
       },
@@ -166,15 +168,16 @@ export const getCurrentUserHistories: RequestHandler = async (req, res) => {
         ],
       },
       include: {
-        paymentMethod: { select: { name: true, fee: true } },
+        paymentMethod: { select: { id: true, name: true, fee: true } },
         order: {
           select: {
+            id: true,
             note: true,
             orderStatus: true,
             subtotalPrice: true,
-            workshop: { select: { name: true, address: true } },
-            carServices: { select: { name: true, price: true } },
-            eTicket: { select: { ticketNumber: true } },
+            workshop: { select: { id: true, name: true, address: true } },
+            carServices: { select: { id: true, name: true, price: true } },
+            eTicket: { select: { id: true, ticketNumber: true } },
           },
         },
       },

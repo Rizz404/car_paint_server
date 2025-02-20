@@ -80,7 +80,9 @@ export const getCarModels: RequestHandler = async (req, res) => {
 
     const carModels = await prisma.carModel.findMany({
       include: {
-        carBrand: { select: { name: true, logo: true, country: true } },
+        carBrand: {
+          select: { id: true, name: true, logo: true, country: true },
+        },
       },
       skip: offset,
       take: +limit,
@@ -126,7 +128,9 @@ export const getCarModelsByBrandId: RequestHandler = async (req, res) => {
     const carModels = await prisma.carModel.findMany({
       where: { carBrandId: carBrandId },
       include: {
-        carBrand: { select: { name: true, logo: true, country: true } },
+        carBrand: {
+          select: { id: true, name: true, logo: true, country: true },
+        },
       },
       skip: offset,
       take: +limit,
@@ -154,7 +158,9 @@ export const getCarModelById: RequestHandler = async (req, res) => {
     const carModel = await prisma.carModel.findUnique({
       where: { id: carModelId },
       include: {
-        carBrand: { select: { name: true, logo: true, country: true } },
+        carBrand: {
+          select: { id: true, name: true, logo: true, country: true },
+        },
       },
     });
 
@@ -185,7 +191,9 @@ export const searchCarModels: RequestHandler = async (req, res) => {
     const carModels = await prisma.carModel.findMany({
       where: { name: { mode: "insensitive", contains: name } },
       include: {
-        carBrand: { select: { name: true, logo: true, country: true } },
+        carBrand: {
+          select: { id: true, name: true, logo: true, country: true },
+        },
       },
       skip: offset,
       take: +limit,
