@@ -145,12 +145,12 @@ export const searchPaymentMethods: RequestHandler = async (req, res) => {
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const paymentMethods = await prisma.paymentMethod.findMany({
-      where: { name: { contains: name } },
+      where: { name: { mode: "insensitive", contains: name } },
       skip: offset,
       take: +limit,
     });
     const totalPaymentMethods = await prisma.paymentMethod.count({
-      where: { name: { contains: name } },
+      where: { name: { mode: "insensitive", contains: name } },
     });
 
     createPaginatedResponse(

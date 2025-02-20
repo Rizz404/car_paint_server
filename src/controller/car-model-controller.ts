@@ -183,7 +183,7 @@ export const searchCarModels: RequestHandler = async (req, res) => {
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const carModels = await prisma.carModel.findMany({
-      where: { name: { contains: name } },
+      where: { name: { mode: "insensitive", contains: name } },
       include: {
         carBrand: { select: { name: true, logo: true, country: true } },
       },
@@ -191,7 +191,7 @@ export const searchCarModels: RequestHandler = async (req, res) => {
       take: +limit,
     });
     const totalCarModels = await prisma.carModel.count({
-      where: { name: { contains: name } },
+      where: { name: { mode: "insensitive", contains: name } },
     });
 
     createPaginatedResponse(

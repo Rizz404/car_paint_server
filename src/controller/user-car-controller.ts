@@ -203,7 +203,7 @@ export const searchUserCars: RequestHandler = async (req, res) => {
     const userCars = await prisma.userCar.findMany({
       where: {
         userId: id,
-        licensePlate: { contains: licensePlate },
+        licensePlate: { mode: "insensitive", contains: licensePlate },
       },
       include: {
         carModelYearColor: {
@@ -227,7 +227,7 @@ export const searchUserCars: RequestHandler = async (req, res) => {
     const totalUserCars = await prisma.userCar.count({
       where: {
         userId: id,
-        licensePlate: { contains: licensePlate },
+        licensePlate: { mode: "insensitive", contains: licensePlate },
       },
     });
 

@@ -557,12 +557,12 @@ export const searchOrders: RequestHandler = async (req, res) => {
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const orders = await prisma.order.findMany({
-      // * where: { name: { contains: name } },
+      // * where: { name: {mode: "insensitive", contains: name } },
       skip: offset,
       take: +limit,
     });
     const totalOrders = await prisma.order.count({
-      // * where: { name: { contains: name } },
+      // * where: { name: {mode: "insensitive", contains: name } },
     });
 
     createPaginatedResponse(
