@@ -83,7 +83,7 @@ export const getCarModelYears: RequestHandler = async (req, res) => {
     );
 
     const carModelYears = await prisma.carModelYear.findMany({
-      include: { carModel: { select: { name: true } } },
+      include: { carModel: { select: { id: true, name: true } } },
       skip: offset,
       take: +limit,
       orderBy: { [field]: direction },
@@ -130,7 +130,7 @@ export const getCarModelYearsByCarModelId: RequestHandler = async (
 
     const carModelYears = await prisma.carModelYear.findMany({
       where: { carModelId },
-      include: { carModel: { select: { name: true } } },
+      include: { carModel: { select: { id: true, name: true } } },
       skip: offset,
       take: +limit,
       orderBy: { [field]: direction },
@@ -156,7 +156,7 @@ export const getCarModelYearById: RequestHandler = async (req, res) => {
     const { carModelYearId } = req.params;
     const carModelYear = await prisma.carModelYear.findUnique({
       where: { id: carModelYearId },
-      include: { carModel: { select: { name: true } } },
+      include: { carModel: { select: { id: true, name: true } } },
     });
 
     if (!carModelYear) {
@@ -210,7 +210,7 @@ export const searchCarModelYears: RequestHandler = async (req, res) => {
 
     const carModelYears = await prisma.carModelYear.findMany({
       where: whereClause,
-      include: { carModel: { select: { name: true } } },
+      include: { carModel: { select: { id: true, name: true } } },
       skip: offset,
       take: +limit,
     });

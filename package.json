@@ -75,6 +75,8 @@
     "jsonwebtoken": "^9.0.2",
     "k6": "^0.0.0",
     "mailgen": "^2.0.29",
+    "midtrans-client": "^1.4.2",
+    "midtrans-node": "^1.1.5",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.10.0",
