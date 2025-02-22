@@ -25,6 +25,9 @@ class EnvironmentLoader {
       IMAGEKIT_PUBLIC_KEY: z.string().optional(),
       IMAGEKIT_PRIVATE_KEY: z.string().optional(),
       IMAGEKIT_URL_ENDPOINT: z.string().optional(),
+      MIDTRANS_SERVER_KEY: z.string().optional(),
+      MIDTRANS_CLIENT_KEY: z.string().optional(),
+      HASHED_API_KEY: z.string().optional(),
     });
   }
 

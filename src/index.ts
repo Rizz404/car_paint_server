@@ -22,6 +22,7 @@ import { metricsMiddleware } from "./middlewares/metrics";
 import connectDb from "./utils/connect-db";
 import env, { isDevelopment, reloadEnv } from "./configs/environment";
 import figlet from "figlet";
+import apiKeyMiddleware from "./middlewares/api_key";
 
 const PORT = env.PORT || 5000;
 const app = express();
@@ -133,6 +134,9 @@ app.get("/health", async (req: Request, res: Response) => {
     res.status(500).json(healthCheck);
   }
 });
+
+// * API key middleware
+app.use(apiKeyMiddleware);
 
 // * API ROUTES
 app.use("/api/v1", routes);
