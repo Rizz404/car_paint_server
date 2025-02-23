@@ -26,6 +26,7 @@ export const register: RequestHandler = async (req, res) => {
     if (emailExist) {
       return createErrorResponse(res, "Email already registered", 400);
     }
+
     const usernameExist = await prisma.user.findUnique({
       where: {
         username: username,
@@ -55,12 +56,13 @@ export const register: RequestHandler = async (req, res) => {
 export const login: RequestHandler = async (req, res) => {
   try {
     const { username, email, password }: User = req.body;
+
     const user = await prisma.user.findFirst({
       where: { OR: [{ username }, { email }] },
       include: { userProfile: true },
     });
 
-    if (!user) return createErrorResponse(res, "Credentials not match", 400);
+    if (!user) return createErrorResponse(res, "User not found", 404);
 
     const passwordMatch = await bcrypt.compare(password, user.password!);
 

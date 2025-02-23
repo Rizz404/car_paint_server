@@ -160,7 +160,6 @@ model PaymentMethod {
   id          String             @id @default(cuid()) @db.VarChar(30)
   name        String             @unique @db.VarChar(100)
   type        PaymentMethodType  @default(EWALLET) @map("type")
-  channelCode String?            @map("channel_code") @db.VarChar(50)
   reusability PaymentReusability @default(ONE_TIME_USE) @map("reusability")
   fee         Decimal            @db.Decimal(10, 2)
   description String?            @db.Text
@@ -170,6 +169,9 @@ model PaymentMethod {
   isActive    Boolean            @default(true) @map("is_active")
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  // Todo: Bakal di hapus
+  channelCode String? @map("channel_code") @db.VarChar(50)
 
   transactions         Transaction[]
   eWalletPaymentConfig EWalletPaymentConfig?
@@ -254,9 +256,9 @@ model Transaction {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   paymentMethod PaymentMethod  @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
   order         Order[]
-  PaymentDetail PaymentDetail?
-  Cancellation  Cancellation?
-  Refund        Refund?
+  paymentdetail PaymentDetail?
+  cancellation  Cancellation?
+  refund        Refund?
 
   @@map("transactions")
 }
