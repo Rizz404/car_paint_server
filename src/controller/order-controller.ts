@@ -2,7 +2,6 @@ import prisma from "@/configs/database";
 import {
   xenditCustomerClient,
   xenditInvoiceClient,
-  xenditPaymentMethodClient,
   xenditPaymentRequestClient,
   xenditRefundClient,
 } from "@/configs/xendit";
@@ -16,12 +15,11 @@ import { parseOrderBy, parsePagination } from "@/utils/query";
 import { createOrderSchema } from "@/validation/order-validation";
 import { Order, OrderStatus, Prisma, WorkStatus } from "@prisma/client";
 import { RequestHandler } from "express";
-import { CustomerRequest } from "xendit-node/customer/models";
-import {
-  EWalletChannelCode,
-  PaymentMethodParameters,
-  PaymentMethodType,
-} from "xendit-node/payment_method/models";
+import { Customer } from "xendit-node/customer/models";
+import { EWalletChannelCode } from "xendit-node/payment_request/models/EWalletChannelCode";
+import { EWalletParameters } from "xendit-node/payment_request/models/EWalletParameters";
+import { VirtualAccountChannelCode } from "xendit-node/payment_request/models/VirtualAccountChannelCode";
+import { VirtualAccountParameters } from "xendit-node/payment_request/models/VirtualAccountParameters";
 import { z } from "zod";
 
 type CreateOrderDTO = z.infer<typeof createOrderSchema>["body"];
@@ -242,11 +240,15 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, username: true, email: true },
+      select: { id: true, username: true, email: true, userProfile: true },
     });
 
     if (!user) {
       return createErrorResponse(res, "User not found", 404);
+    }
+
+    if (!user.userProfile?.phoneNumber) {
+      return createErrorResponse(res, "Phone number is required", 404);
     }
 
     const carServicesData = await prisma.carService.findMany({
@@ -307,7 +309,6 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
 
     const result = await prisma.$transaction(async (tx) => {
       let updatedTransaction;
-      let testPayment;
 
       const createTransaction = await tx.transaction.create({
         data: {
@@ -332,30 +333,33 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
       });
 
       try {
-        const createPaymentMethod =
-          await xenditPaymentMethodClient.createPaymentMethod({
-            data: {
-              country: "ID",
-              type: paymentMethod.type,
-              ewallet: {
-                channelCode: paymentMethod.channelCode! as EWalletChannelCode,
-                channelProperties: {
-                  successReturnUrl:
-                    "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
-                  failureReturnUrl:
-                    "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
-                },
-              },
-              reusability: paymentMethod.reusability,
-            },
-          });
+        // ! DATA INI BAKAL LEWAT DARI DB
+        const ewalletData: EWalletParameters = {
+          channelCode: paymentMethod.channelCode as EWalletChannelCode,
+          channelProperties: {
+            // TODO: GANTI DENGAN DYNAMIC DATA
+            mobileNumber: "87778206856",
+            successReturnUrl:
+              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
+            failureReturnUrl:
+              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
+          },
+        };
+        // ! DATA INI BAKAL LEWAT DARI DB
+        const virtualAccountData: VirtualAccountParameters = {
+          channelCode: paymentMethod.channelCode as VirtualAccountChannelCode,
+          channelProperties: {
+            customerName: user.username,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          },
+        };
+
         const createPaymentRequest =
           await xenditPaymentRequestClient.createPaymentRequest({
             data: {
               referenceId: createTransaction.id,
               amount: Number(transactionTotalPrice),
               currency: "IDR",
-              paymentMethodId: createPaymentMethod.id,
               description: note,
               items: carServicesData.map((carserviceData) => ({
                 name: carserviceData.name,
@@ -364,8 +368,20 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
                 category: "car service",
                 referenceId: carserviceData.id,
                 currency: "IDR",
+                // ! INI SERVICE AMA PRODUCT DOANG
                 type: "SERVICE",
               })),
+              paymentMethod: {
+                type: paymentMethod.type,
+                reusability: paymentMethod.reusability,
+                // TODO: GANTI DENGAN DYNAMIC DATA (EWALLET / VA)
+                ...(paymentMethod.type === "EWALLET" && {
+                  ewallet: ewalletData,
+                }),
+                ...(paymentMethod.type === "VIRTUAL_ACCOUNT" && {
+                  virtualAccount: virtualAccountData,
+                }),
+              },
             },
           });
 
@@ -379,16 +395,12 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
           (action) => action.urlType === "WEB"
         )?.url;
 
-        testPayment = { deeplinkUrl, action: createPaymentRequest.actions };
-
         updatedTransaction = await tx.transaction.update({
           where: { id: createTransaction.id },
           data: {
             ...(deeplinkUrl && { paymentInvoiceUrl: deeplinkUrl }),
             ...(mobileUrl && { mobileUrl }),
             ...(webUrl && { webUrl }),
-
-            // invoiceId: createPaymentRequest.id, // * Store Payment Request ID
           },
           include: {
             order: {
