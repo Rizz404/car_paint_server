@@ -18,11 +18,13 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  userProfile UserProfile?
-  userCar     UserCar[]
-  order       Order[]
-  transaction Transaction[]
-  eTicket     ETicket[]
+  userProfile   UserProfile?
+  userCars      UserCar[]
+  orders        Order[]
+  transactions  Transaction[]
+  eTickets      ETicket[]
+  cancellations Cancellation[]
+  refunds       Refund[]
 
   @@map("users")
 }
@@ -51,7 +53,7 @@ model CarBrand {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  carModel CarModel[]
+  carModels CarModel[]
 
   @@map("car_brands")
 }
@@ -63,8 +65,8 @@ model CarModel {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  carBrand     CarBrand       @relation(fields: [carBrandId], references: [id], onDelete: Cascade)
-  carModelYear CarModelYear[]
+  carBrand      CarBrand       @relation(fields: [carBrandId], references: [id], onDelete: Cascade)
+  carModelYears CarModelYear[]
 
   @@unique([name, carBrandId])
   @@map("car_models")
@@ -77,8 +79,8 @@ model CarModelYear {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  carModel          CarModel            @relation(fields: [carModelId], references: [id], onDelete: Cascade)
-  carModelYearColor CarModelYearColor[]
+  carModel           CarModel            @relation(fields: [carModelId], references: [id], onDelete: Cascade)
+  carModelYearColors CarModelYearColor[]
 
   @@unique([year, carModelId])
   @@map("car_model_years")
@@ -90,7 +92,7 @@ model Color {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  carModelYearColor CarModelYearColor[]
+  carModelYearColors CarModelYearColor[]
 
   @@map("colors")
 }
@@ -121,7 +123,7 @@ model UserCar {
 
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   carModelYearColor CarModelYearColor @relation(fields: [carModelYearColorId], references: [id], onDelete: Cascade)
-  order             Order[]
+  orders            Order[]
 
   @@map("user_cars")
 }
@@ -137,7 +139,7 @@ model Workshop {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  order Order[]
+  orders Order[]
 
   @@map("workshops")
 }
@@ -155,24 +157,55 @@ model CarService {
 }
 
 model PaymentMethod {
-  id               String             @id @default(cuid()) @db.VarChar(30)
-  name             String             @unique @db.VarChar(100)
-  type             PaymentMethodType  @default(EWALLET) @map("type")
-  channelCode      String?            @map("channel_code") @db.VarChar(50)
-  reusability      PaymentReusability @default(ONE_TIME_USE) @map("reusability")
-  fee              Decimal            @db.Decimal(10, 2)
-  description      String?            @db.Text
-  logoUrl          String?            @map("logo_url") @db.Text
-  successReturnUrl String?            @map("success_return_url") @db.Text
-  failureReturnUrl String?            @map("failure_return_url") @db.Text
-  // channelProperties Json?              @map("channel_properties")
-  isActive         Boolean            @default(true) @map("is_active")
-  createdAt        DateTime           @default(now()) @map("created_at")
-  updatedAt        DateTime           @updatedAt @map("updated_at")
+  id          String             @id @default(cuid()) @db.VarChar(30)
+  name        String             @unique @db.VarChar(100)
+  type        PaymentMethodType  @default(EWALLET) @map("type")
+  reusability PaymentReusability @default(ONE_TIME_USE) @map("reusability")
+  fee         Decimal            @db.Decimal(10, 2)
+  description String?            @db.Text
+  logoUrl     String?            @map("logo_url") @db.Text
+  // successReturnUrl String?            @map("success_return_url") @db.Text
+  // failureReturnUrl String?            @map("failure_return_url") @db.Text
+  isActive    Boolean            @default(true) @map("is_active")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
 
-  transaction Transaction[]
+  // Todo: Bakal di hapus
+  channelCode String? @map("channel_code") @db.VarChar(50)
+
+  transactions         Transaction[]
+  eWalletPaymentConfig EWalletPaymentConfig?
+  virtualAccountConfig VirtualAccountConfig?
 
   @@map("payment_methods")
+}
+
+model EWalletPaymentConfig {
+  id               String   @id @default(cuid()) @db.VarChar(30)
+  paymentMethodId  String   @unique @map("payment_method_id") @db.VarChar(30)
+  channelCode      String   @map("channel_code") @db.VarChar(50)
+  successReturnUrl String?  @map("success_return_url") @db.Text
+  failureReturnUrl String?  @map("failure_return_url") @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
+
+  @@map("ewallet_payment_configs")
+}
+
+model VirtualAccountConfig {
+  id              String   @id @default(cuid()) @db.VarChar(30)
+  paymentMethodId String   @unique @map("payment_method_id") @db.VarChar(30)
+  bankCode        String   @map("bank_code") @db.VarChar(50)
+  bankName        String   @map("bank_name") @db.VarChar(100)
+  accountPattern  String?  @map("account_pattern") @db.VarChar(50)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
+
+  @@map("virtual_account_configs")
 }
 
 model Order {
@@ -183,7 +216,7 @@ model Order {
   transactionId String      @map("transaction_id") @db.VarChar(30)
   workStatus    WorkStatus  @default(QUEUED) @map("work_status")
   orderStatus   OrderStatus @default(DRAFT) @map("order_status")
-  note          String      @db.Text
+  note          String?     @db.Text
   subtotalPrice Decimal     @map("subtotal_price") @db.Decimal(10, 2)
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
@@ -193,36 +226,92 @@ model Order {
   workshop    Workshop     @relation(fields: [workshopId], references: [id], onDelete: Cascade)
   transaction Transaction  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   carServices CarService[]
-  eTicket     ETicket[]
+  eTickets    ETicket[]
 
   @@map("orders")
 }
 
 model Transaction {
-  id                 String              @id @default(cuid()) @db.VarChar(30)
-  userId             String              @map("user_id") @db.VarChar(30)
-  paymentMethodId    String              @map("payment_method_id") @db.VarChar(30)
-  invoiceId          String?             @map("invoice_id") @db.VarChar(30)
-  adminFee           Decimal             @map("admin_fee") @db.Decimal(10, 2)
+  id              String        @id @default(cuid()) @db.VarChar(30)
+  userId          String        @map("user_id") @db.VarChar(30)
+  paymentMethodId String        @map("payment_method_id") @db.VarChar(30)
+  invoiceId       String?       @map("invoice_id") @db.VarChar(30)
+  adminFee        Decimal       @map("admin_fee") @db.Decimal(10, 2)
+  totalPrice      Decimal       @map("total_price") @db.Decimal(10, 2)
+  paymentStatus   PaymentStatus @default(PENDING) @map("payment_status")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Todo: dibawah ini nanti ini hapus
   paymentMethodFee   Decimal             @map("payment_method_fee") @db.Decimal(10, 2)
-  totalPrice         Decimal             @map("total_price") @db.Decimal(10, 2)
-  refundAmount       Decimal?            @map("refund_amount") @db.Decimal(10, 2)
-  paymentStatus      PaymentStatus       @default(PENDING) @map("payment_status")
   paymentInvoiceUrl  String?             @map("payment_invoice_url") @db.Text
   mobileUrl          String?             @map("mobile_url") @db.Text
   webUrl             String?             @map("web_url") @db.Text
+  refundAmount       Decimal?            @map("refund_amount") @db.Decimal(10, 2)
   refundedAt         DateTime?           @map("refunded_at")
   cancellationReason CancellationReason? @map("cancellation_reason")
   cancellationNotes  String?             @map("cancellation_notes") @db.Text
   cancelledBy        String?             @map("cancelled_by") @db.VarChar(30)
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
 
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod  @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
   order         Order[]
+  paymentdetail PaymentDetail?
+  cancellation  Cancellation?
+  refund        Refund?
 
   @@map("transactions")
+}
+
+model PaymentDetail {
+  id            String    @id @default(cuid()) @db.VarChar(30)
+  transactionId String    @unique @map("transaction_id") @db.VarChar(30)
+  invoiceUrl    String?   @map("invoice_url") @db.Text
+  mobileUrl     String?   @map("mobile_url") @db.Text
+  webUrl        String?   @map("web_url") @db.Text
+  deeplinkUrl   String?   @map("deeplink_url") @db.Text
+  paidAt        DateTime? @map("paid_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Todo: Ganti nama nanti soalnya payment method id dari xendit
+  paymentReferenceId String? @map("payment_reference_id")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("payment_details")
+}
+
+model Cancellation {
+  id            String             @id @default(cuid()) @db.VarChar(30)
+  transactionId String             @unique @map("transaction_id") @db.VarChar(30)
+  reason        CancellationReason
+  notes         String?            @db.Text
+  cancelledById String             @map("cancelled_by_id") @db.VarChar(30)
+  cancelledAt   DateTime           @default(now()) @map("cancelled_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  cancelledBy User        @relation(fields: [cancelledById], references: [id], onDelete: Restrict)
+
+  @@map("cancellations")
+}
+
+model Refund {
+  id            String   @id @default(cuid()) @db.VarChar(30)
+  transactionId String   @unique @map("transaction_id") @db.VarChar(30)
+  amount        Decimal  @db.Decimal(10, 2)
+  reason        String   @db.Text
+  refundedById  String   @map("refunded_by_id") @db.VarChar(30)
+  refundedAt    DateTime @default(now()) @map("refunded_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  refundedBy  User        @relation(fields: [refundedById], references: [id], onDelete: Restrict)
+
+  @@map("refunds")
 }
 
 model ETicket {

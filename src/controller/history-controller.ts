@@ -1,22 +1,11 @@
 import prisma from "@/configs/database";
-import env from "@/configs/environment";
 import {
   createErrorResponse,
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
-import {
-  XenditPaymentStatus,
-  XenditWebhookPayload,
-} from "@/types/xendit-webhook";
-import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
-import {
-  PaymentStatus,
-  Prisma,
-  PrismaClient,
-  Transaction,
-} from "@prisma/client";
+import { PaymentStatus, PrismaClient, Transaction } from "@prisma/client";
 import { DefaultArgs } from "@prisma/client/runtime/library";
 import { RequestHandler } from "express";
 
@@ -66,7 +55,7 @@ export const getHistories: RequestHandler = async (req, res) => {
             subtotalPrice: true,
             workshop: { select: { id: true, name: true, address: true } },
             carServices: { select: { id: true, name: true, price: true } },
-            eTicket: { select: { id: true, ticketNumber: true } },
+            eTickets: { select: { id: true, ticketNumber: true } },
           },
         },
       },
@@ -111,7 +100,7 @@ export const getHistoryById: RequestHandler = async (req, res) => {
             subtotalPrice: true,
             workshop: { select: { id: true, name: true, address: true } },
             carServices: { select: { id: true, name: true, price: true } },
-            eTicket: { select: { id: true, ticketNumber: true } },
+            eTickets: { select: { id: true, ticketNumber: true } },
           },
         },
       },
@@ -177,7 +166,7 @@ export const getCurrentUserHistories: RequestHandler = async (req, res) => {
             subtotalPrice: true,
             workshop: { select: { id: true, name: true, address: true } },
             carServices: { select: { id: true, name: true, price: true } },
-            eTicket: { select: { id: true, ticketNumber: true } },
+            eTickets: { select: { id: true, ticketNumber: true } },
           },
         },
       },

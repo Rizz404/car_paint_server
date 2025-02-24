@@ -7,8 +7,39 @@ import {
 } from "@/types/api-response";
 import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
-import { PaymentMethod } from "@prisma/client";
+import {
+  EWalletPaymentConfig,
+  PaymentMethod,
+  VirtualAccountConfig,
+} from "@prisma/client";
 import { RequestHandler } from "express";
+
+type CreatePaymentMethodPayload = Omit<
+  PaymentMethod,
+  "id" | "createdAt" | "updatedAt"
+> & {
+  eWalletPaymentConfig?: Omit<
+    EWalletPaymentConfig,
+    "id" | "paymentMethodId" | "createdAt" | "updatedAt"
+  >;
+  virtualAccountConfig?: Omit<
+    VirtualAccountConfig,
+    "id" | "paymentMethodId" | "createdAt" | "updatedAt"
+  >;
+};
+
+type UpdatePaymentMethodPayload = Partial<
+  Omit<PaymentMethod, "id" | "createdAt" | "updatedAt">
+> & {
+  eWalletPaymentConfig?: Omit<
+    EWalletPaymentConfig,
+    "id" | "paymentMethodId" | "createdAt" | "updatedAt"
+  >;
+  virtualAccountConfig?: Omit<
+    VirtualAccountConfig,
+    "id" | "paymentMethodId" | "createdAt" | "updatedAt"
+  >;
+};
 
 // *======================= POST =======================*
 export const createManyPaymentMethods: RequestHandler = async (req, res) => {
@@ -38,7 +69,23 @@ export const createManyPaymentMethods: RequestHandler = async (req, res) => {
 
 export const createPaymentMethod: RequestHandler = async (req, res) => {
   try {
-    const payload: PaymentMethod = req.body;
+    const payload: CreatePaymentMethodPayload = req.body;
+
+    if (payload.type === "EWALLET" && !payload.eWalletPaymentConfig) {
+      return createErrorResponse(
+        res,
+        "E-Wallet payment method requires eWalletPaymentConfig",
+        400
+      );
+    }
+
+    if (payload.type === "VIRTUAL_ACCOUNT" && !payload.virtualAccountConfig) {
+      return createErrorResponse(
+        res,
+        "Virtual Account payment method requires virtualAccountConfig",
+        400
+      );
+    }
 
     const existingPaymentMethod = await prisma.paymentMethod.findFirst({
       where: {
@@ -47,15 +94,35 @@ export const createPaymentMethod: RequestHandler = async (req, res) => {
     });
 
     if (existingPaymentMethod) {
-      return createErrorResponse(res, "Payment Method already exist", 400);
+      return createErrorResponse(res, "Payment Method already exists", 400);
     }
 
+    const { eWalletPaymentConfig, virtualAccountConfig, ...paymentMethodData } =
+      payload;
+
     const createdPaymentMethod = await prisma.paymentMethod.create({
-      data: payload,
+      data: {
+        ...paymentMethodData,
+        eWalletPaymentConfig: eWalletPaymentConfig
+          ? {
+              create: eWalletPaymentConfig,
+            }
+          : undefined,
+        virtualAccountConfig: virtualAccountConfig
+          ? {
+              create: virtualAccountConfig,
+            }
+          : undefined,
+      },
+      include: {
+        eWalletPaymentConfig: true,
+        virtualAccountConfig: true,
+      },
     });
 
     return createSuccessResponse(res, createdPaymentMethod, "Created", 201);
   } catch (error) {
+    console.error("Error creating payment method:", error);
     return createErrorResponse(res, error, 500);
   }
 };
@@ -84,6 +151,7 @@ export const getPaymentMethods: RequestHandler = async (req, res) => {
     );
 
     const paymentMethods = await prisma.paymentMethod.findMany({
+      include: { eWalletPaymentConfig: true, virtualAccountConfig: true },
       skip: offset,
       take: +limit,
       orderBy: { [field]: direction },
@@ -118,6 +186,7 @@ export const getPaymentMethodById: RequestHandler = async (req, res) => {
     const { paymentMethodId } = req.params;
     const paymentMethod = await prisma.paymentMethod.findUnique({
       where: { id: paymentMethodId },
+      include: { eWalletPaymentConfig: true, virtualAccountConfig: true },
     });
 
     if (!paymentMethod) {
@@ -146,6 +215,7 @@ export const searchPaymentMethods: RequestHandler = async (req, res) => {
 
     const paymentMethods = await prisma.paymentMethod.findMany({
       where: { name: { mode: "insensitive", contains: name } },
+      include: { eWalletPaymentConfig: true, virtualAccountConfig: true },
       skip: offset,
       take: +limit,
     });
@@ -169,26 +239,100 @@ export const searchPaymentMethods: RequestHandler = async (req, res) => {
 export const updatePaymentMethod: RequestHandler = async (req, res) => {
   try {
     const { paymentMethodId } = req.params;
-    const payload: PaymentMethod = req.body;
+    const payload: UpdatePaymentMethodPayload = req.body;
 
-    const paymentMethod = await prisma.paymentMethod.findUnique({
-      where: {
-        id: paymentMethodId,
+    const existingPaymentMethod = await prisma.paymentMethod.findUnique({
+      where: { id: paymentMethodId },
+      include: {
+        eWalletPaymentConfig: true,
+        virtualAccountConfig: true,
       },
     });
 
-    if (!paymentMethod) {
-      return createErrorResponse(res, "Payment method Not Found", 500);
+    if (!existingPaymentMethod) {
+      return createErrorResponse(res, "Payment method not found", 404);
     }
 
+    if (payload.type) {
+      if (
+        payload.type === "EWALLET" &&
+        !payload.eWalletPaymentConfig &&
+        !existingPaymentMethod.eWalletPaymentConfig
+      ) {
+        return createErrorResponse(
+          res,
+          "E-Wallet payment method requires eWalletPaymentConfig",
+          400
+        );
+      }
+      if (
+        payload.type === "VIRTUAL_ACCOUNT" &&
+        !payload.virtualAccountConfig &&
+        !existingPaymentMethod.virtualAccountConfig
+      ) {
+        return createErrorResponse(
+          res,
+          "Virtual Account payment method requires virtualAccountConfig",
+          400
+        );
+      }
+    }
+
+    // Only check name if it's being updated
+    if (payload.name && payload.name !== existingPaymentMethod.name) {
+      const nameExists = await prisma.paymentMethod.findFirst({
+        where: {
+          name: payload.name,
+          id: { not: paymentMethodId },
+        },
+      });
+      if (nameExists) {
+        return createErrorResponse(
+          res,
+          "Payment Method name already exists",
+          400
+        );
+      }
+    }
+
+    const { eWalletPaymentConfig, virtualAccountConfig, ...paymentMethodData } =
+      payload;
+
     const updatedPaymentMethod = await prisma.paymentMethod.update({
-      data: payload,
       where: { id: paymentMethodId },
+      data: {
+        ...paymentMethodData,
+        eWalletPaymentConfig: eWalletPaymentConfig
+          ? {
+              upsert: {
+                create: eWalletPaymentConfig,
+                update: eWalletPaymentConfig,
+              },
+            }
+          : payload.type === "VIRTUAL_ACCOUNT"
+            ? { delete: true }
+            : undefined,
+        virtualAccountConfig: virtualAccountConfig
+          ? {
+              upsert: {
+                create: virtualAccountConfig,
+                update: virtualAccountConfig,
+              },
+            }
+          : payload.type === "EWALLET"
+            ? { delete: true }
+            : undefined,
+      },
+      include: {
+        eWalletPaymentConfig: true,
+        virtualAccountConfig: true,
+      },
     });
 
     return createSuccessResponse(res, updatedPaymentMethod, "Updated");
   } catch (error) {
-    return createErrorResponse(res, error, 500);
+    console.error("Error updating payment method:", error);
+    return createErrorResponse(res, "Failed to update payment method", 500);
   }
 };
 

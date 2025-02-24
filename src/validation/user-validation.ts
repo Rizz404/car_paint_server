@@ -45,7 +45,7 @@ export const updateCurrentUserSchema = z.object({
     fullname: z.string().optional(),
     phoneNumber: z
       .string()
-      .regex(/^(\+62|0)8[1-9][0-9]{6,9}$/, "Invalid phone number format")
+      .regex(/^[0-9]{10,13}$/, "Invalid phone number format")
       .optional(),
     address: z.string().optional(),
     longitude: z.coerce.number().min(-180).max(180).optional(),

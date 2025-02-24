@@ -14,14 +14,19 @@ import {
 import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import { createOrderSchema } from "@/validation/order-validation";
-import { Order, OrderStatus, Prisma, WorkStatus } from "@prisma/client";
-import { RequestHandler } from "express";
-import { CustomerRequest } from "xendit-node/customer/models";
 import {
-  EWalletChannelCode,
-  PaymentMethodParameters,
-  PaymentMethodType,
-} from "xendit-node/payment_method/models";
+  Order,
+  OrderStatus,
+  PaymentDetail,
+  Prisma,
+  WorkStatus,
+} from "@prisma/client";
+import { RequestHandler } from "express";
+import { PaymentRequestParameters } from "xendit-node/payment_request/models";
+import { EWalletChannelCode } from "xendit-node/payment_request/models/EWalletChannelCode";
+import { EWalletParameters } from "xendit-node/payment_request/models/EWalletParameters";
+import { VirtualAccountChannelCode } from "xendit-node/payment_request/models/VirtualAccountChannelCode";
+import { VirtualAccountParameters } from "xendit-node/payment_request/models/VirtualAccountParameters";
 import { z } from "zod";
 
 type CreateOrderDTO = z.infer<typeof createOrderSchema>["body"];
@@ -242,11 +247,15 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, username: true, email: true },
+      select: { id: true, username: true, email: true, userProfile: true },
     });
 
     if (!user) {
       return createErrorResponse(res, "User not found", 404);
+    }
+
+    if (!user.userProfile || !user.userProfile.phoneNumber) {
+      return createErrorResponse(res, "Phone number is required", 400);
     }
 
     const carServicesData = await prisma.carService.findMany({
@@ -262,54 +271,50 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
       },
     });
 
-    const carServicePriceMap = new Map(
-      carServicesData.map((service) => [service.id, service.price])
-    );
-
-    const missingServices = carServices.filter(
-      (service) => !carServicePriceMap.has(service.carServiceId)
-    );
-
-    if (missingServices.length > 0) {
+    if (carServicesData.length !== carServices.length) {
+      const missingIds = carServices
+        .filter(
+          (service) =>
+            !carServicesData.some((cs) => cs.id === service.carServiceId)
+        )
+        .map((service) => service.carServiceId);
       return createErrorResponse(
         res,
-        `Car services not found: ${missingServices.map((s) => s.carServiceId).join(", ")}`,
+        `Missing car services: ${missingIds.join(", ")}`,
         404
       );
     }
 
-    const orderTotalPrice = carServices.reduce((sum, service) => {
-      const price = carServicePriceMap.get(service.carServiceId)!;
-      return sum.add(price);
-    }, new Prisma.Decimal(0));
+    const orderTotalPrice = carServicesData.reduce(
+      (sum, service) => sum.add(service.price),
+      new Prisma.Decimal(0)
+    );
 
     const paymentMethod = await prisma.paymentMethod.findUnique({
       where: { id: paymentMethodId },
-      select: {
-        fee: true,
-        name: true,
-        type: true,
-        channelCode: true,
-        reusability: true,
-      },
+      include: { eWalletPaymentConfig: true, virtualAccountConfig: true },
     });
 
     if (!paymentMethod) {
       return createErrorResponse(res, "Payment method not found", 404);
     }
 
+    // Todo: Uncoment kalo udah fix
+    // if (
+    //   paymentMethod.type !== "EWALLET" &&
+    //   paymentMethod.type !== "VIRTUAL_ACCOUNT"
+    // ) {
+    //   return createErrorResponse(res, "Unsupported payment method type", 400);
+    // }
+
     const adminFee = new Prisma.Decimal(0);
     const paymentMethodFee = new Prisma.Decimal(paymentMethod.fee);
-
     const transactionTotalPrice = orderTotalPrice
       .add(adminFee)
       .add(paymentMethodFee);
 
     const result = await prisma.$transaction(async (tx) => {
-      let updatedTransaction;
-      let testPayment;
-
-      const createTransaction = await tx.transaction.create({
+      const transaction = await tx.transaction.create({
         data: {
           userId: user.id,
           paymentMethodId,
@@ -321,7 +326,7 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
               userId: user.id,
               userCarId,
               workshopId,
-              note: note ?? "",
+              note: note,
               subtotalPrice: orderTotalPrice,
               carServices: {
                 connect: carServicesData.map(({ id }) => ({ id })),
@@ -329,86 +334,105 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
             },
           },
         },
+        include: { order: true },
       });
 
       try {
-        const createPaymentMethod =
-          await xenditPaymentMethodClient.createPaymentMethod({
-            data: {
-              country: "ID",
-              type: paymentMethod.type,
-              ewallet: {
-                channelCode: paymentMethod.channelCode! as EWalletChannelCode,
-                channelProperties: {
-                  successReturnUrl:
-                    "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
-                  failureReturnUrl:
-                    "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
-                },
-              },
-              reusability: paymentMethod.reusability,
+        const paymentRequestData: PaymentRequestParameters = {
+          referenceId: transaction.id,
+          amount: Number(transactionTotalPrice),
+          currency: "IDR",
+          description: note,
+          items: carServicesData.map((service) => ({
+            name: service.name,
+            price: Number(service.price),
+            currency: "IDR",
+            quantity: 1,
+            category: "CAR_SERVICE",
+            referenceId: service.id,
+            type: "SERVICE",
+          })),
+          paymentMethod: {
+            referenceId: transaction.id,
+            type: paymentMethod.type,
+            reusability: paymentMethod.reusability,
+          },
+        };
+
+        if (paymentMethod.type === "EWALLET") {
+          if (!paymentMethod.eWalletPaymentConfig) {
+            throw new Error("E-Wallet configuration not found");
+          }
+
+          if (!paymentRequestData.paymentMethod) {
+            throw new Error("Base payment method in payment request not found");
+          }
+
+          paymentRequestData.paymentMethod.ewallet = {
+            channelCode: paymentMethod.eWalletPaymentConfig
+              .channelCode as EWalletChannelCode,
+            channelProperties: {
+              ...(user.userProfile?.phoneNumber && {
+                mobileNumber: user.userProfile.phoneNumber,
+              }),
+              ...(paymentMethod.eWalletPaymentConfig.successReturnUrl && {
+                successReturnUrl:
+                  paymentMethod.eWalletPaymentConfig.successReturnUrl,
+              }),
+              ...(paymentMethod.eWalletPaymentConfig.failureReturnUrl && {
+                failureReturnUrl:
+                  paymentMethod.eWalletPaymentConfig.failureReturnUrl,
+              }),
             },
-          });
-        const createPaymentRequest =
+          };
+        } else if (paymentMethod.type === "VIRTUAL_ACCOUNT") {
+          if (!paymentMethod.virtualAccountConfig) {
+            throw new Error("Virtual Account configuration not found");
+          }
+
+          if (!paymentRequestData.paymentMethod) {
+            throw new Error("Base payment method in payment request not found");
+          }
+
+          paymentRequestData.paymentMethod.virtualAccount = {
+            channelCode: paymentMethod.virtualAccountConfig
+              .bankCode as VirtualAccountChannelCode,
+            channelProperties: {
+              customerName: user.username,
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            },
+          };
+        }
+
+        const paymentResponse =
           await xenditPaymentRequestClient.createPaymentRequest({
-            data: {
-              referenceId: createTransaction.id,
-              amount: Number(transactionTotalPrice),
-              currency: "IDR",
-              paymentMethodId: createPaymentMethod.id,
-              description: note,
-              items: carServicesData.map((carserviceData) => ({
-                name: carserviceData.name,
-                price: Number(carserviceData.price),
-                quantity: 1,
-                category: "car service",
-                referenceId: carserviceData.id,
-                currency: "IDR",
-                type: "SERVICE",
-              })),
-            },
+            data: paymentRequestData,
           });
 
-        const deeplinkUrl = createPaymentRequest.actions?.find(
-          (action) => action.urlType === "DEEPLINK"
+        const deeplink = paymentResponse.actions?.find(
+          (a) => a.urlType === "DEEPLINK"
         )?.url;
-        const mobileUrl = createPaymentRequest.actions?.find(
-          (action) => action.urlType === "MOBILE"
+        const mobileUrl = paymentResponse.actions?.find(
+          (a) => a.urlType === "MOBILE"
         )?.url;
-        const webUrl = createPaymentRequest.actions?.find(
-          (action) => action.urlType === "WEB"
+        const webUrl = paymentResponse.actions?.find(
+          (a) => a.urlType === "WEB"
         )?.url;
 
-        testPayment = { deeplinkUrl, action: createPaymentRequest.actions };
-
-        updatedTransaction = await tx.transaction.update({
-          where: { id: createTransaction.id },
+        await tx.paymentDetail.create({
           data: {
-            ...(deeplinkUrl && { paymentInvoiceUrl: deeplinkUrl }),
+            transactionId: transaction.id,
+            paymentReferenceId: paymentResponse.paymentMethod.id,
+            ...(deeplink && { deeplinkUrl: deeplink }),
             ...(mobileUrl && { mobileUrl }),
             ...(webUrl && { webUrl }),
-
-            // invoiceId: createPaymentRequest.id, // * Store Payment Request ID
-          },
-          include: {
-            order: {
-              select: {
-                carServices: { select: { name: true, price: true } },
-                workshop: {
-                  select: {
-                    name: true,
-                    address: true,
-                  },
-                },
-              },
-            },
-            paymentMethod: { select: { name: true } },
           },
         });
+
+        return transaction.order;
       } catch (error: any) {
         // Force error output to console
         console.error("RAW ERROR OBJECT:", error);
-        console.error("ERROR CONSTRUCTOR:", error?.constructor?.name);
         console.error("ERROR PROPERTIES:", Object.keys(error || {}));
         console.error("ERROR PROTOTYPE:", Object.getPrototypeOf(error));
         console.error("ERROR DETAILS:", error.response.errors);
@@ -425,8 +449,6 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
 
         throw error; // Re-throw to preserve the original error
       }
-
-      return updatedTransaction;
     });
 
     return createSuccessResponse(
