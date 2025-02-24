@@ -75,6 +75,39 @@ export const getErrorMessage = (error: unknown): string => {
   return "An unexpected error occurred";
 };
 
+const getXenditErrorField = (error: any): string => {
+  const message = error.errorMessage || error.response?.message || "";
+
+  const errorPatterns = [
+    { pattern: /payment method/i, field: "payment_method" },
+    { pattern: /invoice/i, field: "invoice" },
+    { pattern: /disbursement/i, field: "disbursement" },
+    { pattern: /virtual account/i, field: "virtual_account" },
+    { pattern: /e-wallet/i, field: "ewallet" },
+    { pattern: /QR/i, field: "qr_code" },
+    { pattern: /card/i, field: "card" },
+    { pattern: /customer/i, field: "customer" },
+    { pattern: /balance/i, field: "balance" },
+    { pattern: /refund/i, field: "refund" },
+  ];
+
+  for (const { pattern, field } of errorPatterns) {
+    if (pattern.test(message)) {
+      return field;
+    }
+  }
+
+  if (error.request?.url) {
+    const urlParts = error.request.url.split("/");
+    const lastPart = urlParts[urlParts.length - 1];
+    if (lastPart && lastPart !== "xendit") {
+      return lastPart.toLowerCase();
+    }
+  }
+
+  return "xendit";
+};
+
 export const createSuccessResponse = <T extends object>(
   res: Response,
   data: T,
@@ -121,7 +154,30 @@ export const createErrorResponse = (
   let message = "An error occurred";
   let validationErrors: ValidationError[] | undefined;
 
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+  if (
+    error instanceof Error &&
+    "errorCode" in error &&
+    "response" in error &&
+    typeof error.response === "object" &&
+    error.response !== null
+  ) {
+    const xenditError = error as any;
+    const errorCode = xenditError.errorCode || xenditError.response?.error_code;
+    const errorMessage =
+      xenditError.errorMessage || xenditError.response?.message;
+    const field = getXenditErrorField(xenditError);
+
+    message = `Xendit error: ${errorMessage}`;
+    statusCode = xenditError.status || 400;
+
+    validationErrors = [
+      {
+        field,
+        message: errorMessage,
+        code: errorCode,
+      },
+    ];
+  } else if (error instanceof Prisma.PrismaClientKnownRequestError) {
     const meta = error.meta || {};
     const modelName = (meta.modelName as string) || "";
     let field: string = "";
@@ -177,7 +233,7 @@ export const createErrorResponse = (
 
     validationErrors = [
       {
-        field, // Menggunakan field yang telah diambil sesuai error code
+        field,
         message,
         code: error.code,
         affectedColumns,
@@ -185,20 +241,16 @@ export const createErrorResponse = (
       },
     ];
   } else if (error instanceof ZodError) {
-    // Handling validation errors from Zod
     message = "Validation failed";
     statusCode = 400;
     validationErrors = formatZodError(error);
   } else if (Array.isArray(error)) {
-    // Handle array of validation errors
     message = "Validation failed";
     statusCode = 400;
     validationErrors = formatValidationErrors(error);
   } else if (error instanceof Error) {
-    // Other errors that are instances of Error
     message = error.message;
   } else if (typeof error === "string") {
-    // If error is a string, use it directly
     message = error;
   }
 

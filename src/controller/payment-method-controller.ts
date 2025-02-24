@@ -123,7 +123,7 @@ export const createPaymentMethod: RequestHandler = async (req, res) => {
     return createSuccessResponse(res, createdPaymentMethod, "Created", 201);
   } catch (error) {
     console.error("Error creating payment method:", error);
-    return createErrorResponse(res, "Failed to create payment method", 500);
+    return createErrorResponse(res, error, 500);
   }
 };
 

@@ -1,22 +1,11 @@
 import prisma from "@/configs/database";
-import env from "@/configs/environment";
 import {
   createErrorResponse,
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
-import {
-  XenditPaymentStatus,
-  XenditWebhookPayload,
-} from "@/types/xendit-webhook";
-import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
-import {
-  PaymentStatus,
-  Prisma,
-  PrismaClient,
-  Transaction,
-} from "@prisma/client";
+import { PaymentStatus, PrismaClient, Transaction } from "@prisma/client";
 import { DefaultArgs } from "@prisma/client/runtime/library";
 import { RequestHandler } from "express";
 

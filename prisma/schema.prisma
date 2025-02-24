@@ -274,6 +274,9 @@ model PaymentDetail {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  // Todo: Ganti nama nanti soalnya payment method id dari xendit
+  paymentReferenceId String? @map("payment_reference_id")
+
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   @@map("payment_details")

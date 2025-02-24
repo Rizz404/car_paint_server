@@ -2,6 +2,7 @@ import prisma from "@/configs/database";
 import {
   xenditCustomerClient,
   xenditInvoiceClient,
+  xenditPaymentMethodClient,
   xenditPaymentRequestClient,
   xenditRefundClient,
 } from "@/configs/xendit";
@@ -313,8 +314,6 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
       .add(paymentMethodFee);
 
     const result = await prisma.$transaction(async (tx) => {
-      let updatedTransaction;
-
       const transaction = await tx.transaction.create({
         data: {
           userId: user.id,
@@ -343,7 +342,7 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
           referenceId: transaction.id,
           amount: Number(transactionTotalPrice),
           currency: "IDR",
-          description: note || "Car service payment",
+          description: note,
           items: carServicesData.map((service) => ({
             name: service.name,
             price: Number(service.price),
@@ -354,6 +353,7 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
             type: "SERVICE",
           })),
           paymentMethod: {
+            referenceId: transaction.id,
             type: paymentMethod.type,
             reusability: paymentMethod.reusability,
           },
@@ -422,6 +422,7 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
         await tx.paymentDetail.create({
           data: {
             transactionId: transaction.id,
+            paymentReferenceId: paymentResponse.paymentMethod.id,
             ...(deeplink && { deeplinkUrl: deeplink }),
             ...(mobileUrl && { mobileUrl }),
             ...(webUrl && { webUrl }),
