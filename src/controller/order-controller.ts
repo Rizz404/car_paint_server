@@ -67,11 +67,15 @@ export const createOrder: RequestHandler = async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, username: true, email: true },
+      select: { id: true, username: true, email: true, userProfile: true },
     });
 
     if (!user) {
       return createErrorResponse(res, "User not found", 404);
+    }
+
+    if (!user.userProfile || !user.userProfile.phoneNumber) {
+      return createErrorResponse(res, "Phone number is required", 400);
     }
 
     const carServicesData = await prisma.carService.findMany({
@@ -87,33 +91,28 @@ export const createOrder: RequestHandler = async (req, res) => {
       },
     });
 
-    // * Buat map untuk mempermudah pengecekan harga
-    const carServicePriceMap = new Map(
-      carServicesData.map((service) => [service.id, service.price])
-    );
-
-    // * Validasi car services yang tidak ditemukan
-    const missingServices = carServices.filter(
-      (service) => !carServicePriceMap.has(service.carServiceId)
-    );
-
-    if (missingServices.length > 0) {
+    if (carServicesData.length !== carServices.length) {
+      const missingIds = carServices
+        .filter(
+          (service) =>
+            !carServicesData.some((cs) => cs.id === service.carServiceId)
+        )
+        .map((service) => service.carServiceId);
       return createErrorResponse(
         res,
-        `Car services not found: ${missingServices.map((s) => s.carServiceId).join(", ")}`,
+        `Missing car services: ${missingIds.join(", ")}`,
         404
       );
     }
 
-    // * Hitung total harga order tanpa quantity (diasumsikan 1 per service)
-    const orderTotalPrice = carServices.reduce((sum, service) => {
-      const price = carServicePriceMap.get(service.carServiceId)!;
-      return sum.add(price);
-    }, new Prisma.Decimal(0));
+    const orderTotalPrice = carServicesData.reduce(
+      (sum, service) => sum.add(service.price),
+      new Prisma.Decimal(0)
+    );
 
     const paymentMethod = await prisma.paymentMethod.findUnique({
       where: { id: paymentMethodId },
-      select: { fee: true, name: true, channelCode: true, reusability: true },
+      include: { eWalletPaymentConfig: true, virtualAccountConfig: true },
     });
 
     if (!paymentMethod) {
@@ -130,8 +129,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       .add(paymentMethodFee);
 
     const result = await prisma.$transaction(async (tx) => {
-      let updatedTransaction;
-      const createTransaction = await tx.transaction.create({
+      const transaction = await tx.transaction.create({
         data: {
           userId: user.id,
           paymentMethodId,
@@ -143,7 +141,7 @@ export const createOrder: RequestHandler = async (req, res) => {
               userId: user.id,
               userCarId,
               workshopId,
-              note: note ?? "",
+              note: note,
               subtotalPrice: orderTotalPrice,
               carServices: {
                 connect: carServicesData.map(({ id }) => ({ id })),
@@ -151,75 +149,50 @@ export const createOrder: RequestHandler = async (req, res) => {
             },
           },
         },
+        include: { order: true },
       });
 
       try {
-        const createInvoice = await xenditInvoiceClient.createInvoice({
-          data: {
-            amount: Number(transactionTotalPrice),
-            externalId: createTransaction.id,
-            payerEmail: user.email,
-            currency: "IDR",
-            invoiceDuration: "172800", // * 48 jam
-            reminderTime: 1,
-            paymentMethods: [paymentMethod.name],
-            items: carServicesData.map((carserviceData) => ({
-              name: carserviceData.name,
-              price: Number(carserviceData.price),
-              quantity: 1,
-              category: "car service",
-              referenceId: carserviceData.id,
-            })),
-            successRedirectUrl:
-              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
-            failureRedirectUrl:
-              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
-            shouldSendEmail: true,
-          },
+        const invoiceData = {
+          amount: Number(transactionTotalPrice),
+          externalId: transaction.id,
+          payerEmail: user.email,
+          currency: "IDR",
+          invoiceDuration: "172800", // * 48 jam
+          reminderTime: 1,
+          paymentMethods: [paymentMethod.name],
+          items: carServicesData.map((carserviceData) => ({
+            name: carserviceData.name,
+            price: Number(carserviceData.price),
+            quantity: 1,
+            category: "car service",
+            referenceId: carserviceData.id,
+          })),
+          successRedirectUrl:
+            "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
+          failureRedirectUrl:
+            "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
+          shouldSendEmail: true,
+        };
+
+        const invoiceResponse = await xenditInvoiceClient.createInvoice({
+          data: invoiceData,
         });
 
-        updatedTransaction = await tx.transaction.update({
-          where: { id: createTransaction.id },
+        await tx.paymentDetail.create({
           data: {
-            paymentInvoiceUrl: createInvoice.invoiceUrl,
-            invoiceId: createInvoice.id,
-          },
-          include: {
-            order: {
-              include: {
-                carServices: { select: { name: true, price: true } },
-                workshop: {
-                  select: {
-                    name: true,
-                    address: true,
-                  },
-                },
-              },
-            },
-            paymentMethod: { select: { name: true } },
+            transactionId: transaction.id,
+            // xenditPaymentMethodId: invoiceResponse.paymentMethod.id,
+            // xenditPaymentRequestId: invoiceResponse.id,
+            webUrl: invoiceResponse.invoiceUrl,
+            // virtualAccountNumber,
           },
         });
-      } catch (error: any) {
-        // Force error output to console
-        console.error("RAW ERROR OBJECT:", error);
-        console.error("ERROR CONSTRUCTOR:", error?.constructor?.name);
-        console.error("ERROR PROPERTIES:", Object.keys(error || {}));
-        console.error("ERROR PROTOTYPE:", Object.getPrototypeOf(error));
-
-        // For axios-like errors
-        if (error?.response) {
-          console.error("RESPONSE STATUS:", error.response.status);
-          console.error("RESPONSE DATA:", error.response.data);
-        }
-
-        // For SDK-specific errors
-        if (error?.details) console.error("ERROR DETAILS:", error.details);
-        if (error?.message) console.error("ERROR MESSAGE:", error.message);
-
-        throw error; // Re-throw to preserve the original error
+      } catch (error) {
+        throw error;
       }
 
-      return updatedTransaction;
+      return transaction;
     });
 
     return createSuccessResponse(
@@ -420,6 +393,9 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
         const webUrl = paymentResponse.actions?.find(
           (a) => a.urlType === "WEB"
         )?.url;
+        const virtualAccountNumber =
+          paymentResponse.paymentMethod.virtualAccount?.channelProperties
+            .virtualAccountNumber;
 
         await tx.paymentDetail.create({
           data: {
@@ -429,11 +405,9 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
             deeplinkUrl: deeplink,
             mobileUrl,
             webUrl,
+            virtualAccountNumber,
           },
         });
-
-        // paymentResponse.paymentMethod.virtualAccount?.channelProperties
-        //   .virtualAccountNumber;
 
         return transaction.order;
       } catch (error) {
