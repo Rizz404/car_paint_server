@@ -21,7 +21,7 @@ type PaymentMethodstatus =
   | "ACTIVE"
   | "STOPPED";
 
-type PaymentRequestStatus = "SUCCEEDED";
+type PaymentRequestStatus = "SUCCEEDED" | "EXPIRED" | "ACTIVE" | "STOPPED";
 
 export interface XenditInvoiceWebhookPayload {
   id: string;

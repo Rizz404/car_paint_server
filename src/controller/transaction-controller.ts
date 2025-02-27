@@ -6,20 +6,9 @@ import {
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
-import {
-  XenditPaymentStatus,
-  XenditInvoiceWebhookPayload,
-  XenditPaymentRequestWebhookPayload,
-} from "@/types/xendit-webhook";
 import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
-import {
-  PaymentStatus,
-  Prisma,
-  PrismaClient,
-  Transaction,
-} from "@prisma/client";
-import { DefaultArgs } from "@prisma/client/runtime/library";
+import { PaymentStatus, Transaction } from "@prisma/client";
 import { RequestHandler } from "express";
 
 // *======================= POST =======================*

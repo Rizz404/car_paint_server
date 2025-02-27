@@ -9,11 +9,11 @@ import {
   updateOrder,
   getCurrentUserOrders,
   cancelOrder,
-  cancelCurrentUserOrder,
   createOrderWithPaymentRequest,
+  cancelOrderWithPaymentRequest,
+  getOrdersByWorkshopId,
 } from "@/controller/order-controller";
 import { authMiddleware } from "@/middlewares/auth";
-import { uploadSingle } from "@/playground/upload-file";
 import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
@@ -40,6 +40,14 @@ orderRouter
   .post(authMiddleware(), createOrderWithPaymentRequest);
 
 orderRouter
+  .route("/workshop/:workshopId")
+  .get(
+    authMiddleware(),
+    validateRole(["ADMIN", "SUPER_ADMIN"]),
+    getOrdersByWorkshopId
+  );
+
+orderRouter
   .route("/multiple")
   .post(
     authMiddleware(),
@@ -53,12 +61,10 @@ orderRouter.route("/search").get(searchOrders);
 orderRouter.route("/user").get(authMiddleware(), getCurrentUserOrders);
 
 orderRouter
-  .route("/user/cancel/:orderId")
-  .patch(authMiddleware(), cancelCurrentUserOrder);
+  .route("/payment-request/cancel/:orderId")
+  .patch(authMiddleware(), cancelOrderWithPaymentRequest);
 
-orderRouter
-  .route("/cancel/:orderId")
-  .patch(authMiddleware(), validateRole(["ADMIN", "SUPER_ADMIN"]), cancelOrder);
+orderRouter.route("/cancel/:orderId").patch(authMiddleware(), cancelOrder);
 
 orderRouter
   .route("/:orderId")

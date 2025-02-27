@@ -134,7 +134,6 @@ export const createOrder: RequestHandler = async (req, res) => {
           userId: user.id,
           paymentMethodId,
           adminFee,
-          paymentMethodFee,
           totalPrice: transactionTotalPrice,
           order: {
             create: {
@@ -182,10 +181,8 @@ export const createOrder: RequestHandler = async (req, res) => {
         await tx.paymentDetail.create({
           data: {
             transactionId: transaction.id,
-            // xenditPaymentMethodId: invoiceResponse.paymentMethod.id,
-            // xenditPaymentRequestId: invoiceResponse.id,
             webUrl: invoiceResponse.invoiceUrl,
-            // virtualAccountNumber,
+            xenditInvoiceId: invoiceResponse.id,
           },
         });
       } catch (error) {
@@ -294,7 +291,6 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
           userId: user.id,
           paymentMethodId,
           adminFee,
-          paymentMethodFee,
           totalPrice: transactionTotalPrice,
           order: {
             create: {
@@ -592,15 +588,30 @@ export const updateOrder: RequestHandler = async (req, res) => {
 
 export const cancelOrder: RequestHandler = async (req, res) => {
   try {
+    const { id } = req.user!;
     const { orderId } = req.params;
+    const { reason, notes }: Partial<Cancellation> = req.body;
 
-    // * Cari order beserta transaksinya
+    const user = await prisma.user.findUnique({ where: { id } });
+
+    if (!user) {
+      return createErrorResponse(res, "User not found", 404);
+    }
+
     const order = await prisma.order.findUnique({
       where: {
         id: orderId,
+        ...(user.role === "USER" && { userId: id }),
       },
       include: {
-        transaction: true,
+        transaction: {
+          select: {
+            id: true,
+            paymentStatus: true,
+            totalPrice: true,
+            paymentdetail: true,
+          },
+        },
       },
     });
 
@@ -620,13 +631,13 @@ export const cancelOrder: RequestHandler = async (req, res) => {
       );
     }
 
-    if (!order.transaction.invoiceId) {
-      return createErrorResponse(res, `Invoice id not found`, 404);
+    const xenditInvoiceId = order.transaction.paymentdetail?.xenditInvoiceId;
+
+    if (!xenditInvoiceId) {
+      return createErrorResponse(res, `Xendit invoice id not found`, 404);
     }
 
-    // * Mulai proses pembatalan dengan transaction untuk konsistensi data
     const result = await prisma.$transaction(async (tx) => {
-      // * Update status order
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: {
@@ -635,44 +646,67 @@ export const cancelOrder: RequestHandler = async (req, res) => {
         },
       });
 
-      // * Jika ada transaksi terkait
       if (order.transaction) {
         if (order.transaction.paymentStatus === "PENDING") {
           // * Jika pembayaran masih pending, cukup update status dan jadiin invoicenya expired
-          if (order.transaction.invoiceId) {
+          if (xenditInvoiceId) {
             await xenditInvoiceClient.expireInvoice({
-              invoiceId: order.transaction.invoiceId,
+              invoiceId: xenditInvoiceId,
             });
           }
           await tx.transaction.update({
             where: { id: order.transaction.id },
             data: {
               paymentStatus: "FAILED",
+              cancellation: {
+                create: {
+                  reason: reason ?? "OTHER",
+                  notes,
+                  cancelledById: id,
+                  cancelledAt: new Date(),
+                },
+              },
             },
           });
         } else if (order.transaction.paymentStatus === "SUCCESS") {
           try {
             // * Lakukan refund melalui Xendit
-            await xenditRefundClient.createRefund({
+            const refund = await xenditRefundClient.createRefund({
               data: {
-                invoiceId: order.transaction.invoiceId ?? undefined,
+                invoiceId: xenditInvoiceId,
                 amount: Number(order.transaction.totalPrice),
                 reason: "CANCELLATION",
                 currency: "IDR",
               },
             });
 
-            // * Update status transaksi
+            if (!refund || !refund.amount || !refund.updated) {
+              throw new Error("Xendit refund failed");
+            }
+
             await tx.transaction.update({
               where: { id: order.transaction.id },
               data: {
                 paymentStatus: "REFUNDED",
-                refundAmount: order.transaction.totalPrice,
-                refundedAt: new Date(),
+                cancellation: {
+                  create: {
+                    reason: reason ?? "OTHER",
+                    notes,
+                    cancelledById: id,
+                    cancelledAt: new Date(),
+                  },
+                },
+                refund: {
+                  create: {
+                    amount: refund.amount,
+                    reason: notes ?? "",
+                    refundedById: id,
+                    refundedAt: refund.updated,
+                  },
+                },
               },
             });
           } catch (error) {
-            logger.error("Error processing refund:", error);
             throw error;
           }
         }
@@ -703,7 +737,6 @@ export const cancelOrderWithPaymentRequest: RequestHandler = async (
       return createErrorResponse(res, "User not found", 404);
     }
 
-    // * Cari order beserta transaksinya
     const order = await prisma.order.findUnique({
       where: {
         id: orderId,
@@ -765,18 +798,23 @@ export const cancelOrderWithPaymentRequest: RequestHandler = async (
               paymentMethodId: xenditPaymentMethodId,
             });
           }
-          await tx.cancellation.create({
+          await tx.transaction.update({
+            where: { id: order.transaction.id },
             data: {
-              transactionId: order.transaction.id,
-              reason: reason ?? "OTHER",
-              notes,
-              cancelledById: id,
-              cancelledAt: new Date(),
+              paymentStatus: "FAILED",
+              cancellation: {
+                create: {
+                  reason: reason ?? "OTHER",
+                  notes,
+                  cancelledById: id,
+                  cancelledAt: new Date(),
+                },
+              },
             },
           });
         } else if (order.transaction.paymentStatus === "SUCCESS") {
           try {
-            await xenditRefundClient.createRefund({
+            const refund = await xenditRefundClient.createRefund({
               data: {
                 paymentRequestId: xenditPaymentRequestId,
                 amount: Number(order.transaction.totalPrice),
@@ -785,26 +823,33 @@ export const cancelOrderWithPaymentRequest: RequestHandler = async (
               },
             });
 
-            await tx.cancellation.create({
+            if (!refund || !refund.amount || !refund.updated) {
+              throw new Error("Xendit refund failed");
+            }
+
+            await tx.transaction.update({
+              where: { id: order.transaction.id },
               data: {
-                transactionId: order.transaction.id,
-                reason: reason ?? "OTHER",
-                notes,
-                cancelledById: id,
-                cancelledAt: new Date(),
-              },
-            });
-            await tx.refund.create({
-              data: {
-                transactionId: order.transaction.id,
-                amount: order.transaction.totalPrice,
-                reason: notes ?? "",
-                refundedById: id,
-                refundedAt: new Date(),
+                paymentStatus: "REFUNDED",
+                cancellation: {
+                  create: {
+                    reason: reason ?? "OTHER",
+                    notes,
+                    cancelledById: id,
+                    cancelledAt: new Date(),
+                  },
+                },
+                refund: {
+                  create: {
+                    amount: refund.amount,
+                    reason: notes ?? "",
+                    refundedById: id,
+                    refundedAt: refund.updated,
+                  },
+                },
               },
             });
           } catch (error) {
-            logger.error("Error processing refund:", error);
             throw error;
           }
         }
@@ -909,101 +954,6 @@ export const getCurrentUserOrders: RequestHandler = async (req, res) => {
       totalOrders
     );
   } catch (error) {
-    return createErrorResponse(res, error, 500);
-  }
-};
-
-export const cancelCurrentUserOrder: RequestHandler = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const { id: userId } = req.user!;
-
-    // * Cari order beserta transaksinya
-    const order = await prisma.order.findUnique({
-      where: {
-        id: orderId,
-        userId: userId, // * Memastikan order milik user yang sedang login
-      },
-      include: {
-        transaction: true,
-      },
-    });
-
-    if (!order) {
-      return createErrorResponse(res, "Order not found", 404);
-    }
-
-    // * Cek apakah order sudah dalam status yang tidak bisa dibatalkan
-    if (
-      order.orderStatus === "COMPLETED" ||
-      order.orderStatus === "CANCELLED"
-    ) {
-      return createErrorResponse(
-        res,
-        `Order cannot be cancelled because it's already ${order.orderStatus}`,
-        400
-      );
-    }
-
-    if (!order.transaction.invoiceId) {
-      return createErrorResponse(res, `Invoice id not found`, 404);
-    }
-
-    // * Mulai proses pembatalan dengan transaction untuk konsistensi data
-    const result = await prisma.$transaction(async (tx) => {
-      // * Update status order
-      const updatedOrder = await tx.order.update({
-        where: { id: orderId },
-        data: {
-          orderStatus: "CANCELLED",
-          workStatus: "CANCELLED",
-        },
-      });
-
-      // * Jika ada transaksi terkait
-      if (order.transaction) {
-        if (order.transaction.paymentStatus === "PENDING") {
-          // * Jika pembayaran masih pending, cukup update status
-          await tx.transaction.update({
-            where: { id: order.transaction.id },
-            data: {
-              paymentStatus: "FAILED",
-            },
-          });
-        } else if (order.transaction.paymentStatus === "SUCCESS") {
-          try {
-            // * Lakukan refund melalui Xendit
-            await xenditRefundClient.createRefund({
-              data: {
-                invoiceId: order.transaction.invoiceId ?? undefined,
-                amount: Number(order.transaction.totalPrice),
-                reason: "REQUESTED_BY_CUSTOMER",
-                currency: "IDR",
-              },
-            });
-
-            // * Update status transaksi
-            await tx.transaction.update({
-              where: { id: order.transaction.id },
-              data: {
-                paymentStatus: "REFUNDED",
-                refundAmount: order.transaction.totalPrice,
-                refundedAt: new Date(),
-              },
-            });
-          } catch (error) {
-            logger.error("Error processing refund:", error);
-            throw error;
-          }
-        }
-      }
-
-      return updatedOrder;
-    });
-
-    return createSuccessResponse(res, result, "Order berhasil dibatalkan", 200);
-  } catch (error) {
-    logger.error("Error cancelling order:", error);
     return createErrorResponse(res, error, 500);
   }
 };
