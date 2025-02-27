@@ -15,6 +15,8 @@ import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import { createOrderSchema } from "@/validation/order-validation";
 import {
+  Cancellation,
+  CancellationReason,
   Order,
   OrderStatus,
   PaymentDetail,
@@ -422,32 +424,20 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
         await tx.paymentDetail.create({
           data: {
             transactionId: transaction.id,
-            paymentReferenceId: paymentResponse.paymentMethod.id,
-            ...(deeplink && { deeplinkUrl: deeplink }),
-            ...(mobileUrl && { mobileUrl }),
-            ...(webUrl && { webUrl }),
+            xenditPaymentMethodId: paymentResponse.paymentMethod.id,
+            xenditPaymentRequestId: paymentResponse.id,
+            deeplinkUrl: deeplink,
+            mobileUrl,
+            webUrl,
           },
         });
 
+        // paymentResponse.paymentMethod.virtualAccount?.channelProperties
+        //   .virtualAccountNumber;
+
         return transaction.order;
-      } catch (error: any) {
-        // Force error output to console
-        console.error("RAW ERROR OBJECT:", error);
-        console.error("ERROR PROPERTIES:", Object.keys(error || {}));
-        console.error("ERROR PROTOTYPE:", Object.getPrototypeOf(error));
-        console.error("ERROR DETAILS:", error.response.errors);
-
-        // For axios-like errors
-        if (error?.response) {
-          console.error("RESPONSE STATUS:", error.response.status);
-          console.error("RESPONSE DATA:", error.response.data);
-        }
-
-        // For SDK-specific errors
-        if (error?.details) console.error("ERROR DETAILS:", error.details);
-        if (error?.message) console.error("ERROR MESSAGE:", error.message);
-
-        throw error; // Re-throw to preserve the original error
+      } catch (error) {
+        throw error;
       }
     });
 
@@ -709,7 +699,139 @@ export const cancelOrder: RequestHandler = async (req, res) => {
             });
           } catch (error) {
             logger.error("Error processing refund:", error);
-            throw new Error("Gagal memproses refund pembayaran");
+            throw error;
+          }
+        }
+      }
+
+      return updatedOrder;
+    });
+
+    return createSuccessResponse(res, result, "Order berhasil dibatalkan", 200);
+  } catch (error) {
+    logger.error("Error cancelling order:", error);
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const cancelOrderWithPaymentRequest: RequestHandler = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.user!;
+    const { orderId } = req.params;
+    const { reason, notes }: Partial<Cancellation> = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+
+    if (!user) {
+      return createErrorResponse(res, "User not found", 404);
+    }
+
+    // * Cari order beserta transaksinya
+    const order = await prisma.order.findUnique({
+      where: {
+        id: orderId,
+        ...(user.role === "USER" && { userId: id }),
+      },
+      include: {
+        transaction: {
+          select: {
+            id: true,
+            paymentStatus: true,
+            totalPrice: true,
+            paymentdetail: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return createErrorResponse(res, "Order not found", 404);
+    }
+
+    if (
+      order.orderStatus === "COMPLETED" ||
+      order.orderStatus === "CANCELLED"
+    ) {
+      return createErrorResponse(
+        res,
+        `Order cannot be cancelled because it's already ${order.orderStatus}`,
+        400
+      );
+    }
+
+    const xenditPaymentMethodId =
+      order.transaction.paymentdetail?.xenditPaymentMethodId;
+    const xenditPaymentRequestId =
+      order.transaction.paymentdetail?.xenditPaymentRequestId;
+
+    if (!xenditPaymentMethodId || !xenditPaymentRequestId) {
+      return createErrorResponse(
+        res,
+        `Xendit payment method or payment request id not found`,
+        404
+      );
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          orderStatus: "CANCELLED",
+          workStatus: "CANCELLED",
+        },
+      });
+
+      if (order.transaction) {
+        if (order.transaction.paymentStatus === "PENDING") {
+          if (xenditPaymentMethodId) {
+            await xenditPaymentMethodClient.expirePaymentMethod({
+              paymentMethodId: xenditPaymentMethodId,
+            });
+          }
+          await tx.cancellation.create({
+            data: {
+              transactionId: order.transaction.id,
+              reason: reason ?? "OTHER",
+              notes,
+              cancelledById: id,
+              cancelledAt: new Date(),
+            },
+          });
+        } else if (order.transaction.paymentStatus === "SUCCESS") {
+          try {
+            await xenditRefundClient.createRefund({
+              data: {
+                paymentRequestId: xenditPaymentRequestId,
+                amount: Number(order.transaction.totalPrice),
+                reason: "CANCELLATION",
+                currency: "IDR",
+              },
+            });
+
+            await tx.cancellation.create({
+              data: {
+                transactionId: order.transaction.id,
+                reason: reason ?? "OTHER",
+                notes,
+                cancelledById: id,
+                cancelledAt: new Date(),
+              },
+            });
+            await tx.refund.create({
+              data: {
+                transactionId: order.transaction.id,
+                amount: order.transaction.totalPrice,
+                reason: notes ?? "",
+                refundedById: id,
+                refundedAt: new Date(),
+              },
+            });
+          } catch (error) {
+            logger.error("Error processing refund:", error);
+            throw error;
           }
         }
       }
@@ -897,7 +1019,7 @@ export const cancelCurrentUserOrder: RequestHandler = async (req, res) => {
             });
           } catch (error) {
             logger.error("Error processing refund:", error);
-            throw new Error("Gagal memproses refund pembayaran");
+            throw error;
           }
         }
       }

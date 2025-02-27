@@ -62,6 +62,7 @@ export const createTransaction: RequestHandler = async (req, res) => {
   }
 };
 
+// Todo: error di get transactions
 // *======================= GET =======================*
 export const getTransactions: RequestHandler = async (req, res) => {
   try {
