@@ -15,6 +15,8 @@ import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import { createOrderSchema } from "@/validation/order-validation";
 import {
+  Cancellation,
+  CancellationReason,
   Order,
   OrderStatus,
   PaymentDetail,
@@ -65,11 +67,15 @@ export const createOrder: RequestHandler = async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, username: true, email: true },
+      select: { id: true, username: true, email: true, userProfile: true },
     });
 
     if (!user) {
       return createErrorResponse(res, "User not found", 404);
+    }
+
+    if (!user.userProfile || !user.userProfile.phoneNumber) {
+      return createErrorResponse(res, "Phone number is required", 400);
     }
 
     const carServicesData = await prisma.carService.findMany({
@@ -85,33 +91,28 @@ export const createOrder: RequestHandler = async (req, res) => {
       },
     });
 
-    // * Buat map untuk mempermudah pengecekan harga
-    const carServicePriceMap = new Map(
-      carServicesData.map((service) => [service.id, service.price])
-    );
-
-    // * Validasi car services yang tidak ditemukan
-    const missingServices = carServices.filter(
-      (service) => !carServicePriceMap.has(service.carServiceId)
-    );
-
-    if (missingServices.length > 0) {
+    if (carServicesData.length !== carServices.length) {
+      const missingIds = carServices
+        .filter(
+          (service) =>
+            !carServicesData.some((cs) => cs.id === service.carServiceId)
+        )
+        .map((service) => service.carServiceId);
       return createErrorResponse(
         res,
-        `Car services not found: ${missingServices.map((s) => s.carServiceId).join(", ")}`,
+        `Missing car services: ${missingIds.join(", ")}`,
         404
       );
     }
 
-    // * Hitung total harga order tanpa quantity (diasumsikan 1 per service)
-    const orderTotalPrice = carServices.reduce((sum, service) => {
-      const price = carServicePriceMap.get(service.carServiceId)!;
-      return sum.add(price);
-    }, new Prisma.Decimal(0));
+    const orderTotalPrice = carServicesData.reduce(
+      (sum, service) => sum.add(service.price),
+      new Prisma.Decimal(0)
+    );
 
     const paymentMethod = await prisma.paymentMethod.findUnique({
       where: { id: paymentMethodId },
-      select: { fee: true, name: true, channelCode: true, reusability: true },
+      include: { eWalletPaymentConfig: true, virtualAccountConfig: true },
     });
 
     if (!paymentMethod) {
@@ -128,20 +129,18 @@ export const createOrder: RequestHandler = async (req, res) => {
       .add(paymentMethodFee);
 
     const result = await prisma.$transaction(async (tx) => {
-      let updatedTransaction;
-      const createTransaction = await tx.transaction.create({
+      const transaction = await tx.transaction.create({
         data: {
           userId: user.id,
           paymentMethodId,
           adminFee,
-          paymentMethodFee,
           totalPrice: transactionTotalPrice,
           order: {
             create: {
               userId: user.id,
               userCarId,
               workshopId,
-              note: note ?? "",
+              note: note,
               subtotalPrice: orderTotalPrice,
               carServices: {
                 connect: carServicesData.map(({ id }) => ({ id })),
@@ -149,75 +148,48 @@ export const createOrder: RequestHandler = async (req, res) => {
             },
           },
         },
+        include: { order: true },
       });
 
       try {
-        const createInvoice = await xenditInvoiceClient.createInvoice({
-          data: {
-            amount: Number(transactionTotalPrice),
-            externalId: createTransaction.id,
-            payerEmail: user.email,
-            currency: "IDR",
-            invoiceDuration: "172800", // * 48 jam
-            reminderTime: 1,
-            paymentMethods: [paymentMethod.name],
-            items: carServicesData.map((carserviceData) => ({
-              name: carserviceData.name,
-              price: Number(carserviceData.price),
-              quantity: 1,
-              category: "car service",
-              referenceId: carserviceData.id,
-            })),
-            successRedirectUrl:
-              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
-            failureRedirectUrl:
-              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
-            shouldSendEmail: true,
-          },
+        const invoiceData = {
+          amount: Number(transactionTotalPrice),
+          externalId: transaction.id,
+          payerEmail: user.email,
+          currency: "IDR",
+          invoiceDuration: "172800", // * 48 jam
+          reminderTime: 1,
+          paymentMethods: [paymentMethod.name],
+          items: carServicesData.map((carserviceData) => ({
+            name: carserviceData.name,
+            price: Number(carserviceData.price),
+            quantity: 1,
+            category: "car service",
+            referenceId: carserviceData.id,
+          })),
+          successRedirectUrl:
+            "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
+          failureRedirectUrl:
+            "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
+          shouldSendEmail: true,
+        };
+
+        const invoiceResponse = await xenditInvoiceClient.createInvoice({
+          data: invoiceData,
         });
 
-        updatedTransaction = await tx.transaction.update({
-          where: { id: createTransaction.id },
+        await tx.paymentDetail.create({
           data: {
-            paymentInvoiceUrl: createInvoice.invoiceUrl,
-            invoiceId: createInvoice.id,
-          },
-          include: {
-            order: {
-              include: {
-                carServices: { select: { name: true, price: true } },
-                workshop: {
-                  select: {
-                    name: true,
-                    address: true,
-                  },
-                },
-              },
-            },
-            paymentMethod: { select: { name: true } },
+            transactionId: transaction.id,
+            webUrl: invoiceResponse.invoiceUrl,
+            xenditInvoiceId: invoiceResponse.id,
           },
         });
-      } catch (error: any) {
-        // Force error output to console
-        console.error("RAW ERROR OBJECT:", error);
-        console.error("ERROR CONSTRUCTOR:", error?.constructor?.name);
-        console.error("ERROR PROPERTIES:", Object.keys(error || {}));
-        console.error("ERROR PROTOTYPE:", Object.getPrototypeOf(error));
-
-        // For axios-like errors
-        if (error?.response) {
-          console.error("RESPONSE STATUS:", error.response.status);
-          console.error("RESPONSE DATA:", error.response.data);
-        }
-
-        // For SDK-specific errors
-        if (error?.details) console.error("ERROR DETAILS:", error.details);
-        if (error?.message) console.error("ERROR MESSAGE:", error.message);
-
-        throw error; // Re-throw to preserve the original error
+      } catch (error) {
+        throw error;
       }
 
-      return updatedTransaction;
+      return transaction;
     });
 
     return createSuccessResponse(
@@ -319,7 +291,6 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
           userId: user.id,
           paymentMethodId,
           adminFee,
-          paymentMethodFee,
           totalPrice: transactionTotalPrice,
           order: {
             create: {
@@ -418,36 +389,25 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
         const webUrl = paymentResponse.actions?.find(
           (a) => a.urlType === "WEB"
         )?.url;
+        const virtualAccountNumber =
+          paymentResponse.paymentMethod.virtualAccount?.channelProperties
+            .virtualAccountNumber;
 
         await tx.paymentDetail.create({
           data: {
             transactionId: transaction.id,
-            paymentReferenceId: paymentResponse.paymentMethod.id,
-            ...(deeplink && { deeplinkUrl: deeplink }),
-            ...(mobileUrl && { mobileUrl }),
-            ...(webUrl && { webUrl }),
+            xenditPaymentMethodId: paymentResponse.paymentMethod.id,
+            xenditPaymentRequestId: paymentResponse.id,
+            deeplinkUrl: deeplink,
+            mobileUrl,
+            webUrl,
+            virtualAccountNumber,
           },
         });
 
         return transaction.order;
-      } catch (error: any) {
-        // Force error output to console
-        console.error("RAW ERROR OBJECT:", error);
-        console.error("ERROR PROPERTIES:", Object.keys(error || {}));
-        console.error("ERROR PROTOTYPE:", Object.getPrototypeOf(error));
-        console.error("ERROR DETAILS:", error.response.errors);
-
-        // For axios-like errors
-        if (error?.response) {
-          console.error("RESPONSE STATUS:", error.response.status);
-          console.error("RESPONSE DATA:", error.response.data);
-        }
-
-        // For SDK-specific errors
-        if (error?.details) console.error("ERROR DETAILS:", error.details);
-        if (error?.message) console.error("ERROR MESSAGE:", error.message);
-
-        throw error; // Re-throw to preserve the original error
+      } catch (error) {
+        throw error;
       }
     });
 
@@ -628,15 +588,30 @@ export const updateOrder: RequestHandler = async (req, res) => {
 
 export const cancelOrder: RequestHandler = async (req, res) => {
   try {
+    const { id } = req.user!;
     const { orderId } = req.params;
+    const { reason, notes }: Partial<Cancellation> = req.body;
 
-    // * Cari order beserta transaksinya
+    const user = await prisma.user.findUnique({ where: { id } });
+
+    if (!user) {
+      return createErrorResponse(res, "User not found", 404);
+    }
+
     const order = await prisma.order.findUnique({
       where: {
         id: orderId,
+        ...(user.role === "USER" && { userId: id }),
       },
       include: {
-        transaction: true,
+        transaction: {
+          select: {
+            id: true,
+            paymentStatus: true,
+            totalPrice: true,
+            paymentdetail: true,
+          },
+        },
       },
     });
 
@@ -656,13 +631,13 @@ export const cancelOrder: RequestHandler = async (req, res) => {
       );
     }
 
-    if (!order.transaction.invoiceId) {
-      return createErrorResponse(res, `Invoice id not found`, 404);
+    const xenditInvoiceId = order.transaction.paymentdetail?.xenditInvoiceId;
+
+    if (!xenditInvoiceId) {
+      return createErrorResponse(res, `Xendit invoice id not found`, 404);
     }
 
-    // * Mulai proses pembatalan dengan transaction untuk konsistensi data
     const result = await prisma.$transaction(async (tx) => {
-      // * Update status order
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: {
@@ -671,45 +646,211 @@ export const cancelOrder: RequestHandler = async (req, res) => {
         },
       });
 
-      // * Jika ada transaksi terkait
       if (order.transaction) {
         if (order.transaction.paymentStatus === "PENDING") {
           // * Jika pembayaran masih pending, cukup update status dan jadiin invoicenya expired
-          if (order.transaction.invoiceId) {
+          if (xenditInvoiceId) {
             await xenditInvoiceClient.expireInvoice({
-              invoiceId: order.transaction.invoiceId,
+              invoiceId: xenditInvoiceId,
             });
           }
           await tx.transaction.update({
             where: { id: order.transaction.id },
             data: {
               paymentStatus: "FAILED",
+              cancellation: {
+                create: {
+                  reason: reason ?? "OTHER",
+                  notes,
+                  cancelledById: id,
+                  cancelledAt: new Date(),
+                },
+              },
             },
           });
         } else if (order.transaction.paymentStatus === "SUCCESS") {
           try {
             // * Lakukan refund melalui Xendit
-            await xenditRefundClient.createRefund({
+            const refund = await xenditRefundClient.createRefund({
               data: {
-                invoiceId: order.transaction.invoiceId ?? undefined,
+                invoiceId: xenditInvoiceId,
                 amount: Number(order.transaction.totalPrice),
                 reason: "CANCELLATION",
                 currency: "IDR",
               },
             });
 
-            // * Update status transaksi
+            if (!refund || !refund.amount || !refund.updated) {
+              throw new Error("Xendit refund failed");
+            }
+
             await tx.transaction.update({
               where: { id: order.transaction.id },
               data: {
                 paymentStatus: "REFUNDED",
-                refundAmount: order.transaction.totalPrice,
-                refundedAt: new Date(),
+                cancellation: {
+                  create: {
+                    reason: reason ?? "OTHER",
+                    notes,
+                    cancelledById: id,
+                    cancelledAt: new Date(),
+                  },
+                },
+                refund: {
+                  create: {
+                    amount: refund.amount,
+                    reason: notes ?? "",
+                    refundedById: id,
+                    refundedAt: refund.updated,
+                  },
+                },
               },
             });
           } catch (error) {
-            logger.error("Error processing refund:", error);
-            throw new Error("Gagal memproses refund pembayaran");
+            throw error;
+          }
+        }
+      }
+
+      return updatedOrder;
+    });
+
+    return createSuccessResponse(res, result, "Order berhasil dibatalkan", 200);
+  } catch (error) {
+    logger.error("Error cancelling order:", error);
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const cancelOrderWithPaymentRequest: RequestHandler = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.user!;
+    const { orderId } = req.params;
+    const { reason, notes }: Partial<Cancellation> = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+
+    if (!user) {
+      return createErrorResponse(res, "User not found", 404);
+    }
+
+    const order = await prisma.order.findUnique({
+      where: {
+        id: orderId,
+        ...(user.role === "USER" && { userId: id }),
+      },
+      include: {
+        transaction: {
+          select: {
+            id: true,
+            paymentStatus: true,
+            totalPrice: true,
+            paymentdetail: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return createErrorResponse(res, "Order not found", 404);
+    }
+
+    if (
+      order.orderStatus === "COMPLETED" ||
+      order.orderStatus === "CANCELLED"
+    ) {
+      return createErrorResponse(
+        res,
+        `Order cannot be cancelled because it's already ${order.orderStatus}`,
+        400
+      );
+    }
+
+    const xenditPaymentMethodId =
+      order.transaction.paymentdetail?.xenditPaymentMethodId;
+    const xenditPaymentRequestId =
+      order.transaction.paymentdetail?.xenditPaymentRequestId;
+
+    if (!xenditPaymentMethodId || !xenditPaymentRequestId) {
+      return createErrorResponse(
+        res,
+        `Xendit payment method or payment request id not found`,
+        404
+      );
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          orderStatus: "CANCELLED",
+          workStatus: "CANCELLED",
+        },
+      });
+
+      if (order.transaction) {
+        if (order.transaction.paymentStatus === "PENDING") {
+          if (xenditPaymentMethodId) {
+            await xenditPaymentMethodClient.expirePaymentMethod({
+              paymentMethodId: xenditPaymentMethodId,
+            });
+          }
+          await tx.transaction.update({
+            where: { id: order.transaction.id },
+            data: {
+              paymentStatus: "FAILED",
+              cancellation: {
+                create: {
+                  reason: reason ?? "OTHER",
+                  notes,
+                  cancelledById: id,
+                  cancelledAt: new Date(),
+                },
+              },
+            },
+          });
+        } else if (order.transaction.paymentStatus === "SUCCESS") {
+          try {
+            const refund = await xenditRefundClient.createRefund({
+              data: {
+                paymentRequestId: xenditPaymentRequestId,
+                amount: Number(order.transaction.totalPrice),
+                reason: "CANCELLATION",
+                currency: "IDR",
+              },
+            });
+
+            if (!refund || !refund.amount || !refund.updated) {
+              throw new Error("Xendit refund failed");
+            }
+
+            await tx.transaction.update({
+              where: { id: order.transaction.id },
+              data: {
+                paymentStatus: "REFUNDED",
+                cancellation: {
+                  create: {
+                    reason: reason ?? "OTHER",
+                    notes,
+                    cancelledById: id,
+                    cancelledAt: new Date(),
+                  },
+                },
+                refund: {
+                  create: {
+                    amount: refund.amount,
+                    reason: notes ?? "",
+                    refundedById: id,
+                    refundedAt: refund.updated,
+                  },
+                },
+              },
+            });
+          } catch (error) {
+            throw error;
           }
         }
       }
@@ -813,101 +954,6 @@ export const getCurrentUserOrders: RequestHandler = async (req, res) => {
       totalOrders
     );
   } catch (error) {
-    return createErrorResponse(res, error, 500);
-  }
-};
-
-export const cancelCurrentUserOrder: RequestHandler = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const { id: userId } = req.user!;
-
-    // * Cari order beserta transaksinya
-    const order = await prisma.order.findUnique({
-      where: {
-        id: orderId,
-        userId: userId, // * Memastikan order milik user yang sedang login
-      },
-      include: {
-        transaction: true,
-      },
-    });
-
-    if (!order) {
-      return createErrorResponse(res, "Order not found", 404);
-    }
-
-    // * Cek apakah order sudah dalam status yang tidak bisa dibatalkan
-    if (
-      order.orderStatus === "COMPLETED" ||
-      order.orderStatus === "CANCELLED"
-    ) {
-      return createErrorResponse(
-        res,
-        `Order cannot be cancelled because it's already ${order.orderStatus}`,
-        400
-      );
-    }
-
-    if (!order.transaction.invoiceId) {
-      return createErrorResponse(res, `Invoice id not found`, 404);
-    }
-
-    // * Mulai proses pembatalan dengan transaction untuk konsistensi data
-    const result = await prisma.$transaction(async (tx) => {
-      // * Update status order
-      const updatedOrder = await tx.order.update({
-        where: { id: orderId },
-        data: {
-          orderStatus: "CANCELLED",
-          workStatus: "CANCELLED",
-        },
-      });
-
-      // * Jika ada transaksi terkait
-      if (order.transaction) {
-        if (order.transaction.paymentStatus === "PENDING") {
-          // * Jika pembayaran masih pending, cukup update status
-          await tx.transaction.update({
-            where: { id: order.transaction.id },
-            data: {
-              paymentStatus: "FAILED",
-            },
-          });
-        } else if (order.transaction.paymentStatus === "SUCCESS") {
-          try {
-            // * Lakukan refund melalui Xendit
-            await xenditRefundClient.createRefund({
-              data: {
-                invoiceId: order.transaction.invoiceId ?? undefined,
-                amount: Number(order.transaction.totalPrice),
-                reason: "REQUESTED_BY_CUSTOMER",
-                currency: "IDR",
-              },
-            });
-
-            // * Update status transaksi
-            await tx.transaction.update({
-              where: { id: order.transaction.id },
-              data: {
-                paymentStatus: "REFUNDED",
-                refundAmount: order.transaction.totalPrice,
-                refundedAt: new Date(),
-              },
-            });
-          } catch (error) {
-            logger.error("Error processing refund:", error);
-            throw new Error("Gagal memproses refund pembayaran");
-          }
-        }
-      }
-
-      return updatedOrder;
-    });
-
-    return createSuccessResponse(res, result, "Order berhasil dibatalkan", 200);
-  } catch (error) {
-    logger.error("Error cancelling order:", error);
     return createErrorResponse(res, error, 500);
   }
 };

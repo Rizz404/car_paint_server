@@ -28,10 +28,10 @@ async function main() {
     await seedCarModelYears(prisma, undefined, false);
     await seedCarModelYearColors(prisma, undefined, false);
     await seedUserCars(prisma, undefined, false);
-    // await seedPaymentMethods(prisma, undefined, false);
-    await seedTransactions(prisma, undefined, false);
-    await seedOrders(prisma, undefined, false);
-    await seedETickets(prisma, undefined, false);
+    await seedPaymentMethods(prisma, false);
+    // await seedTransactions(prisma, undefined, false);
+    // await seedOrders(prisma, undefined, false);
+    // await seedETickets(prisma, undefined, false);
 
     console.log("✅ Database seeding completed");
   } catch (error) {

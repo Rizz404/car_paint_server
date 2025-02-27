@@ -8,17 +8,17 @@ const apiKeyMiddleware: RequestHandler = async (req, res, next) => {
     const { "x-api-key": apiKeyHeader } = req.headers;
     const hashedApiKey = env.HASHED_API_KEY;
 
+    if (!apiKeyHeader) {
+      return createErrorResponse(res, "Api key header not present", 401);
+    }
+
     const apiKeyMatch = await bcrypt.compare(
       apiKeyHeader as string,
       hashedApiKey
     );
 
     if (!apiKeyMatch) {
-      return createErrorResponse(
-        res,
-        "Api key not match or not initialized",
-        401
-      );
+      return createErrorResponse(res, "Api key not match", 401);
     }
 
     return next();

@@ -40,10 +40,8 @@ const generateTransaction = (
   userId,
   paymentMethodId,
   adminFee: generateFee(),
-  paymentMethodFee: generateFee(),
   totalPrice: generateTransactionTotalPrice(),
   paymentStatus: "PENDING",
-  paymentInvoiceUrl: "",
 });
 
 export const seedTransactions = async (

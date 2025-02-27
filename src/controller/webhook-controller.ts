@@ -44,6 +44,7 @@ export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
     ) => {
       const transaction = await tx.transaction.findFirst({
         where: { id: transactionId },
+        include: { cancellation: true, paymentdetail: true, refund: true },
       });
 
       if (!transaction) {
@@ -94,18 +95,46 @@ export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
           };
 
         case "EXPIRED":
-          return await tx.transaction.update({
-            where: { id: transaction.id },
-            data: {
-              paymentStatus: "EXPIRED",
-              order: {
-                updateMany: {
-                  where: { transactionId },
-                  data: { orderStatus: "CANCELLED" },
+          if (transaction.cancellation && transaction.refund) {
+            return await tx.transaction.update({
+              where: { id: transaction.id },
+              data: {
+                paymentStatus: "REFUNDED",
+                order: {
+                  updateMany: {
+                    where: { transactionId },
+                    data: { orderStatus: "CANCELLED" },
+                  },
                 },
               },
-            },
-          });
+            });
+          } else if (transaction.cancellation) {
+            return await tx.transaction.update({
+              where: { id: transaction.id },
+              data: {
+                paymentStatus: "FAILED",
+                order: {
+                  updateMany: {
+                    where: { transactionId },
+                    data: { orderStatus: "CANCELLED" },
+                  },
+                },
+              },
+            });
+          } else {
+            return await tx.transaction.update({
+              where: { id: transaction.id },
+              data: {
+                paymentStatus: "EXPIRED",
+                order: {
+                  updateMany: {
+                    where: { transactionId },
+                    data: { orderStatus: "CANCELLED" },
+                  },
+                },
+              },
+            });
+          }
 
         case "STOPPED":
           return await tx.transaction.update({
@@ -199,7 +228,14 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
       >
     ) => {
       const transaction = await tx.transaction.findFirst({
-        where: { id: transactionId },
+        where: {
+          id: transactionId,
+        },
+        include: {
+          cancellation: true,
+          refund: true,
+          paymentdetail: true,
+        },
       });
 
       if (!transaction) {
@@ -250,19 +286,47 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
             ticket,
           };
 
-        /*  case "EXPIRED":
-          return await tx.transaction.update({
-            where: { id: transaction.id },
-            data: {
-              paymentStatus: "EXPIRED",
-              order: {
-                updateMany: {
-                  where: { transactionId },
-                  data: { orderStatus: "CANCELLED" },
+        case "EXPIRED":
+          if (transaction.cancellation && transaction.refund) {
+            return await tx.transaction.update({
+              where: { id: transaction.id },
+              data: {
+                paymentStatus: "REFUNDED",
+                order: {
+                  updateMany: {
+                    where: { transactionId },
+                    data: { orderStatus: "CANCELLED" },
+                  },
                 },
               },
-            },
-          });
+            });
+          } else if (transaction.cancellation) {
+            return await tx.transaction.update({
+              where: { id: transaction.id },
+              data: {
+                paymentStatus: "FAILED",
+                order: {
+                  updateMany: {
+                    where: { transactionId },
+                    data: { orderStatus: "CANCELLED" },
+                  },
+                },
+              },
+            });
+          } else {
+            return await tx.transaction.update({
+              where: { id: transaction.id },
+              data: {
+                paymentStatus: "EXPIRED",
+                order: {
+                  updateMany: {
+                    where: { transactionId },
+                    data: { orderStatus: "CANCELLED" },
+                  },
+                },
+              },
+            });
+          }
 
         case "STOPPED":
           return await tx.transaction.update({
@@ -277,7 +341,7 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
               },
             },
           });
- */
+
         default:
           return {};
       }
