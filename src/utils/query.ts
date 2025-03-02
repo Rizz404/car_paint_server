@@ -23,13 +23,18 @@ export const parseOrderBy = <T extends string>(
 ): OrderByParams<T> => {
   const validDirections: OrderDirection[] = ["asc", "desc"];
 
-  const parsedField = field?.toLowerCase() as T;
+  const inputFieldLower = field?.toLowerCase() || "";
+  const validFieldsLower = validFields.map((f) => f.toLowerCase());
+
+  const matchedIndex = validFieldsLower.findIndex((f) => f === inputFieldLower);
+  const parsedField =
+    matchedIndex >= 0 ? validFields[matchedIndex] : "createdAt";
+
   const parsedDirection = direction?.toLowerCase() as OrderDirection;
+  const isValidDirection = validDirections.includes(parsedDirection);
 
   return {
-    field: validFields.includes(parsedField) ? parsedField : ("createdAt" as T),
-    direction: validDirections.includes(parsedDirection)
-      ? parsedDirection
-      : "desc",
+    field: parsedField as T,
+    direction: isValidDirection ? parsedDirection : "desc",
   };
 };
