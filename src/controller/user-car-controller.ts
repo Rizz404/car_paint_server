@@ -14,7 +14,7 @@ import { parseOrderBy, parsePagination } from "@/utils/query";
 import { UserCar } from "@prisma/client";
 import { RequestHandler } from "express";
 
-// *======================= POST =======================*
+// * *======================= POST =======================*
 export const createManyUserCars: RequestHandler = async (req, res) => {
   try {
     const payloads: UserCar[] = req.body;
@@ -43,8 +43,78 @@ export const createManyUserCars: RequestHandler = async (req, res) => {
 export const createUserCar: RequestHandler = async (req, res) => {
   try {
     const { id } = req.user!;
-    const payload: UserCar = req.body;
+    const {
+      carModelYearColorId,
+      colorId,
+      carModelYearId,
+      ...rest
+    }: UserCar & { carModelYearId: string; colorId: string } = req.body;
     const carImages = req.files as Express.Multer.File[];
+
+    let finalCarModelYearColorId: string;
+
+    if (carModelYearColorId) {
+      const existingCarModelYearColor =
+        await prisma.carModelYearColor.findUnique({
+          where: { id: carModelYearColorId },
+        });
+
+      if (!existingCarModelYearColor) {
+        return createErrorResponse(
+          res,
+          { message: "Invalid carModelYearColorId" },
+          400
+        );
+      }
+
+      finalCarModelYearColorId = carModelYearColorId;
+    } else if (carModelYearId && colorId) {
+      const [carModelYear, color] = await Promise.all([
+        prisma.carModelYear.findUnique({
+          where: { id: carModelYearId },
+        }),
+        prisma.color.findUnique({
+          where: { id: colorId },
+        }),
+      ]);
+
+      if (!carModelYear) {
+        return createErrorResponse(
+          res,
+          { message: "Invalid carModelYearId" },
+          400
+        );
+      }
+
+      if (!color) {
+        return createErrorResponse(res, { message: "Invalid colorId" }, 400);
+      }
+
+      const carModelYearColor = await prisma.carModelYearColor.upsert({
+        where: {
+          carModelYearId_colorId: {
+            carModelYearId,
+            colorId,
+          },
+        },
+        create: {
+          carModelYearId,
+          colorId,
+        },
+        update: {},
+      });
+
+      finalCarModelYearColorId = carModelYearColor.id;
+    } else {
+      return createErrorResponse(
+        res,
+        {
+          message:
+            "Either carModelYearColorId or both colorId and carModelYearId are required",
+        },
+        400
+      );
+    }
 
     const carImageUrls =
       carImages
@@ -53,8 +123,9 @@ export const createUserCar: RequestHandler = async (req, res) => {
 
     const createdUserCar = await prisma.userCar.create({
       data: {
-        ...payload,
+        ...rest,
         userId: id,
+        carModelYearColorId: finalCarModelYearColorId,
         carImages: carImageUrls,
       },
     });
@@ -90,7 +161,7 @@ export const createUserCarWithImagekit: RequestHandler = async (req, res) => {
   }
 };
 
-// *======================= GET =======================*
+// * *======================= GET =======================*
 export const getUserCars: RequestHandler = async (req, res) => {
   try {
     const { id } = req.user!;
@@ -264,23 +335,29 @@ export const searchUserCars: RequestHandler = async (req, res) => {
   }
 };
 
-// *======================= PATCH =======================*
+// * *======================= PATCH =======================*
 export const updateUserCar: RequestHandler = async (req, res) => {
   try {
-    const { id } = req.user!;
+    const { id: userId } = req.user!;
     const { userCarId } = req.params;
-    let { deleteImages = [], ...payload }: { deleteImages?: string[] } =
-      req.body;
+    let {
+      deleteImages = [],
+      carModelYearColorId,
+      colorId,
+      carModelYearId,
+      ...rest
+    }: Partial<UserCar> & {
+      deleteImages?: string[] | string;
+      colorId?: string;
+      carModelYearId?: string;
+    } = req.body;
 
     const carImages = req.files as Express.Multer.File[];
-    const addImages =
-      carImages
-        ?.map((carImage) => carImage.cloudinary?.secure_url)
-        .filter((url): url is string => typeof url === "string") || [];
 
+    // * Validasi dan proses deleteImages
     if (typeof deleteImages === "string") {
       try {
-        deleteImages = JSON.parse(deleteImages);
+        deleteImages = JSON.parse(deleteImages) as string[];
       } catch (error) {
         return createErrorResponse(
           res,
@@ -294,19 +371,66 @@ export const updateUserCar: RequestHandler = async (req, res) => {
       deleteImages = [];
     }
 
+    // * Cari UserCar yang akan diupdate
     const userCar = await prisma.userCar.findUnique({
-      where: {
-        id: userCarId,
-        userId: id,
-      },
+      where: { id: userCarId, userId },
+      include: { carModelYearColor: true },
     });
 
     if (!userCar) {
       return createErrorResponse(res, "User Car Not Found", 404);
     }
 
+    let finalCarModelYearColorId = userCar.carModelYearColorId;
+
+    // * Proses validasi relasi jika ada perubahan
+    if (carModelYearColorId || colorId || carModelYearId) {
+      if (carModelYearColorId) {
+        const existing = await prisma.carModelYearColor.findUnique({
+          where: { id: carModelYearColorId },
+        });
+        if (!existing)
+          return createErrorResponse(res, "Invalid carModelYearColorId", 400);
+        finalCarModelYearColorId = carModelYearColorId;
+      } else if (colorId && carModelYearId) {
+        const [color, carModelYear] = await Promise.all([
+          prisma.color.findUnique({ where: { id: colorId } }),
+          prisma.carModelYear.findUnique({ where: { id: carModelYearId } }),
+        ]);
+
+        if (!color || !carModelYear) {
+          return createErrorResponse(
+            res,
+            "Invalid colorId or carModelYearId",
+            400
+          );
+        }
+
+        const relation = await prisma.carModelYearColor.upsert({
+          where: { carModelYearId_colorId: { carModelYearId, colorId } },
+          create: { carModelYearId, colorId },
+          update: {},
+        });
+
+        finalCarModelYearColorId = relation.id;
+      } else {
+        return createErrorResponse(
+          res,
+          "Need either carModelYearColorId or both colorId and carModelYearId",
+          400
+        );
+      }
+    }
+
+    // * Proses gambar
+    const addImages =
+      carImages
+        ?.map((img) => img.cloudinary?.secure_url)
+        .filter((url): url is string => !!url) || [];
+
     let updatedImages = [...userCar.carImages];
 
+    // * Hapus gambar yang dipilih
     if (deleteImages.length > 0) {
       updatedImages = updatedImages.filter(
         (img) => !deleteImages.includes(img)
@@ -314,14 +438,17 @@ export const updateUserCar: RequestHandler = async (req, res) => {
       await deleteCloudinaryImages(deleteImages);
     }
 
+    // * Tambahkan gambar baru
     if (addImages.length > 0) {
       updatedImages = [...updatedImages, ...addImages];
     }
 
+    // * Update data
     const updatedUserCar = await prisma.userCar.update({
       where: { id: userCarId },
       data: {
-        ...payload,
+        ...rest,
+        carModelYearColorId: finalCarModelYearColorId,
         carImages: updatedImages,
       },
     });
@@ -331,8 +458,7 @@ export const updateUserCar: RequestHandler = async (req, res) => {
     return createErrorResponse(res, error, 500);
   }
 };
-
-// *======================= DELETE =======================*
+// * *======================= DELETE =======================*
 export const deleteUserCar: RequestHandler = async (req, res) => {
   try {
     const { id } = req.user!;
@@ -367,16 +493,16 @@ export const deleteAllUserCar: RequestHandler = async (req, res) => {
   try {
     const { id } = req.user!;
 
-    // Get all user cars first to delete their images
+    // * Get all user cars first to delete their images
     const userCars = await prisma.userCar.findMany({
       where: { userId: id },
       select: { carImages: true },
     });
 
-    // Collect all image URLs and delete them from Cloudinary
+    // * Collect all image URLs and delete them from Cloudinary
     const allImages = userCars
       .flatMap((car) => car.carImages || [])
-      .filter((url) => url); // Remove null/undefined
+      .filter((url) => url); // * Remove null/undefined
 
     if (allImages.length > 0) {
       await deleteCloudinaryImages(allImages);
@@ -392,7 +518,7 @@ export const deleteAllUserCar: RequestHandler = async (req, res) => {
   }
 };
 
-// *======================= ADD & DELETE CAR IMAGES =======================*
+// * *======================= ADD & DELETE CAR IMAGES =======================*
 export const addUserCarImage: RequestHandler = async (req, res) => {
   try {
     const { id } = req.user!;
@@ -505,10 +631,10 @@ export const deleteUserCarImage: RequestHandler = async (req, res) => {
       );
     }
 
-    // Get the image URL that will be deleted
+    // * Get the image URL that will be deleted
     const imageToDelete = userCar.carImages[imageIndex];
 
-    // Delete from Cloudinary if it's a Cloudinary URL
+    // * Delete from Cloudinary if it's a Cloudinary URL
     if (isCloudinaryUrl(imageToDelete)) {
       await deleteCloudinaryImage(imageToDelete);
     }
