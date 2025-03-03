@@ -1,12 +1,14 @@
 import { z } from "zod";
 
 export const createTransactionSchema = z.object({
-  body: z.object({
-    paymentMethodId: z.string({
-      required_error: "Payment method ID is required",
-    }),
-    orderId: z.string({ required_error: "Order ID is required" }),
-  }),
+  body: z
+    .object({
+      paymentMethodId: z.string({
+        required_error: "Payment method ID is required",
+      }),
+      orderId: z.string({ required_error: "Order ID is required" }),
+    })
+    .strict(),
 });
 
 export const updateTransactionSchema = z.object({

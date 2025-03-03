@@ -12,7 +12,7 @@ import env from "@/configs/environment";
 
 export const register: RequestHandler = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password }: User = req.body;
 
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);

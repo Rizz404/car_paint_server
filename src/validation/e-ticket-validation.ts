@@ -1,11 +1,13 @@
 import { z } from "zod";
 
 export const createETicketSchema = z.object({
-  body: z.object({
-    userId: z.string({ required_error: "User ID is required" }),
-    orderId: z.string({ required_error: "Order ID is required" }),
-    ticketNumber: z.number({ required_error: "Ticket number is required" }),
-  }),
+  body: z
+    .object({
+      userId: z.string({ required_error: "User ID is required" }),
+      orderId: z.string({ required_error: "Order ID is required" }),
+      ticketNumber: z.number({ required_error: "Ticket number is required" }),
+    })
+    .strict(),
 });
 
 export const updateETicketSchema = z.object({
