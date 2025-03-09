@@ -10,8 +10,8 @@ export const createUserCarSchema = z.object({
       carModelYearId: z.string().optional(),
       licensePlate: z.string({ required_error: "License plate is required" }),
     })
+    .strict()
     .superRefine((data, ctx) => {
-      // Validasi kombinasi input yang diperbolehkan
       if (data.carModelYearColorId) {
         if (data.colorId || data.carModelYearId) {
           ctx.addIssue({

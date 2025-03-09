@@ -1,12 +1,14 @@
 import { z } from "zod";
 
 export const createCarModelYearColorSchema = z.object({
-  body: z.object({
-    carModelYearId: z.string({
-      required_error: "Car model year ID is required",
-    }),
-    colorId: z.string({ required_error: "Color ID is required" }),
-  }),
+  body: z
+    .object({
+      carModelYearId: z.string({
+        required_error: "Car model year ID is required",
+      }),
+      colorId: z.string({ required_error: "Color ID is required" }),
+    })
+    .strict(),
 });
 
 export const updateCarModelYearColorSchema = z.object({

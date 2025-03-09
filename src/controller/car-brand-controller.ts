@@ -17,11 +17,11 @@ import { RequestHandler } from "express";
 // *======================= POST =======================*
 export const createManyCarBrands: RequestHandler = async (req, res) => {
   try {
-    const payloads: CarBrand[] = req.body;
+    const { ...rest }: CarBrand[] = req.body;
 
     const logos = req.files as Express.Multer.File[];
 
-    const carBrandsToCreate = payloads.map((payload, index) => ({
+    const carBrandsToCreate = rest.map((payload, index) => ({
       ...payload,
       ...(logos &&
         logos[index] && {
@@ -31,7 +31,7 @@ export const createManyCarBrands: RequestHandler = async (req, res) => {
 
     const createdCarBrands = await prisma.carBrand.createMany({
       data: carBrandsToCreate,
-      skipDuplicates: true, // Optional: skip duplicate entries
+      skipDuplicates: true,
     });
 
     return createSuccessResponse(
@@ -48,11 +48,11 @@ export const createManyCarBrands: RequestHandler = async (req, res) => {
 
 export const createCarBrand: RequestHandler = async (req, res) => {
   try {
-    const payload: CarBrand = req.body;
+    const { ...rest }: CarBrand = req.body;
     const logo = req.file as Express.Multer.File;
 
     const existingBrand = await prisma.carBrand.findUnique({
-      where: { name: payload.name },
+      where: { name: rest.name },
     });
 
     if (existingBrand) {
@@ -68,7 +68,7 @@ export const createCarBrand: RequestHandler = async (req, res) => {
     }
 
     const createdCarBrand = await prisma.carBrand.create({
-      data: { ...payload, logo: logo.cloudinary.secure_url },
+      data: { ...rest, logo: logo.cloudinary.secure_url },
     });
 
     return createSuccessResponse(res, createdCarBrand, "Created", 201);
@@ -175,7 +175,7 @@ export const searchCarBrands: RequestHandler = async (req, res) => {
 export const updateCarBrand: RequestHandler = async (req, res) => {
   try {
     const { carBrandId } = req.params;
-    const payload: CarBrand = req.body;
+    const { ...rest }: CarBrand = req.body;
     const logo = req.file as Express.Multer.File;
 
     if (logo && !logo.cloudinary?.secure_url) {
@@ -202,7 +202,7 @@ export const updateCarBrand: RequestHandler = async (req, res) => {
 
     const updatedCarBrand = await prisma.carBrand.update({
       data: {
-        ...payload,
+        ...rest,
         ...(logo && logo.cloudinary && { logo: logo.cloudinary.secure_url }),
       },
       where: { id: carBrandId },
