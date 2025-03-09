@@ -214,7 +214,7 @@ export const getUserCars: RequestHandler = async (req, res) => {
       take: +limit,
       orderBy: { [field]: direction },
     });
-    const totalUserCars = await prisma.userCar.count();
+    const totalUserCars = await prisma.userCar.count({ where: { userId: id } });
 
     createPaginatedResponse(
       res,
