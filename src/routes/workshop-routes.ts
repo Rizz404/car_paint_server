@@ -8,6 +8,7 @@ import {
   searchWorkshops,
   updateWorkshop,
   getCurrentUserNearestWorkshops,
+  postCurrentUserNearestWorkshops,
 } from "@/controller/workshop-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { uploadSingle } from "@/playground/upload-file";
@@ -39,7 +40,8 @@ workshopRouter
 
 workshopRouter
   .route("/nearest")
-  .post(authMiddleware(), getCurrentUserNearestWorkshops);
+  .get(authMiddleware(), getCurrentUserNearestWorkshops)
+  .post(authMiddleware(), postCurrentUserNearestWorkshops);
 
 workshopRouter
   .route("/multiple")

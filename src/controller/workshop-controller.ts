@@ -218,7 +218,7 @@ export const deleteAllWorkshops: RequestHandler = async (req, res) => {
 };
 
 // * Current user operations
-export const getCurrentUserNearestWorkshops: RequestHandler = async (
+export const postCurrentUserNearestWorkshops: RequestHandler = async (
   req,
   res
 ) => {
@@ -282,6 +282,111 @@ export const getCurrentUserNearestWorkshops: RequestHandler = async (
     `;
 
     // Get total count for pagination
+    const totalCount = await prisma.$queryRaw<[{ count: number }]>`
+      SELECT COUNT(*)::integer
+      FROM workshops w
+      WHERE 
+        CASE 
+          WHEN ${maxDistance ? Number(maxDistance) : null}::decimal IS NOT NULL THEN
+            calculate_distance(
+              ${Number(latitude)}, 
+              ${Number(longitude)}, 
+              w.latitude::decimal, 
+              w.longitude::decimal
+            ) <= ${maxDistance ? Number(maxDistance) : null}::decimal
+          ELSE TRUE
+        END
+    `;
+
+    const formattedWorkshops = workshops.map((workshop) => {
+      const { phone_number, created_at, updated_at, ...rest } = workshop;
+
+      return {
+        ...rest,
+        phoneNumber: phone_number,
+        createdAt: created_at,
+        updatedAt: updated_at,
+        distance: formatDistanceKmToM(workshop.distance),
+      };
+    });
+
+    createPaginatedResponse(
+      res,
+      formattedWorkshops,
+      currentPage,
+      itemsPerPage,
+      totalCount[0].count
+    );
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const getCurrentUserNearestWorkshops: RequestHandler = async (
+  req,
+  res
+) => {
+  try {
+    const {
+      page = "1",
+      limit = "10",
+      maxDistance,
+      latitude,
+      longitude,
+    } = req.query as {
+      page?: string;
+      limit?: string;
+      maxDistance?: string;
+      latitude: string;
+      longitude: string;
+    };
+
+    if (!latitude || !longitude) {
+      return createErrorResponse(res, "all field required", 400);
+    }
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+
+    const workshops = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        name: string;
+        email: string;
+        phone_number: string;
+        address: string;
+        latitude: string;
+        longitude: string;
+        created_at: Date;
+        updated_at: Date;
+        distance: string;
+      }>
+    >`
+      SELECT 
+        w.*,
+        calculate_distance(
+          ${Number(latitude)}, 
+          ${Number(longitude)}, 
+          w.latitude::decimal, 
+          w.longitude::decimal
+        )::text as distance
+      FROM workshops w
+      WHERE 
+        CASE 
+          WHEN ${maxDistance ? Number(maxDistance) : null}::decimal IS NOT NULL THEN
+            calculate_distance(
+              ${Number(latitude)}, 
+              ${Number(longitude)},
+              w.latitude::decimal, 
+              w.longitude::decimal
+            ) <= ${maxDistance ? Number(maxDistance) : null}::decimal
+          ELSE TRUE
+        END
+      ORDER BY ST_SetSRID(ST_MakePoint(w.longitude::float8, w.latitude::float8), 4326)::geography <-> 
+               ST_SetSRID(ST_MakePoint(${Number(longitude)}::float8, ${Number(latitude)}::float8), 4326)::geography
+      LIMIT ${itemsPerPage}
+      OFFSET ${offset}
+    `;
+
     const totalCount = await prisma.$queryRaw<[{ count: number }]>`
       SELECT COUNT(*)::integer
       FROM workshops w
