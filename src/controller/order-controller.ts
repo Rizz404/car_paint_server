@@ -59,9 +59,9 @@ export const createOrder: RequestHandler = async (req, res) => {
     const { id: userId } = req.user!;
     const {
       carServices,
-      paymentMethodId,
       userCarId,
       workshopId,
+      paymentMethodId,
       note,
     }: CreateOrderDTO & { paymentMethodId: string } = req.body;
 
