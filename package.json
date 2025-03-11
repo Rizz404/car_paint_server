@@ -73,6 +73,7 @@
     "express-prom-bundle": "^8.0.0",
     "express-rate-limit": "^7.5.0",
     "figlet": "^1.8.0",
+    "firebase-admin": "^13.2.0",
     "helmet": "^8.0.0",
     "imagekit": "^6.0.0",
     "jsonwebtoken": "^9.0.2",

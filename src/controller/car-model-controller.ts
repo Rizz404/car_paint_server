@@ -180,16 +180,21 @@ export const searchCarModels: RequestHandler = async (req, res) => {
       page = "1",
       limit = "10",
       name,
+      carBrandId,
     } = req.query as unknown as {
       page: string;
       limit: string;
       name: string;
+      carBrandId?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
     const carModels = await prisma.carModel.findMany({
-      where: { name: { mode: "insensitive", contains: name } },
+      where: {
+        name: { mode: "insensitive", contains: name },
+        ...(carBrandId && { carBrandId }),
+      },
       include: {
         carBrand: {
           select: { id: true, name: true, logo: true, country: true },

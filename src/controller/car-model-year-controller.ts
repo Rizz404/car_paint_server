@@ -6,7 +6,7 @@ import {
 } from "@/types/api-response";
 import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
-import { CarModelYear } from "@prisma/client";
+import { CarModelYear, Prisma } from "@prisma/client";
 import { RequestHandler } from "express";
 
 // *======================= POST =======================*
@@ -176,16 +176,18 @@ export const searchCarModelYears: RequestHandler = async (req, res) => {
       limit = "10",
       yearFrom,
       yearTo,
+      carModelId,
     } = req.query as unknown as {
       page: string;
       limit: string;
       yearFrom?: string;
       yearTo?: string;
+      carModelId?: string;
     };
 
     const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
 
-    let whereClause = {};
+    let whereClause: Prisma.CarModelYearWhereInput = {};
 
     if (yearFrom && yearTo) {
       whereClause = {
@@ -206,6 +208,10 @@ export const searchCarModelYears: RequestHandler = async (req, res) => {
           lte: Number(yearTo),
         },
       };
+    }
+
+    if (carModelId) {
+      whereClause.carModelId = carModelId;
     }
 
     const carModelYears = await prisma.carModelYear.findMany({

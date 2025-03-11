@@ -22,6 +22,9 @@ const envSchema = z.object({
   MIDTRANS_SERVER_KEY: z.string(),
   MIDTRANS_CLIENT_KEY: z.string(),
   HASHED_API_KEY: z.string(),
+  FIREBASE_CLIENT_EMAIL: z.string(),
+  FIREBASE_PROJECT_ID: z.string(),
+  FIREBASE_PRIVATE_KEY: z.string(),
 });
 
 type ValidatedEnv = z.infer<typeof envSchema>;
