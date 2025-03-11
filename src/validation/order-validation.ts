@@ -9,6 +9,7 @@ export const createOrderSchema = z.object({
     .object({
       userCarId: z.string().min(1, "User car ID is required"),
       workshopId: z.string().min(1, "Workshop ID is required"),
+      paymentMethodId: z.string().min(1, "Payment Method ID is required"),
       note: z.string().max(1000, "Max 1000 characters").optional(),
       carServices: z
         .array(carServiceSchema)
