@@ -12,6 +12,10 @@ import {
   createSuccessResponse,
 } from "@/types/api-response";
 import logger from "@/utils/logger";
+import {
+  sendNotification,
+  sendOrderNotification,
+} from "@/utils/notification-handler";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import { createOrderSchema } from "@/validation/order-validation";
 import {
@@ -24,6 +28,7 @@ import {
   WorkStatus,
 } from "@prisma/client";
 import { RequestHandler } from "express";
+import { messaging } from "firebase-admin";
 import { PaymentRequestParameters } from "xendit-node/payment_request/models";
 import { EWalletChannelCode } from "xendit-node/payment_request/models/EWalletChannelCode";
 import { EWalletParameters } from "xendit-node/payment_request/models/EWalletParameters";
@@ -191,6 +196,18 @@ export const createOrder: RequestHandler = async (req, res) => {
 
       return transaction;
     });
+
+    if (req.io && result.order) {
+      sendOrderNotification(
+        req.io,
+        "order:created",
+        { id: result.id, userId: userId, workshopId: "" },
+        {
+          totalPrice: transactionTotalPrice,
+          services: carServicesData.map((s) => s.name),
+        }
+      );
+    }
 
     return createSuccessResponse(
       res,
@@ -953,6 +970,25 @@ export const getCurrentUserOrders: RequestHandler = async (req, res) => {
       itemsPerPage,
       totalOrders
     );
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const testFCM: RequestHandler = async (req, res) => {
+  const { token } = req.body;
+
+  try {
+    const message = {
+      data: {
+        title: "New Notification",
+        body: "Hello, this is a test notification!",
+      },
+      token,
+    };
+    await messaging().send(message);
+
+    return createSuccessResponse(res, {});
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }
