@@ -8,7 +8,7 @@ declare global {
 const prisma =
   global.prisma ||
   new PrismaClient({
-    ...(isDevelopment && { log: ["info", "query", "warn", "error"] }),
+    ...(isDevelopment && { log: ["info", "warn", "error"] }),
   });
 
 global.prisma = prisma;

@@ -12,6 +12,7 @@ import {
   createOrderWithPaymentRequest,
   cancelOrderWithPaymentRequest,
   getOrdersByWorkshopId,
+  testFCM,
 } from "@/controller/order-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { validateRequest } from "@/middlewares/validate-request";
@@ -46,6 +47,8 @@ orderRouter
     validateRole(["ADMIN", "SUPER_ADMIN"]),
     getOrdersByWorkshopId
   );
+
+orderRouter.route("/test-fcm").post(testFCM);
 
 orderRouter
   .route("/multiple")

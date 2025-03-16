@@ -15,6 +15,8 @@ import {
   deleteCloudinaryImages,
   isCloudinaryUrl,
 } from "@/utils/cloudinary";
+import jwt from "jsonwebtoken";
+import env from "@/configs/environment";
 
 // *======================= POST =======================*
 export const createManyUsers: RequestHandler = async (req, res) => {
@@ -201,6 +203,31 @@ export const updateUser: RequestHandler = async (req, res) => {
       where: { id: userId },
     });
 
+    if (
+      user.username !== updatedUser.username ||
+      user.email !== updatedUser.email ||
+      user.role !== updatedUser.role
+    ) {
+      const newAccessToken = jwt.sign(
+        {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          email: updatedUser.email,
+          role: updatedUser.role,
+        },
+        env.JWT_ACCESS_TOKEN!,
+        {
+          expiresIn: "30d",
+        }
+      );
+
+      return createSuccessResponse(
+        res,
+        { ...updatedUser, newAccessToken },
+        "Updated"
+      );
+    }
+
     return createSuccessResponse(res, updatedUser, "Updated");
   } catch (error) {
     return createErrorResponse(res, error, 500);
@@ -330,6 +357,31 @@ export const updateCurrentUser: RequestHandler = async (req, res) => {
       include: { userProfile: true },
       omit: { password: true },
     });
+
+    if (
+      updatedCurrentUser.username !== currentUser.username ||
+      updatedCurrentUser.email !== currentUser.email ||
+      updatedCurrentUser.role !== currentUser.role
+    ) {
+      const newAccessToken = jwt.sign(
+        {
+          id: updatedCurrentUser.id,
+          username: updatedCurrentUser.username,
+          email: updatedCurrentUser.email,
+          role: updatedCurrentUser.role,
+        },
+        env.JWT_ACCESS_TOKEN!,
+        {
+          expiresIn: "30d",
+        }
+      );
+
+      return createSuccessResponse(
+        res,
+        { ...updatedCurrentUser, newAccessToken },
+        "Updated"
+      );
+    }
 
     return createSuccessResponse(res, updatedCurrentUser);
   } catch (error) {

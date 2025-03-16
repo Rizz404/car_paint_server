@@ -7,7 +7,7 @@ import jwt, { TokenExpiredError } from "jsonwebtoken";
 declare global {
   namespace Express {
     interface Request {
-      user?: Pick<User, "id">;
+      user?: Pick<User, "id" | "username" | "email" | "role">;
     }
   }
 }
@@ -32,17 +32,15 @@ export const authMiddleware = (
       const decoded = jwt.verify(
         accessToken,
         env.JWT_ACCESS_TOKEN as string
-      ) as {
-        userId: string;
-      };
+      ) as Pick<User, "id" | "username" | "email" | "role">;
 
       // * Validasi hasil decode
-      if (!decoded || !decoded.userId) {
+      if (!decoded || !decoded.id) {
         return createErrorResponse(res, "Invalid token", 403);
       }
 
       // * Set user ke request
-      req.user = { id: decoded.userId };
+      req.user = decoded;
 
       // * Lanjut ke middleware berikutnya
       next();

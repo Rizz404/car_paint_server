@@ -51,6 +51,12 @@ export const createUserCar: RequestHandler = async (req, res) => {
     }: UserCar & { carModelYearId: string; colorId: string } = req.body;
     const carImages = req.files as Express.Multer.File[];
 
+    const userCars = await prisma.userCar.findMany({ where: { userId: id } });
+
+    if (userCars.length >= 1) {
+      return createErrorResponse(res, "Max only one car", 400);
+    }
+
     let finalCarModelYearColorId: string;
 
     if (carModelYearColorId) {

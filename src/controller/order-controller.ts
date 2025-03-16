@@ -1,6 +1,5 @@
 import prisma from "@/configs/database";
 import {
-  xenditCustomerClient,
   xenditInvoiceClient,
   xenditPaymentMethodClient,
   xenditPaymentRequestClient,
@@ -12,6 +11,10 @@ import {
   createSuccessResponse,
 } from "@/types/api-response";
 import logger from "@/utils/logger";
+import {
+  createOrderStatusNotification,
+  createWorkStatusNotification,
+} from "@/utils/notification-handler";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import { createOrderSchema } from "@/validation/order-validation";
 import {
@@ -24,6 +27,7 @@ import {
   WorkStatus,
 } from "@prisma/client";
 import { RequestHandler } from "express";
+import { messaging } from "firebase-admin";
 import { PaymentRequestParameters } from "xendit-node/payment_request/models";
 import { EWalletChannelCode } from "xendit-node/payment_request/models/EWalletChannelCode";
 import { EWalletParameters } from "xendit-node/payment_request/models/EWalletParameters";
@@ -580,6 +584,14 @@ export const updateOrder: RequestHandler = async (req, res) => {
       where: { id: orderId },
     });
 
+    if (order.orderStatus !== updatedOrder.orderStatus) {
+      createOrderStatusNotification(updatedOrder);
+    }
+
+    if (order.workStatus !== updatedOrder.workStatus) {
+      createWorkStatusNotification(updatedOrder);
+    }
+
     return createSuccessResponse(res, updatedOrder, "Updated");
   } catch (error) {
     return createErrorResponse(res, error, 500);
@@ -953,6 +965,25 @@ export const getCurrentUserOrders: RequestHandler = async (req, res) => {
       itemsPerPage,
       totalOrders
     );
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
+export const testFCM: RequestHandler = async (req, res) => {
+  const { token } = req.body;
+
+  try {
+    const message = {
+      data: {
+        title: "New Notification",
+        body: "Hello, this is a test notification!",
+      },
+      token,
+    };
+    await messaging().send(message);
+
+    return createSuccessResponse(res, {});
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }

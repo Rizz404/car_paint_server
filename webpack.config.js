@@ -1,5 +1,6 @@
 const path = require("path");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const nodeExternals = require("webpack-node-externals");
 
 module.exports = {
   mode: "production",
@@ -25,12 +26,5 @@ module.exports = {
     },
   },
   plugins: [new CleanWebpackPlugin()],
-  externals: {
-    express: "commonjs express",
-    bcrypt: "commonjs bcrypt",
-    "prom-client": "commonjs prom-client",
-    "express-prom-bundle": "commonjs express-prom-bundle",
-    "response-time": "commonjs response-time",
-    figlet: "commonjs figlet",
-  },
+  externals: [nodeExternals()],
 };

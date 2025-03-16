@@ -25,6 +25,7 @@ model User {
   eTickets      ETicket[]
   cancellations Cancellation[]
   refunds       Refund[]
+  workshops     Workshop[]
 
   @@map("users")
 }
@@ -140,6 +141,7 @@ model Workshop {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   orders Order[]
+  users  User[]
 
   @@map("workshops")
 }
