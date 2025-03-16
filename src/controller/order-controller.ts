@@ -1,6 +1,5 @@
 import prisma from "@/configs/database";
 import {
-  xenditCustomerClient,
   xenditInvoiceClient,
   xenditPaymentMethodClient,
   xenditPaymentRequestClient,
@@ -13,8 +12,8 @@ import {
 } from "@/types/api-response";
 import logger from "@/utils/logger";
 import {
-  sendNotification,
-  sendOrderNotification,
+  createOrderStatusNotification,
+  createWorkStatusNotification,
 } from "@/utils/notification-handler";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import { createOrderSchema } from "@/validation/order-validation";
@@ -196,18 +195,6 @@ export const createOrder: RequestHandler = async (req, res) => {
 
       return transaction;
     });
-
-    if (req.io && result.order) {
-      sendOrderNotification(
-        req.io,
-        "order:created",
-        { id: result.id, userId: userId, workshopId: "" },
-        {
-          totalPrice: transactionTotalPrice,
-          services: carServicesData.map((s) => s.name),
-        }
-      );
-    }
 
     return createSuccessResponse(
       res,
@@ -596,6 +583,14 @@ export const updateOrder: RequestHandler = async (req, res) => {
       data: payload,
       where: { id: orderId },
     });
+
+    if (order.orderStatus !== updatedOrder.orderStatus) {
+      createOrderStatusNotification(updatedOrder);
+    }
+
+    if (order.workStatus !== updatedOrder.workStatus) {
+      createWorkStatusNotification(updatedOrder);
+    }
 
     return createSuccessResponse(res, updatedOrder, "Updated");
   } catch (error) {

@@ -7,10 +7,14 @@ import {
   XenditPaymentRequestWebhookPayload,
 } from "@/types/xendit-webhook";
 import logger from "@/utils/logger";
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient, Prisma, PaymentStatus } from "@prisma/client";
 import { RequestHandler } from "express";
 import { env } from "process";
 import prisma from "@/configs/database";
+import {
+  createOrderStatusNotification,
+  createPaymentStatusNotification,
+} from "@/utils/notification-handler";
 
 export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
   try {
@@ -51,9 +55,12 @@ export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
         throw new Error(`No transaction found: ${transactionId}`);
       }
 
+      let updatedTransaction;
+      let ticket;
+
       switch (status) {
         case "PAID":
-          const updatedTransaction = await tx.transaction.update({
+          updatedTransaction = await tx.transaction.update({
             where: { id: transaction.id },
             data: {
               paymentStatus: "SUCCESS",
@@ -65,12 +72,7 @@ export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
               },
             },
             include: {
-              order: {
-                select: {
-                  id: true,
-                  userId: true,
-                },
-              },
+              order: true,
             },
           });
 
@@ -81,7 +83,7 @@ export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
           });
 
           const newTicketNumber = (latestTicket?.ticketNumber ?? 0) + 1;
-          const ticket = await tx.eTicket.create({
+          ticket = await tx.eTicket.create({
             data: {
               userId: updatedTransaction.userId,
               orderId: updatedTransaction.order[0].id,
@@ -92,11 +94,12 @@ export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
           return {
             transaction: updatedTransaction,
             ticket,
+            order: updatedTransaction.order[0],
           };
 
         case "EXPIRED":
           if (transaction.cancellation && transaction.refund) {
-            return await tx.transaction.update({
+            updatedTransaction = await tx.transaction.update({
               where: { id: transaction.id },
               data: {
                 paymentStatus: "REFUNDED",
@@ -107,9 +110,12 @@ export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
                   },
                 },
               },
+              include: {
+                order: true,
+              },
             });
           } else if (transaction.cancellation) {
-            return await tx.transaction.update({
+            updatedTransaction = await tx.transaction.update({
               where: { id: transaction.id },
               data: {
                 paymentStatus: "FAILED",
@@ -120,9 +126,12 @@ export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
                   },
                 },
               },
+              include: {
+                order: true,
+              },
             });
           } else {
-            return await tx.transaction.update({
+            updatedTransaction = await tx.transaction.update({
               where: { id: transaction.id },
               data: {
                 paymentStatus: "EXPIRED",
@@ -133,11 +142,18 @@ export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
                   },
                 },
               },
+              include: {
+                order: true,
+              },
             });
           }
+          return {
+            transaction: updatedTransaction,
+            order: updatedTransaction.order[0],
+          };
 
         case "STOPPED":
-          return await tx.transaction.update({
+          updatedTransaction = await tx.transaction.update({
             where: { id: transaction.id },
             data: {
               paymentStatus: "FAILED",
@@ -148,7 +164,14 @@ export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
                 },
               },
             },
+            include: {
+              order: true,
+            },
           });
+          return {
+            transaction: updatedTransaction,
+            order: updatedTransaction.order[0],
+          };
 
         default:
           return {};
@@ -165,6 +188,15 @@ export const xenditInvoiceWebhook: RequestHandler = async (req, res) => {
             isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
           }
         );
+
+        if (response.transaction) {
+          await createPaymentStatusNotification(response.transaction);
+        }
+
+        if (response.order) {
+          await createOrderStatusNotification(response.order);
+        }
+
         return createSuccessResponse(
           res,
           response,
@@ -242,9 +274,12 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
         throw new Error(`No transaction found: ${transactionId}`);
       }
 
+      let updatedTransaction;
+      let ticket;
+
       switch (paymentRequestStatus) {
         case "SUCCEEDED":
-          const updatedTransaction = await tx.transaction.update({
+          updatedTransaction = await tx.transaction.update({
             where: { id: transaction.id },
             data: {
               paymentStatus: "SUCCESS",
@@ -257,12 +292,7 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
               paymentdetail: { update: { paidAt: data.updated } },
             },
             include: {
-              order: {
-                select: {
-                  id: true,
-                  userId: true,
-                },
-              },
+              order: true,
             },
           });
 
@@ -273,7 +303,7 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
           });
 
           const newTicketNumber = (latestTicket?.ticketNumber ?? 0) + 1;
-          const ticket = await tx.eTicket.create({
+          ticket = await tx.eTicket.create({
             data: {
               userId: updatedTransaction.userId,
               orderId: updatedTransaction.order[0].id,
@@ -284,11 +314,12 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
           return {
             transaction: updatedTransaction,
             ticket,
+            order: updatedTransaction.order[0],
           };
 
         case "EXPIRED":
           if (transaction.cancellation && transaction.refund) {
-            return await tx.transaction.update({
+            updatedTransaction = await tx.transaction.update({
               where: { id: transaction.id },
               data: {
                 paymentStatus: "REFUNDED",
@@ -299,9 +330,12 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
                   },
                 },
               },
+              include: {
+                order: true,
+              },
             });
           } else if (transaction.cancellation) {
-            return await tx.transaction.update({
+            updatedTransaction = await tx.transaction.update({
               where: { id: transaction.id },
               data: {
                 paymentStatus: "FAILED",
@@ -312,9 +346,12 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
                   },
                 },
               },
+              include: {
+                order: true,
+              },
             });
           } else {
-            return await tx.transaction.update({
+            updatedTransaction = await tx.transaction.update({
               where: { id: transaction.id },
               data: {
                 paymentStatus: "EXPIRED",
@@ -325,11 +362,18 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
                   },
                 },
               },
+              include: {
+                order: true,
+              },
             });
           }
+          return {
+            transaction: updatedTransaction,
+            order: updatedTransaction.order[0],
+          };
 
         case "STOPPED":
-          return await tx.transaction.update({
+          updatedTransaction = await tx.transaction.update({
             where: { id: transaction.id },
             data: {
               paymentStatus: "FAILED",
@@ -340,7 +384,14 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
                 },
               },
             },
+            include: {
+              order: true,
+            },
           });
+          return {
+            transaction: updatedTransaction,
+            order: updatedTransaction.order[0],
+          };
 
         default:
           return {};
@@ -357,6 +408,15 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
             isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
           }
         );
+
+        if (response.transaction) {
+          await createPaymentStatusNotification(response.transaction);
+        }
+
+        if (response.order) {
+          await createOrderStatusNotification(response.order);
+        }
+
         return createSuccessResponse(
           res,
           response,

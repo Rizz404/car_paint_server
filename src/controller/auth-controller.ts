@@ -71,7 +71,12 @@ export const login: RequestHandler = async (req, res) => {
     }
 
     const newAccessToken = jwt.sign(
-      { userId: user.id },
+      {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
       env.JWT_ACCESS_TOKEN!,
       {
         expiresIn: "30d",

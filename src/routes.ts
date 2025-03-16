@@ -14,10 +14,12 @@ import transactionRouter from "./routes/transaction-routes";
 import eTicketRouter from "./routes/e-ticket-routes";
 import carModelYearColorRouter from "./routes/car-model-year-color-routes";
 import historyRouter from "./routes/histories-routes";
+import testRouter from "./routes/test-route";
 
 const routes = express.Router();
 
 routes.use("/auth", authRouter);
+routes.use("/test-socket", testRouter);
 routes.use("/users", userRouter);
 routes.use("/car-brands", carBrandRouter);
 routes.use("/car-models", carModelRouter);
