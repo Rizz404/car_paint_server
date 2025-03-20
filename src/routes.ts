@@ -15,6 +15,7 @@ import eTicketRouter from "./routes/e-ticket-routes";
 import carModelYearColorRouter from "./routes/car-model-year-color-routes";
 import historyRouter from "./routes/histories-routes";
 import testRouter from "./routes/test-route";
+import chatRouter from "./routes/chat-routes";
 
 const routes = express.Router();
 
@@ -34,5 +35,6 @@ routes.use("/orders", orderRouter);
 routes.use("/transactions", transactionRouter);
 routes.use("/histories", historyRouter);
 routes.use("/e-tickets", eTicketRouter);
+routes.use("/chats", chatRouter);
 
 export default routes;

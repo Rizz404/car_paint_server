@@ -107,6 +107,87 @@ export const initSocketServer = (httpServer: HttpServer): SocketServer => {
       }
     });
 
+    // Handler untuk mengirim pesan
+    socket.on(
+      "chat:send",
+      async (data: { chatRoomId: string; content: string }) => {
+        try {
+          const { chatRoomId, content } = data;
+          const senderId = socket.data.user.id;
+
+          // Validasi pesan
+          if (!content.trim()) {
+            throw new Error("Message content cannot be empty");
+          }
+
+          // Cari chat room dan validasi
+          const chatRoom = await prisma.chatRoom.findUnique({
+            where: { id: chatRoomId },
+            include: {
+              user: true,
+              workshopUser: true,
+            },
+          });
+
+          if (
+            !chatRoom ||
+            (chatRoom.userId !== senderId &&
+              chatRoom.workshopUserId !== senderId)
+          ) {
+            throw new Error("Unauthorized to send message in this chat room");
+          }
+
+          // Buat pesan baru
+          const newMessage = await prisma.chatMessage.create({
+            data: {
+              chatRoomId,
+              senderId,
+              content,
+            },
+            include: {
+              sender: {
+                select: {
+                  id: true,
+                  username: true,
+                  profileImage: true,
+                  role: true,
+                },
+              },
+            },
+          });
+
+          // Update last message time
+          await prisma.chatRoom.update({
+            where: { id: chatRoomId },
+            data: { lastMessageAt: new Date() },
+          });
+
+          // Kirim pesan ke room
+          io?.to(`chat_room:${chatRoomId}`).emit("chat:receive", newMessage);
+
+          // Kirim notifikasi ke penerima yang tidak online
+          const receiverId =
+            senderId === chatRoom.userId
+              ? chatRoom.workshopUserId
+              : chatRoom.userId;
+
+          sendToUser(receiverId, {
+            type: "NEW_CHAT_MESSAGE",
+            message: "Pesan baru diterima",
+            data: {
+              chatRoomId,
+              sender: newMessage.sender,
+              preview: content.substring(0, 50),
+            },
+            timestamp: new Date(),
+          });
+        } catch (error) {
+          logger.error("Error sending chat message:", error);
+          // socket.emit("chat:error", error.message);
+        }
+      }
+    );
+
     socket.on("disconnect", () => {
       logger.info(`Client disconnected: ${socket.id}`);
     });
