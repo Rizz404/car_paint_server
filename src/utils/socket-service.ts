@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import env from "../configs/environment";
 import { Notification } from "@/types/notification";
 import { Role, User } from "@prisma/client";
+import prisma from "../configs/database";
 
 declare global {
   namespace Express {
@@ -70,6 +71,39 @@ export const initSocketServer = (httpServer: HttpServer): SocketServer => {
         logger.info(`User ${userId} joined room: ${roomName}`);
       } else {
         socket.emit("error", `Unauthorized to join room: ${roomName}`);
+      }
+    });
+
+    // Handler untuk bergabung ke room chat
+    socket.on("chat:join", async (chatRoomId: string) => {
+      try {
+        const userId = socket.data.user.id;
+
+        // Validasi kepemilikan chat room
+        const chatRoom = await prisma.chatRoom.findUnique({
+          where: { id: chatRoomId },
+        });
+
+        if (
+          !chatRoom ||
+          (chatRoom.userId !== userId && chatRoom.workshopUserId !== userId)
+        ) {
+          throw new Error("Unauthorized to join this chat room");
+        }
+
+        socket.join(`chat_room:${chatRoomId}`);
+        logger.info(`User ${userId} joined chat room: ${chatRoomId}`);
+
+        // Kirim histori pesan
+        const messages = await prisma.chatMessage.findMany({
+          where: { chatRoomId },
+          orderBy: { createdAt: "asc" },
+        });
+
+        socket.emit("chat:history", messages);
+      } catch (error) {
+        logger.error("Error joining chat room:", error);
+        // socket.emit("chat:error", error.message);
       }
     });
 
