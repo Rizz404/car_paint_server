@@ -27,6 +27,7 @@ import apiKeyMiddleware from "./middlewares/api_key";
 import webHookrouter from "./routes/webhook-routes";
 import { initSocketServer, getSocketServer } from "./utils/socket-service";
 
+// ! Disable socket for now
 const PORT = env.PORT || 5000;
 const app = express();
 
@@ -34,13 +35,13 @@ const app = express();
 const httpServer = http.createServer(app);
 
 // * Initialize Socket.IO
-const io = initSocketServer(httpServer);
+// const io = initSocketServer(httpServer);
 
 // * Add Socket.IO to Express request object
-app.use((req: Request, res: Response, next: NextFunction) => {
-  req.io = io;
-  next();
-});
+// app.use((req: Request, res: Response, next: NextFunction) => {
+//   req.io = io;
+//   next();
+// });
 
 // * MIDDLEWARE
 app.use(helmet());
@@ -135,10 +136,10 @@ app.get("/health", async (req: Request, res: Response) => {
       // * Use get() instead of values()
       connections: databaseConnections.get(),
     },
-    socketIo: {
-      status: getSocketServer() ? "OK" : "NOT_INITIALIZED",
-      connectedClients: getSocketServer()?.sockets.sockets.size || 0,
-    },
+    // socketIo: {
+    //   status: getSocketServer() ? "OK" : "NOT_INITIALIZED",
+    //   connectedClients: getSocketServer()?.sockets.sockets.size || 0,
+    // },
     metrics: await register.metrics().then((data) => data.split("\n").length),
   };
 
