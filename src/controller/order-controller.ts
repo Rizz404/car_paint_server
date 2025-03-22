@@ -63,7 +63,8 @@ export const createOrder: RequestHandler = async (req, res) => {
     const { id: userId } = req.user!;
     const {
       carServices,
-      userCarId,
+      carModelYearId,
+      colorId,
       workshopId,
       paymentMethodId,
       note,
@@ -82,6 +83,46 @@ export const createOrder: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Phone number is required", 400);
     }
 
+    if (!carModelYearId || !colorId) {
+      return createErrorResponse(
+        res,
+        "Car model year id and color id is required",
+        400
+      );
+    }
+
+    let carModelYearColor = await prisma.carModelYearColor.findUnique({
+      where: {
+        carModelYearId_colorId: {
+          carModelYearId,
+          colorId,
+        },
+      },
+    });
+
+    if (!carModelYearColor) {
+      const [carModelYear, color] = await Promise.all([
+        prisma.carModelYear.findUnique({ where: { id: carModelYearId } }),
+        prisma.color.findUnique({ where: { id: colorId } }),
+      ]);
+
+      if (!carModelYear) {
+        return createErrorResponse(res, "Car model year not found", 404);
+      }
+
+      if (!color) {
+        return createErrorResponse(res, "Color not found", 404);
+      }
+
+      carModelYearColor = await prisma.carModelYearColor.create({
+        data: {
+          carModelYearId,
+          colorId,
+        },
+      });
+    }
+
+    // Rest of your existing code...
     const carServicesData = await prisma.carService.findMany({
       where: {
         id: {
@@ -95,6 +136,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       },
     });
 
+    // Check if all services exist
     if (carServicesData.length !== carServices.length) {
       const missingIds = carServices
         .filter(
@@ -142,7 +184,7 @@ export const createOrder: RequestHandler = async (req, res) => {
           order: {
             create: {
               userId: user.id,
-              userCarId,
+              carModelYearColorId: carModelYearColor.id, // Use the found or created record
               workshopId,
               note: note,
               subtotalPrice: orderTotalPrice,
@@ -216,7 +258,8 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
     const {
       carServices,
       paymentMethodId,
-      userCarId,
+      carModelYearId,
+      colorId,
       workshopId,
       note,
     }: CreateOrderDTO & { paymentMethodId: string } = req.body;
@@ -232,6 +275,45 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
 
     if (!user.userProfile || !user.userProfile.phoneNumber) {
       return createErrorResponse(res, "Phone number is required", 400);
+    }
+
+    if (!carModelYearId || !colorId) {
+      return createErrorResponse(
+        res,
+        "Car model year id and color id is required",
+        400
+      );
+    }
+
+    let carModelYearColor = await prisma.carModelYearColor.findUnique({
+      where: {
+        carModelYearId_colorId: {
+          carModelYearId,
+          colorId,
+        },
+      },
+    });
+
+    if (!carModelYearColor) {
+      const [carModelYear, color] = await Promise.all([
+        prisma.carModelYear.findUnique({ where: { id: carModelYearId } }),
+        prisma.color.findUnique({ where: { id: colorId } }),
+      ]);
+
+      if (!carModelYear) {
+        return createErrorResponse(res, "Car model year not found", 404);
+      }
+
+      if (!color) {
+        return createErrorResponse(res, "Color not found", 404);
+      }
+
+      carModelYearColor = await prisma.carModelYearColor.create({
+        data: {
+          carModelYearId,
+          colorId,
+        },
+      });
     }
 
     const carServicesData = await prisma.carService.findMany({
@@ -299,7 +381,7 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
           order: {
             create: {
               userId: user.id,
-              userCarId,
+              carModelYearColorId: carModelYearColor.id, // Use the found or created record
               workshopId,
               note: note,
               subtotalPrice: orderTotalPrice,
@@ -450,6 +532,29 @@ export const getOrders: RequestHandler = async (req, res) => {
     );
 
     const orders = await prisma.order.findMany({
+      include: {
+        carModelYearColor: {
+          select: {
+            carModelYear: {
+              select: {
+                id: true,
+                year: true,
+                carModel: {
+                  select: {
+                    id: true,
+                    name: true,
+                    carBrand: { select: { id: true, name: true } },
+                  },
+                },
+              },
+            },
+            color: { select: { id: true, name: true } },
+          },
+        },
+        user: {
+          select: { id: true, username: true, email: true, profileImage: true },
+        },
+      },
       skip: offset,
       take: +limit,
       orderBy: { [field]: direction },
@@ -493,6 +598,29 @@ export const getOrdersByWorkshopId: RequestHandler = async (req, res) => {
 
     const orders = await prisma.order.findMany({
       where: { workshopId },
+      include: {
+        carModelYearColor: {
+          select: {
+            carModelYear: {
+              select: {
+                id: true,
+                year: true,
+                carModel: {
+                  select: {
+                    id: true,
+                    name: true,
+                    carBrand: { select: { id: true, name: true } },
+                  },
+                },
+              },
+            },
+            color: { select: { id: true, name: true } },
+          },
+        },
+        user: {
+          select: { id: true, username: true, email: true, profileImage: true },
+        },
+      },
       skip: offset,
       take: +limit,
       orderBy: { [field]: direction },
@@ -516,6 +644,29 @@ export const getOrderById: RequestHandler = async (req, res) => {
     const { orderId } = req.params;
     const order = await prisma.order.findUnique({
       where: { id: orderId },
+      include: {
+        carModelYearColor: {
+          select: {
+            carModelYear: {
+              select: {
+                id: true,
+                year: true,
+                carModel: {
+                  select: {
+                    id: true,
+                    name: true,
+                    carBrand: { select: { id: true, name: true } },
+                  },
+                },
+              },
+            },
+            color: { select: { id: true, name: true } },
+          },
+        },
+        user: {
+          select: { id: true, username: true, email: true, profileImage: true },
+        },
+      },
     });
 
     if (!order) {
