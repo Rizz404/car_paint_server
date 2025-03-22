@@ -1,3 +1,4 @@
+import { fileSchema } from "@/utils/file-vallidation";
 import { z } from "zod";
 
 export const createCarServiceSchema = z.object({
@@ -14,6 +15,7 @@ export const createCarServiceSchema = z.object({
         .positive("Price must be a positive number"),
     })
     .strict(),
+  file: fileSchema,
 });
 
 export const updateCarServiceSchema = z.object({

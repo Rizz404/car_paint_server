@@ -9,6 +9,7 @@ import {
   updateCarService,
 } from "@/controller/car-service-controller";
 import { authMiddleware } from "@/middlewares/auth";
+import { parseFiles, uploadFilesToCloudinary } from "@/middlewares/upload-file";
 import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
@@ -26,7 +27,9 @@ carServiceRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
+    parseFiles.single("carServiceImage"),
     validateRequest(createCarServiceSchema),
+    uploadFilesToCloudinary("car-service"),
     createCarService
   )
   .delete(
@@ -51,7 +54,10 @@ carServiceRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
+    parseFiles.single("carServiceImage"),
     validateRequest(updateCarServiceSchema),
+    uploadFilesToCloudinary("car-service"),
+
     updateCarService
   )
   .delete(
