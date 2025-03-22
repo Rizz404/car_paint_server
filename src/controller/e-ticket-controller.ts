@@ -9,6 +9,7 @@ import { parseOrderBy, parsePagination } from "@/utils/query";
 import { ETicket } from "@prisma/client";
 import { RequestHandler } from "express";
 
+// Todo: Nanti car model year color join ke user ticket aja
 // *======================= POST =======================*
 export const createManyETickets: RequestHandler = async (req, res) => {
   try {
@@ -77,26 +78,22 @@ export const getETickets: RequestHandler = async (req, res) => {
         order: {
           select: {
             workshop: { select: { id: true, name: true } },
-            userCar: {
+            carModelYearColor: {
               select: {
-                id: true,
-                carModelYearColor: {
+                carModelYear: {
                   select: {
                     id: true,
-                    carModelYear: {
+                    year: true,
+                    carModel: {
                       select: {
                         id: true,
-                        carModel: {
-                          select: {
-                            id: true,
-                            name: true,
-                            carBrand: { select: { id: true, name: true } },
-                          },
-                        },
+                        name: true,
+                        carBrand: { select: { id: true, name: true } },
                       },
                     },
                   },
                 },
+                color: { select: { id: true, name: true } },
               },
             },
           },
@@ -128,26 +125,22 @@ export const getETicketById: RequestHandler = async (req, res) => {
         order: {
           select: {
             workshop: { select: { id: true, name: true } },
-            userCar: {
+            carModelYearColor: {
               select: {
-                id: true,
-                carModelYearColor: {
+                carModelYear: {
                   select: {
                     id: true,
-                    carModelYear: {
+                    year: true,
+                    carModel: {
                       select: {
                         id: true,
-                        carModel: {
-                          select: {
-                            id: true,
-                            name: true,
-                            carBrand: { select: { id: true, name: true } },
-                          },
-                        },
+                        name: true,
+                        carBrand: { select: { id: true, name: true } },
                       },
                     },
                   },
                 },
+                color: { select: { id: true, name: true } },
               },
             },
           },
@@ -186,26 +179,22 @@ export const searchETickets: RequestHandler = async (req, res) => {
         order: {
           select: {
             workshop: { select: { id: true, name: true } },
-            userCar: {
+            carModelYearColor: {
               select: {
-                id: true,
-                carModelYearColor: {
+                carModelYear: {
                   select: {
                     id: true,
-                    carModelYear: {
+                    year: true,
+                    carModel: {
                       select: {
                         id: true,
-                        carModel: {
-                          select: {
-                            id: true,
-                            name: true,
-                            carBrand: { select: { id: true, name: true } },
-                          },
-                        },
+                        name: true,
+                        carBrand: { select: { id: true, name: true } },
                       },
                     },
                   },
                 },
+                color: { select: { id: true, name: true } },
               },
             },
           },
@@ -324,26 +313,22 @@ export const getCurrentUserETickets: RequestHandler = async (req, res) => {
         order: {
           select: {
             workshop: { select: { id: true, name: true } },
-            userCar: {
+            carModelYearColor: {
               select: {
-                id: true,
-                carModelYearColor: {
+                carModelYear: {
                   select: {
                     id: true,
-                    carModelYear: {
+                    year: true,
+                    carModel: {
                       select: {
                         id: true,
-                        carModel: {
-                          select: {
-                            id: true,
-                            name: true,
-                            carBrand: { select: { id: true, name: true } },
-                          },
-                        },
+                        name: true,
+                        carBrand: { select: { id: true, name: true } },
                       },
                     },
                   },
                 },
+                color: { select: { id: true, name: true } },
               },
             },
           },

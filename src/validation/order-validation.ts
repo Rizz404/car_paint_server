@@ -7,7 +7,9 @@ export const carServiceSchema = z.object({
 export const createOrderSchema = z.object({
   body: z
     .object({
-      userCarId: z.string().min(1, "User car ID is required"),
+      carModelYearColorId: z.string().optional(),
+      colorId: z.string().optional(),
+      carModelYearId: z.string().optional(),
       workshopId: z.string().min(1, "Workshop ID is required"),
       paymentMethodId: z.string().min(1, "Payment Method ID is required"),
       note: z.string().max(1000, "Max 1000 characters").optional(),
@@ -15,7 +17,46 @@ export const createOrderSchema = z.object({
         .array(carServiceSchema)
         .min(1, "Minimal 1 layanan harus dipilih"),
     })
-    .strict(),
+    .strict()
+    .superRefine((data, ctx) => {
+      if (data.carModelYearColorId) {
+        if (data.colorId || data.carModelYearId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "Cannot combine carModelYearColorId with colorId/carModelYearId",
+            path: ["carModelYearColorId"],
+          });
+        }
+        return;
+      }
+
+      if (!data.colorId && !data.carModelYearId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Either carModelYearColorId or both colorId and carModelYearId are required",
+          path: ["colorId"],
+        });
+        return;
+      }
+
+      if (data.colorId && !data.carModelYearId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "carModelYearId is required when using colorId",
+          path: ["carModelYearId"],
+        });
+      }
+
+      if (data.carModelYearId && !data.colorId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "colorId is required when using carModelYearId",
+          path: ["colorId"],
+        });
+      }
+    }),
 });
 
 export const updateOrderSchema = z.object({
@@ -45,10 +86,60 @@ export const updateOrderSchema = z.object({
 
 export const createManyOrderSchema = z.object({
   body: z.array(
-    createOrderSchema.shape.body.extend({
-      userId: z.string().min(1, "User ID is required"),
-      transactionId: z.string().min(1, "Transaction ID is required"),
-    })
+    z
+      .object({
+        carModelYearColorId: z.string().optional(),
+        colorId: z.string().optional(),
+        carModelYearId: z.string().optional(),
+        workshopId: z.string().min(1, "Workshop ID is required"),
+        paymentMethodId: z.string().min(1, "Payment Method ID is required"),
+        note: z.string().max(1000, "Max 1000 characters").optional(),
+        carServices: z
+          .array(carServiceSchema)
+          .min(1, "Minimal 1 layanan harus dipilih"),
+        userId: z.string().min(1, "User ID is required"),
+        transactionId: z.string().min(1, "Transaction ID is required"),
+      })
+      .superRefine((data, ctx) => {
+        // Copy your superRefine logic here
+        if (data.carModelYearColorId) {
+          if (data.colorId || data.carModelYearId) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message:
+                "Cannot combine carModelYearColorId with colorId/carModelYearId",
+              path: ["carModelYearColorId"],
+            });
+          }
+          return;
+        }
+
+        if (!data.colorId && !data.carModelYearId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "Either carModelYearColorId or both colorId and carModelYearId are required",
+            path: ["colorId"],
+          });
+          return;
+        }
+
+        if (data.colorId && !data.carModelYearId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "carModelYearId is required when using colorId",
+            path: ["carModelYearId"],
+          });
+        }
+
+        if (data.carModelYearId && !data.colorId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "colorId is required when using carModelYearId",
+            path: ["colorId"],
+          });
+        }
+      })
   ),
 });
 

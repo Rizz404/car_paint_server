@@ -5,7 +5,6 @@ import { seedUsersWithProfiles } from "./user-seeder";
 import { seedCarModels } from "./car-model-seeder";
 import { seedCarServices } from "./car-service-seeder";
 import { seedCarModelYears } from "./car-model-year-seeder";
-import { seedUserCars } from "./user-car-seeder";
 import { seedPaymentMethods } from "./payment-method-seeder";
 import { seedOrders } from "./order-seeder";
 import { seedTransactions } from "./transaction-seeder";
@@ -27,7 +26,6 @@ async function main() {
     await seedColors(prisma, undefined, false);
     await seedCarModelYears(prisma, undefined, false);
     await seedCarModelYearColors(prisma, undefined, false);
-    await seedUserCars(prisma, undefined, false);
     await seedPaymentMethods(prisma, false);
     // await seedTransactions(prisma, undefined, false);
     // await seedOrders(prisma, undefined, false);
