@@ -4,6 +4,11 @@ import {
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
+import {
+  deleteCloudinaryImage,
+  deleteCloudinaryImages,
+  isCloudinaryUrl,
+} from "@/utils/cloudinary";
 import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import { CarService } from "@prisma/client";
@@ -37,20 +42,27 @@ export const createManyCarServices: RequestHandler = async (req, res) => {
 
 export const createCarService: RequestHandler = async (req, res) => {
   try {
-    const payload: CarService = req.body;
+    const { ...rest }: CarService = req.body;
+    const carServiceImage = req.file as Express.Multer.File;
 
-    const existingCarService = await prisma.carService.findUnique({
-      where: {
-        name: payload.name,
-      },
+    const existingBrand = await prisma.carService.findUnique({
+      where: { name: rest.name },
     });
 
-    if (existingCarService) {
-      return createErrorResponse(res, "Car service already exist", 400);
+    if (existingBrand) {
+      return createErrorResponse(res, "Brand already exist", 400);
+    }
+
+    if (!carServiceImage) {
+      return createErrorResponse(res, "Image is required", 400);
+    }
+
+    if (!carServiceImage.cloudinary?.secure_url) {
+      return createErrorResponse(res, "Cloudinary error", 400);
     }
 
     const createdCarService = await prisma.carService.create({
-      data: payload,
+      data: { ...rest, carServiceImage: carServiceImage.cloudinary.secure_url },
     });
 
     return createSuccessResponse(res, createdCarService, "Created", 201);
@@ -158,7 +170,12 @@ export const searchCarServices: RequestHandler = async (req, res) => {
 export const updateCarService: RequestHandler = async (req, res) => {
   try {
     const { carServiceId } = req.params;
-    const payload: CarService = req.body;
+    const { ...rest }: CarService = req.body;
+    const carServiceImage = req.file as Express.Multer.File;
+
+    if (carServiceImage && !carServiceImage.cloudinary?.secure_url) {
+      return createErrorResponse(res, "Cloudinary error", 400);
+    }
 
     const carService = await prisma.carService.findUnique({
       where: {
@@ -167,11 +184,29 @@ export const updateCarService: RequestHandler = async (req, res) => {
     });
 
     if (!carService) {
-      return createErrorResponse(res, "Car service Not Found", 500);
+      return createErrorResponse(res, "Car brand Not Found", 404);
+    }
+
+    if (
+      carServiceImage &&
+      carServiceImage.cloudinary &&
+      carServiceImage.cloudinary.secure_url
+    ) {
+      const imageToDelete = carService.carServiceImage;
+
+      if (isCloudinaryUrl(imageToDelete)) {
+        await deleteCloudinaryImage(imageToDelete);
+      }
     }
 
     const updatedCarService = await prisma.carService.update({
-      data: payload,
+      data: {
+        ...rest,
+        ...(carServiceImage &&
+          carServiceImage.cloudinary && {
+            carServiceImage: carServiceImage.cloudinary.secure_url,
+          }),
+      },
       where: { id: carServiceId },
     });
 
@@ -193,7 +228,13 @@ export const deleteCarService: RequestHandler = async (req, res) => {
     });
 
     if (!carService) {
-      return createErrorResponse(res, "Car service Not Found", 500);
+      return createErrorResponse(res, "Car brand Not Found", 404);
+    }
+
+    const imageToDelete = carService.carServiceImage;
+
+    if (isCloudinaryUrl(imageToDelete)) {
+      await deleteCloudinaryImage(imageToDelete);
     }
 
     const deletedCarService = await prisma.carService.delete({
@@ -208,12 +249,24 @@ export const deleteCarService: RequestHandler = async (req, res) => {
 
 export const deleteAllCarService: RequestHandler = async (req, res) => {
   try {
+    const carServices = await prisma.carService.findMany({
+      select: { carServiceImage: true },
+    });
+
+    const allImages = carServices
+      .flatMap((car) => car.carServiceImage)
+      .filter((url) => url); // Remove null/undefined
+
+    if (allImages.length > 0) {
+      await deleteCloudinaryImages(allImages);
+    }
+
     const deletedAllCarServices = await prisma.carService.deleteMany();
 
     return createSuccessResponse(
       res,
       deletedAllCarServices,
-      "All car models deleted"
+      "All car brands deleted"
     );
   } catch (error) {
     return createErrorResponse(res, error, 500);

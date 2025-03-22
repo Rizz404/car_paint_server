@@ -19,12 +19,12 @@ const generateOrderTotalPrice = (): Prisma.Decimal => {
 
 const generateOrder = (
   userId: string,
-  userCarId: string,
+  carModelYearColorId: string,
   workshopId: string,
   transactionId: string
 ): Prisma.OrderCreateManyInput => ({
   userId,
-  userCarId,
+  carModelYearColorId,
   workshopId,
   transactionId,
   workStatus: faker.helpers.arrayElement([
@@ -53,7 +53,9 @@ export const seedOrders = async (
     await prisma.order.deleteMany();
   }
   const users = await prisma.user.findMany({ select: { id: true } });
-  const userCars = await prisma.userCar.findMany({ select: { id: true } });
+  const carModelYearColors = await prisma.carModelYearColor.findMany({
+    select: { id: true },
+  });
   const workshops = await prisma.workshop.findMany({ select: { id: true } });
   const transactions = await prisma.transaction.findMany({
     select: { id: true },
@@ -61,7 +63,7 @@ export const seedOrders = async (
 
   if (
     !users.length ||
-    !userCars.length ||
+    !carModelYearColors.length ||
     !workshops.length ||
     !transactions.length
   ) {
@@ -74,7 +76,9 @@ export const seedOrders = async (
     data.push(
       generateOrder(
         users[Math.floor(Math.random() * users.length)].id,
-        userCars[Math.floor(Math.random() * userCars.length)].id,
+        carModelYearColors[
+          Math.floor(Math.random() * carModelYearColors.length)
+        ].id,
         workshops[Math.floor(Math.random() * workshops.length)].id,
         transactions[Math.floor(Math.random() * transactions.length)].id
       )

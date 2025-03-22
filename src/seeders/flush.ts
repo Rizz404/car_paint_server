@@ -11,7 +11,6 @@ async function flushDatabase() {
     await prisma.eTicket.deleteMany();
     await prisma.transaction.deleteMany();
     await prisma.order.deleteMany();
-    await prisma.userCar.deleteMany();
     await prisma.userProfile.deleteMany();
     await prisma.user.deleteMany();
 

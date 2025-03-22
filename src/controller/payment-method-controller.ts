@@ -67,9 +67,11 @@ export const createManyPaymentMethods: RequestHandler = async (req, res) => {
   }
 };
 
+// Todo: Nanti tambahin, sekarang input manual langsung ke database untuk logo payment method
 export const createPaymentMethod: RequestHandler = async (req, res) => {
   try {
     const payload: CreatePaymentMethodPayload = req.body;
+    const logoUrl = req.file as Express.Multer.File;
 
     if (payload.type === "EWALLET" && !payload.eWalletPaymentConfig) {
       return createErrorResponse(
