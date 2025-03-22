@@ -130,11 +130,12 @@ model Workshop {
 }
 
 model CarService {
-  id        String   @id @default(cuid()) @db.VarChar(30)
-  name      String   @unique @db.VarChar(50)
-  price     Decimal  @map("price") @db.Decimal(12, 2)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(cuid()) @db.VarChar(30)
+  name            String   @unique @db.VarChar(50)
+  price           Decimal  @map("price") @db.Decimal(12, 2)
+  carServiceImage String   @default("https://i.pinimg.com/236x/63/8e/f4/638ef4c3ecca794233a86607b65326a7.jpg") @map("car_service_image")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   orders Order[]
 
