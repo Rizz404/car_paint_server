@@ -174,69 +174,75 @@ export const createOrder: RequestHandler = async (req, res) => {
       .add(adminFee)
       .add(paymentMethodFee);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const transaction = await tx.transaction.create({
-        data: {
-          userId: user.id,
-          paymentMethodId,
-          adminFee,
-          totalPrice: transactionTotalPrice,
-          order: {
-            create: {
-              userId: user.id,
-              carModelYearColorId: carModelYearColor.id, // Use the found or created record
-              workshopId,
-              note: note,
-              subtotalPrice: orderTotalPrice,
-              carServices: {
-                connect: carServicesData.map(({ id }) => ({ id })),
+    // Menambahkan opsi timeout yang lebih panjang untuk transaksi
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const transaction = await tx.transaction.create({
+          data: {
+            userId: user.id,
+            paymentMethodId,
+            adminFee,
+            totalPrice: transactionTotalPrice,
+            order: {
+              create: {
+                userId: user.id,
+                carModelYearColorId: carModelYearColor.id, // Use the found or created record
+                workshopId,
+                note: note,
+                subtotalPrice: orderTotalPrice,
+                carServices: {
+                  connect: carServicesData.map(({ id }) => ({ id })),
+                },
               },
             },
           },
-        },
-        include: { order: true },
-      });
-
-      try {
-        const invoiceData = {
-          amount: Number(transactionTotalPrice),
-          externalId: transaction.id,
-          payerEmail: user.email,
-          currency: "IDR",
-          invoiceDuration: "172800", // * 48 jam
-          reminderTime: 1,
-          paymentMethods: [paymentMethod.name],
-          items: carServicesData.map((carserviceData) => ({
-            name: carserviceData.name,
-            price: Number(carserviceData.price),
-            quantity: 1,
-            category: "car service",
-            referenceId: carserviceData.id,
-          })),
-          successRedirectUrl:
-            "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
-          failureRedirectUrl:
-            "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
-          shouldSendEmail: true,
-        };
-
-        const invoiceResponse = await xenditInvoiceClient.createInvoice({
-          data: invoiceData,
+          include: { order: true },
         });
 
-        await tx.paymentDetail.create({
-          data: {
-            transactionId: transaction.id,
-            webUrl: invoiceResponse.invoiceUrl,
-            xenditInvoiceId: invoiceResponse.id,
-          },
-        });
-      } catch (error) {
-        throw error;
+        try {
+          const invoiceData = {
+            amount: Number(transactionTotalPrice),
+            externalId: transaction.id,
+            payerEmail: user.email,
+            currency: "IDR",
+            invoiceDuration: "172800", // * 48 jam
+            reminderTime: 1,
+            paymentMethods: [paymentMethod.name],
+            items: carServicesData.map((carserviceData) => ({
+              name: carserviceData.name,
+              price: Number(carserviceData.price),
+              quantity: 1,
+              category: "car service",
+              referenceId: carserviceData.id,
+            })),
+            successRedirectUrl:
+              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
+            failureRedirectUrl:
+              "https://familiar-tomasina-happiness-overload-148b3187.koyeb.app",
+            shouldSendEmail: true,
+          };
+
+          const invoiceResponse = await xenditInvoiceClient.createInvoice({
+            data: invoiceData,
+          });
+
+          await tx.paymentDetail.create({
+            data: {
+              transactionId: transaction.id,
+              webUrl: invoiceResponse.invoiceUrl,
+              xenditInvoiceId: invoiceResponse.id,
+            },
+          });
+        } catch (error) {
+          throw error;
+        }
+
+        return transaction;
+      },
+      {
+        timeout: 15000, // Menambahkan timeout 15 detik (dari default 5 detik)
       }
-
-      return transaction;
-    });
+    );
 
     return createSuccessResponse(
       res,
@@ -371,131 +377,141 @@ export const createOrderWithPaymentRequest: RequestHandler = async (
       .add(adminFee)
       .add(paymentMethodFee);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const transaction = await tx.transaction.create({
-        data: {
-          userId: user.id,
-          paymentMethodId,
-          adminFee,
-          totalPrice: transactionTotalPrice,
-          order: {
-            create: {
-              userId: user.id,
-              carModelYearColorId: carModelYearColor.id, // Use the found or created record
-              workshopId,
-              note: note,
-              subtotalPrice: orderTotalPrice,
-              carServices: {
-                connect: carServicesData.map(({ id }) => ({ id })),
+    // Menambahkan opsi timeout yang lebih panjang untuk transaksi
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const transaction = await tx.transaction.create({
+          data: {
+            userId: user.id,
+            paymentMethodId,
+            adminFee,
+            totalPrice: transactionTotalPrice,
+            order: {
+              create: {
+                userId: user.id,
+                carModelYearColorId: carModelYearColor.id, // Use the found or created record
+                workshopId,
+                note: note,
+                subtotalPrice: orderTotalPrice,
+                carServices: {
+                  connect: carServicesData.map(({ id }) => ({ id })),
+                },
               },
             },
           },
-        },
-        include: { order: true },
-      });
-
-      try {
-        const paymentRequestData: PaymentRequestParameters = {
-          referenceId: transaction.id,
-          amount: Number(transactionTotalPrice),
-          currency: "IDR",
-          description: note,
-          items: carServicesData.map((service) => ({
-            name: service.name,
-            price: Number(service.price),
-            currency: "IDR",
-            quantity: 1,
-            category: "CAR_SERVICE",
-            referenceId: service.id,
-            type: "SERVICE",
-          })),
-          paymentMethod: {
-            referenceId: transaction.id,
-            type: paymentMethod.type,
-            reusability: paymentMethod.reusability,
-          },
-        };
-
-        if (paymentMethod.type === "EWALLET") {
-          if (!paymentMethod.eWalletPaymentConfig) {
-            throw new Error("E-Wallet configuration not found");
-          }
-
-          if (!paymentRequestData.paymentMethod) {
-            throw new Error("Base payment method in payment request not found");
-          }
-
-          paymentRequestData.paymentMethod.ewallet = {
-            channelCode: paymentMethod.eWalletPaymentConfig
-              .channelCode as EWalletChannelCode,
-            channelProperties: {
-              ...(user.userProfile?.phoneNumber && {
-                mobileNumber: user.userProfile.phoneNumber,
-              }),
-              ...(paymentMethod.eWalletPaymentConfig.successReturnUrl && {
-                successReturnUrl:
-                  paymentMethod.eWalletPaymentConfig.successReturnUrl,
-              }),
-              ...(paymentMethod.eWalletPaymentConfig.failureReturnUrl && {
-                failureReturnUrl:
-                  paymentMethod.eWalletPaymentConfig.failureReturnUrl,
-              }),
-            },
-          };
-        } else if (paymentMethod.type === "VIRTUAL_ACCOUNT") {
-          if (!paymentMethod.virtualAccountConfig) {
-            throw new Error("Virtual Account configuration not found");
-          }
-
-          if (!paymentRequestData.paymentMethod) {
-            throw new Error("Base payment method in payment request not found");
-          }
-
-          paymentRequestData.paymentMethod.virtualAccount = {
-            channelCode: paymentMethod.virtualAccountConfig
-              .bankCode as VirtualAccountChannelCode,
-            channelProperties: {
-              customerName: user.username,
-              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-            },
-          };
-        }
-
-        const paymentResponse =
-          await xenditPaymentRequestClient.createPaymentRequest({
-            data: paymentRequestData,
-          });
-
-        const deeplink = paymentResponse.actions?.find(
-          (a) => a.urlType === "DEEPLINK"
-        )?.url;
-        const mobileUrl = paymentResponse.actions?.find(
-          (a) => a.urlType === "MOBILE"
-        )?.url;
-        const webUrl = paymentResponse.actions?.find(
-          (a) => a.urlType === "WEB"
-        )?.url;
-        const virtualAccountNumber =
-          paymentResponse.paymentMethod.virtualAccount?.channelProperties
-            .virtualAccountNumber;
-
-        await tx.paymentDetail.create({
-          data: {
-            transactionId: transaction.id,
-            xenditPaymentMethodId: paymentResponse.paymentMethod.id,
-            xenditPaymentRequestId: paymentResponse.id,
-            deeplinkUrl: deeplink,
-            mobileUrl,
-            webUrl,
-            virtualAccountNumber,
-          },
+          include: { order: true },
         });
 
-        return transaction.order;
-      } catch (error) {
-        throw error;
+        try {
+          const paymentRequestData: PaymentRequestParameters = {
+            referenceId: transaction.id,
+            amount: Number(transactionTotalPrice),
+            currency: "IDR",
+            description: note,
+            items: carServicesData.map((service) => ({
+              name: service.name,
+              price: Number(service.price),
+              currency: "IDR",
+              quantity: 1,
+              category: "CAR_SERVICE",
+              referenceId: service.id,
+              type: "SERVICE",
+            })),
+            paymentMethod: {
+              referenceId: transaction.id,
+              type: paymentMethod.type,
+              reusability: paymentMethod.reusability,
+            },
+          };
+
+          if (paymentMethod.type === "EWALLET") {
+            if (!paymentMethod.eWalletPaymentConfig) {
+              throw new Error("E-Wallet configuration not found");
+            }
+
+            if (!paymentRequestData.paymentMethod) {
+              throw new Error(
+                "Base payment method in payment request not found"
+              );
+            }
+
+            paymentRequestData.paymentMethod.ewallet = {
+              channelCode: paymentMethod.eWalletPaymentConfig
+                .channelCode as EWalletChannelCode,
+              channelProperties: {
+                ...(user.userProfile?.phoneNumber && {
+                  mobileNumber: user.userProfile.phoneNumber,
+                }),
+                ...(paymentMethod.eWalletPaymentConfig.successReturnUrl && {
+                  successReturnUrl:
+                    paymentMethod.eWalletPaymentConfig.successReturnUrl,
+                }),
+                ...(paymentMethod.eWalletPaymentConfig.failureReturnUrl && {
+                  failureReturnUrl:
+                    paymentMethod.eWalletPaymentConfig.failureReturnUrl,
+                }),
+              },
+            };
+          } else if (paymentMethod.type === "VIRTUAL_ACCOUNT") {
+            if (!paymentMethod.virtualAccountConfig) {
+              throw new Error("Virtual Account configuration not found");
+            }
+
+            if (!paymentRequestData.paymentMethod) {
+              throw new Error(
+                "Base payment method in payment request not found"
+              );
+            }
+
+            paymentRequestData.paymentMethod.virtualAccount = {
+              channelCode: paymentMethod.virtualAccountConfig
+                .bankCode as VirtualAccountChannelCode,
+              channelProperties: {
+                customerName: user.username,
+                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+              },
+            };
+          }
+
+          const paymentResponse =
+            await xenditPaymentRequestClient.createPaymentRequest({
+              data: paymentRequestData,
+            });
+
+          const deeplink = paymentResponse.actions?.find(
+            (a) => a.urlType === "DEEPLINK"
+          )?.url;
+          const mobileUrl = paymentResponse.actions?.find(
+            (a) => a.urlType === "MOBILE"
+          )?.url;
+          const webUrl = paymentResponse.actions?.find(
+            (a) => a.urlType === "WEB"
+          )?.url;
+          const virtualAccountNumber =
+            paymentResponse.paymentMethod.virtualAccount?.channelProperties
+              .virtualAccountNumber;
+
+          await tx.paymentDetail.create({
+            data: {
+              transactionId: transaction.id,
+              xenditPaymentMethodId: paymentResponse.paymentMethod.id,
+              xenditPaymentRequestId: paymentResponse.id,
+              deeplinkUrl: deeplink,
+              mobileUrl,
+              webUrl,
+              virtualAccountNumber,
+            },
+          });
+
+          return transaction.order;
+        } catch (error) {
+          throw error;
+        }
+      },
+      {
+        timeout: 15000, // Menambahkan timeout 15 detik (dari default 5 detik)
       }
-    });
+    );
 
     return createSuccessResponse(
       res,
