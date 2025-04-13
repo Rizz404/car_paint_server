@@ -77,7 +77,7 @@ export const getTransactions: RequestHandler = async (req, res) => {
 
     const transactions = await prisma.transaction.findMany({
       include: {
-        paymentdetail: true,
+        paymentDetail: true,
         paymentMethod: true,
         cancellation: true,
         refund: true,
@@ -106,7 +106,7 @@ export const getTransactionById: RequestHandler = async (req, res) => {
     const transaction = await prisma.transaction.findUnique({
       where: { id: transactionId },
       include: {
-        paymentdetail: true,
+        paymentDetail: true,
         paymentMethod: true,
         cancellation: true,
         refund: true,
@@ -140,7 +140,7 @@ export const searchTransactions: RequestHandler = async (req, res) => {
     const transactions = await prisma.transaction.findMany({
       // where: { name: {mode: "insensitive", contains: name } },
       include: {
-        paymentdetail: true,
+        paymentDetail: true,
         paymentMethod: true,
         cancellation: true,
         refund: true,
@@ -267,7 +267,7 @@ export const getCurrentUserTransactions: RequestHandler = async (req, res) => {
         ],
       },
       include: {
-        paymentdetail: true,
+        paymentDetail: true,
         paymentMethod: true,
         cancellation: true,
         refund: true,

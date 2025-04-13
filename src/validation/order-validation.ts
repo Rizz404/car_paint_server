@@ -16,6 +16,7 @@ export const createOrderSchema = z.object({
       carServices: z
         .array(carServiceSchema)
         .min(1, "Minimal 1 layanan harus dipilih"),
+      cardTokenId: z.string().optional(),
     })
     .strict()
     .superRefine((data, ctx) => {

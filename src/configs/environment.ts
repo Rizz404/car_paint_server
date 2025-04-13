@@ -21,6 +21,8 @@ const envSchema = z.object({
   IMAGEKIT_URL_ENDPOINT: z.string(),
   MIDTRANS_SERVER_KEY: z.string(),
   MIDTRANS_CLIENT_KEY: z.string(),
+  SANDBOX_MIDTRANS_SERVER_KEY: z.string(),
+  SANDBOX_MIDTRANS_CLIENT_KEY: z.string(),
   HASHED_API_KEY: z.string(),
   FIREBASE_CLIENT_EMAIL: z.string(),
   FIREBASE_PROJECT_ID: z.string(),

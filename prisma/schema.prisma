@@ -143,18 +143,19 @@ model CarService {
 }
 
 model PaymentMethod {
-  id             String             @id @default(cuid()) @db.VarChar(30)
-  name           String             @unique @db.VarChar(100)
-  type           PaymentMethodType  @default(EWALLET) @map("type")
-  reusability    PaymentReusability @default(ONE_TIME_USE) @map("reusability")
-  fee            Decimal            @db.Decimal(12, 2)
-  minimumPayment Decimal            @default(0) @map("minimum_payment") @db.Decimal(12, 2)
-  maximumPayment Decimal            @default(100000000) @map("maximum_payment") @db.Decimal(12, 2)
-  description    String?            @db.Text
-  logoUrl        String?            @map("logo_url") @db.Text
-  isActive       Boolean            @default(true) @map("is_active")
-  createdAt      DateTime           @default(now()) @map("created_at")
-  updatedAt      DateTime           @updatedAt @map("updated_at")
+  id                 String             @id @default(cuid()) @db.VarChar(30)
+  name               String             @unique @db.VarChar(100)
+  type               PaymentMethodType  @default(EWALLET) @map("type")
+  reusability        PaymentReusability @default(ONE_TIME_USE) @map("reusability")
+  fee                Decimal            @db.Decimal(12, 2)
+  minimumPayment     Decimal            @default(0) @map("minimum_payment") @db.Decimal(12, 2)
+  maximumPayment     Decimal            @default(100000000) @map("maximum_payment") @db.Decimal(12, 2)
+  description        String?            @db.Text
+  logoUrl            String?            @map("logo_url") @db.Text
+  isActive           Boolean            @default(true) @map("is_active")
+  midtransIdentifier String?            @map("midtrans_identifier") @db.VarChar(50) // Tetap String untuk fleksibilitas kode Midtrans
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
 
   transactions         Transaction[]
   eWalletPaymentConfig EWalletPaymentConfig?
@@ -166,7 +167,7 @@ model PaymentMethod {
 model EWalletPaymentConfig {
   id               String   @id @default(cuid()) @db.VarChar(30)
   paymentMethodId  String   @unique @map("payment_method_id") @db.VarChar(30)
-  channelCode      String   @map("channel_code") @db.VarChar(50)
+  channelCode      String   @map("channel_code") @db.VarChar(50) // Mungkin spesifik Xendit? Biarkan dulu
   successReturnUrl String?  @map("success_return_url") @db.Text
   failureReturnUrl String?  @map("failure_return_url") @db.Text
   createdAt        DateTime @default(now()) @map("created_at")
@@ -180,8 +181,8 @@ model EWalletPaymentConfig {
 model VirtualAccountConfig {
   id              String   @id @default(cuid()) @db.VarChar(30)
   paymentMethodId String   @unique @map("payment_method_id") @db.VarChar(30)
-  bankCode        String   @map("bank_code") @db.VarChar(50)
-  bankName        String   @map("bank_name") @db.VarChar(100)
+  bankCode        String   @map("bank_code") @db.VarChar(50) // Mungkin spesifik Xendit? Biarkan dulu
+  bankName        String   @map("bank_name") @db.VarChar(100) // Nama bank internalmu
   accountPattern  String?  @map("account_pattern") @db.VarChar(50)
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -191,6 +192,7 @@ model VirtualAccountConfig {
   @@map("virtual_account_configs")
 }
 
+// Todo: Mungkin diganti one to one nantis
 model Order {
   id                  String      @id @default(cuid()) @db.VarChar(30)
   userId              String      @map("user_id") @db.VarChar(30)
@@ -219,15 +221,15 @@ model Transaction {
   userId          String        @map("user_id") @db.VarChar(30)
   paymentMethodId String        @map("payment_method_id") @db.VarChar(30)
   adminFee        Decimal       @map("admin_fee") @db.Decimal(12, 2)
-  totalPrice      Decimal       @map("total_price") @db.Decimal(12, 2)
-  paymentStatus   PaymentStatus @default(PENDING) @map("payment_status")
+  totalPrice      Decimal       @map("total_price") @db.Decimal(12, 2) // total = subtotal order + admin fee
+  paymentStatus   PaymentStatus @default(PENDING) @map("payment_status") // Status internalmu
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  paymentMethod PaymentMethod  @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod  @relation(fields: [paymentMethodId], references: [id]) // onDelete Cascade biasanya tidak di PaymentMethod
   order         Order[]
-  paymentdetail PaymentDetail?
+  paymentDetail PaymentDetail?
   cancellation  Cancellation?
   refund        Refund?
 
@@ -235,19 +237,34 @@ model Transaction {
 }
 
 model PaymentDetail {
-  id                     String    @id @default(cuid()) @db.VarChar(30)
-  transactionId          String    @unique @map("transaction_id") @db.VarChar(30)
-  virtualAccountNumber   String?   @map("virtual_account_number") @db.Text
-  invoiceUrl             String?   @map("invoice_url") @db.Text
-  mobileUrl              String?   @map("mobile_url") @db.Text
-  webUrl                 String?   @map("web_url") @db.Text
-  deeplinkUrl            String?   @map("deeplink_url") @db.Text
-  paidAt                 DateTime? @map("paid_at")
-  xenditInvoiceId        String?   @map("xendit_invoice_id")
-  xenditPaymentRequestId String?   @map("xendit_payment_request_id")
-  xenditPaymentMethodId  String?   @map("xendit_payment_method_id")
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
+  id                   String    @id @default(cuid()) @db.VarChar(30)
+  transactionId        String    @unique @map("transaction_id") @db.VarChar(30) // Relasi one-to-one ke Transaction
+  virtualAccountNumber String?   @map("virtual_account_number") @db.Text
+  invoiceUrl           String?   @map("invoice_url") @db.Text
+  mobileUrl            String?   @map("mobile_url") @db.Text
+  webUrl               String?   @map("web_url") @db.Text
+  deeplinkUrl          String?   @map("deeplink_url") @db.Text
+  paidAt               DateTime? @map("paid_at")
+
+  // Field Xendit (Tetap Ada)
+  xenditInvoiceId        String? @map("xendit_invoice_id")
+  xenditPaymentRequestId String? @map("xendit_payment_request_id")
+  xenditPaymentMethodId  String? @map("xendit_payment_method_id")
+
+  // Field Midtrans (Nullable)
+  midtransTransactionId     String?                    @map("midtrans_transaction_id") @db.VarChar(100)
+  midtransOrderId           String?                    @map("midtrans_order_id") @db.VarChar(100)
+  midtransPaymentType       String?                    @map("midtrans_payment_type") @db.VarChar(50) // Tetap String untuk fleksibilitas tipe Midtrans
+  midtransTransactionStatus MidtransTransactionStatus? @map("midtrans_transaction_status") // <<< Jadi Enum
+  midtransFraudStatus       MidtransFraudStatus?       @map("midtrans_fraud_status") // <<< Jadi Enum
+  midtransPaymentCode       String?                    @map("midtrans_payment_code") @db.VarChar(50)
+  midtransBillKey           String?                    @map("midtrans_bill_key") @db.VarChar(50)
+  midtransBillerCode        String?                    @map("midtrans_biller_code") @db.VarChar(50)
+  midtransQrCodeUrl         String?                    @map("midtrans_qr_code_url") @db.Text
+  midtransRedirectUrl       String?                    @map("midtrans_redirect_url") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
@@ -256,7 +273,7 @@ model PaymentDetail {
 
 model Cancellation {
   id            String             @id @default(cuid()) @db.VarChar(30)
-  transactionId String             @unique @map("transaction_id") @db.VarChar(30)
+  transactionId String             @unique @map("transaction_id") @db.VarChar(30) // Relasi one-to-one ke Transaction
   reason        CancellationReason
   notes         String?            @db.Text
   cancelledById String             @map("cancelled_by_id") @db.VarChar(30)
@@ -272,7 +289,7 @@ model Cancellation {
 
 model Refund {
   id            String   @id @default(cuid()) @db.VarChar(30)
-  transactionId String   @unique @map("transaction_id") @db.VarChar(30)
+  transactionId String   @unique @map("transaction_id") @db.VarChar(30) // Relasi one-to-one ke Transaction
   amount        Decimal  @db.Decimal(12, 2)
   reason        String   @db.Text
   refundedById  String   @map("refunded_by_id") @db.VarChar(30)
@@ -290,6 +307,7 @@ model ETicket {
   id           String   @id @default(cuid()) @db.VarChar(30)
   userId       String   @map("user_id") @db.VarChar(30)
   orderId      String   @map("order_id") @db.VarChar(30)
+  // Todo: Nanti jadiin unique tapi bakal kehapus semuanya
   ticketNumber Int      @map("ticket_number")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -314,19 +332,19 @@ enum WorkStatus {
 }
 
 enum OrderStatus {
-  DRAFT
-  CONFIRMED
-  PROCESSING
-  COMPLETED
-  CANCELLED
+  DRAFT // Order dibuat tapi belum dikonfirmasi/dibayar
+  CONFIRMED // Order dikonfirmasi (mungkin setelah pembayaran)
+  PROCESSING // Order sedang dikerjakan
+  COMPLETED // Order selesai
+  CANCELLED // Order dibatalkan
 }
 
 enum PaymentStatus {
-  PENDING
-  SUCCESS
-  EXPIRED
-  FAILED
-  REFUNDED
+  PENDING // Menunggu pembayaran
+  SUCCESS // Pembayaran berhasil
+  EXPIRED // Waktu pembayaran habis
+  FAILED // Pembayaran gagal (ditolak, error)
+  REFUNDED // Pembayaran sudah dikembalikan
 }
 
 enum Role {
@@ -339,10 +357,10 @@ enum PaymentMethodType {
   CARD
   DIRECT_DEBIT
   EWALLET
-  OVER_THE_COUNTER
-  QR_CODE
+  OVER_THE_COUNTER // Alfamart, Indomaret
+  QR_CODE // QRIS
   VIRTUAL_ACCOUNT
-  UNKNOWN_ENUM_VALUE
+  UNKNOWN_ENUM_VALUE // Untuk fallback jika ada tipe baru yg belum dipetakan
 }
 
 enum PaymentReusability {
@@ -365,4 +383,23 @@ enum CancellationReason {
   FORCE_MAJEURE
   SERVICE_INCOMPATIBILITY
   OTHER
+}
+
+// * ENUM BARU untuk Midtrans
+enum MidtransTransactionStatus {
+  PENDING // Menunggu pembayaran
+  SETTLEMENT // Pembayaran berhasil diterima
+  CAPTURE // Dana berhasil ditangkap (untuk Kartu Kredit Auth-Capture)
+  EXPIRE // Transaksi kadaluarsa
+  DENY // Transaksi ditolak (oleh Bank, sistem Fraud, dll)
+  CANCEL // Transaksi dibatalkan
+  FAILURE // Transaksi gagal karena error teknis
+  AUTHORIZE // Transaksi diotorisasi (Kartu Kredit, menunggu capture)
+  // Tambahkan nilai lain jika diperlukan di masa mendatang
+}
+
+enum MidtransFraudStatus {
+  ACCEPT // Dianggap aman
+  CHALLENGE // Mencurigakan, butuh review
+  DENY // Dianggap fraud, ditolak
 }
