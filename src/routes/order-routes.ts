@@ -13,6 +13,7 @@ import {
   cancelOrderWithPaymentRequest,
   getOrdersByWorkshopId,
   testFCM,
+  createOrderWithMidtrans,
 } from "@/controller/order-controller";
 import { authMiddleware } from "@/middlewares/auth";
 import { validateRequest } from "@/middlewares/validate-request";
@@ -35,6 +36,8 @@ orderRouter
     validateRole(["ADMIN", "SUPER_ADMIN"]),
     deleteAllOrder
   );
+
+orderRouter.route("/midtrans").post(authMiddleware(), createOrderWithMidtrans);
 
 orderRouter
   .route("/payment-request")

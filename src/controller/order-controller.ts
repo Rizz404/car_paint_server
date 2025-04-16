@@ -1,4 +1,5 @@
 import prisma from "@/configs/database";
+import { midtransCoreApi } from "@/configs/midtrans";
 import {
   xenditInvoiceClient,
   xenditPaymentMethodClient,
@@ -12,6 +13,10 @@ import {
 } from "@/types/api-response";
 import logger from "@/utils/logger";
 import {
+  mapToMidtransFraudStatus,
+  mapToMidtransTransactionStatus,
+} from "@/utils/midtrans";
+import {
   createOrderStatusNotification,
   createWorkStatusNotification,
 } from "@/utils/notification-handler";
@@ -20,6 +25,8 @@ import { createOrderSchema } from "@/validation/order-validation";
 import {
   Cancellation,
   CancellationReason,
+  MidtransFraudStatus,
+  MidtransTransactionStatus,
   Order,
   OrderStatus,
   PaymentDetail,
@@ -28,6 +35,12 @@ import {
 } from "@prisma/client";
 import { RequestHandler } from "express";
 import { messaging } from "firebase-admin";
+import {
+  CoreApiChargeParameter,
+  CustomerDetails,
+  ItemDetails,
+  CoreApiChargeResponse,
+} from "midtrans-client";
 import { PaymentRequestParameters } from "xendit-node/payment_request/models";
 import { EWalletChannelCode } from "xendit-node/payment_request/models/EWalletChannelCode";
 import { EWalletParameters } from "xendit-node/payment_request/models/EWalletParameters";
@@ -255,6 +268,453 @@ export const createOrder: RequestHandler = async (req, res) => {
   }
 };
 
+export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
+  try {
+    const { id: userId } = req.user!;
+    const {
+      carServices,
+      carModelYearId,
+      colorId,
+      workshopId,
+      paymentMethodId,
+      note,
+      cardTokenId, // Tetap ada untuk kartu kredit
+    }: CreateOrderDTO = req.body;
+
+    // 1. Fetch User Data (sudah ada di kode asli)
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        userProfile: {
+          select: {
+            fullname: true,
+            phoneNumber: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return createErrorResponse(res, "User not found", 404);
+    }
+    if (!user.userProfile || !user.userProfile.phoneNumber) {
+      return createErrorResponse(
+        res,
+        "User profile or phone number is required",
+        400
+      );
+    }
+
+    // 2. Find or Create CarModelYearColor (sudah ada di kode asli)
+    if (!carModelYearId || !colorId) {
+      return createErrorResponse(
+        res,
+        "Car model year id and color id is required",
+        400
+      );
+    }
+    let carModelYearColor = await prisma.carModelYearColor.findUnique({
+      where: { carModelYearId_colorId: { carModelYearId, colorId } },
+    });
+    if (!carModelYearColor) {
+      const [carModelYear, color] = await Promise.all([
+        prisma.carModelYear.findUnique({ where: { id: carModelYearId } }),
+        prisma.color.findUnique({ where: { id: colorId } }),
+      ]);
+      if (!carModelYear)
+        return createErrorResponse(res, "Car model year not found", 404);
+      if (!color) return createErrorResponse(res, "Color not found", 404);
+      carModelYearColor = await prisma.carModelYearColor.create({
+        data: { carModelYearId, colorId },
+      });
+    }
+
+    // 3. Fetch Car Services Data and Calculate Subtotal (sudah ada di kode asli)
+    const carServiceIds = carServices.map((service) => service.carServiceId);
+    const carServicesData = await prisma.carService.findMany({
+      where: { id: { in: carServiceIds } },
+      select: { id: true, name: true, price: true },
+    });
+    if (carServicesData.length !== carServiceIds.length) {
+      const missingIds = carServiceIds.filter(
+        (id) => !carServicesData.some((cs) => cs.id === id)
+      );
+      return createErrorResponse(
+        res,
+        `Missing car services: ${missingIds.join(", ")}`,
+        404
+      );
+    }
+    const orderSubtotalPrice = carServicesData.reduce(
+      (sum, service) => sum.add(service.price),
+      new Prisma.Decimal(0)
+    );
+
+    // 4. Fetch and Validate Payment Method (sudah ada di kode asli)
+    const paymentMethod = await prisma.paymentMethod.findUnique({
+      where: { id: paymentMethodId },
+    });
+
+    if (!paymentMethod) {
+      return createErrorResponse(res, "Payment method not found", 404);
+    }
+    if (!paymentMethod.isActive) {
+      return createErrorResponse(res, "Payment method is not active", 400);
+    }
+    if (!paymentMethod.midtransIdentifier) {
+      // Pastikan identifier ada di DB
+      return createErrorResponse(
+        res,
+        "Payment method configuration for Midtrans is missing",
+        500
+      );
+    }
+
+    // 5. Validate Credit Card Token (jika relevan) (sudah ada di kode asli)
+    if (paymentMethod.midtransIdentifier === "credit_card" && !cardTokenId) {
+      return createErrorResponse(
+        res,
+        "Card Token ID is required for credit card payments",
+        400
+      );
+    }
+
+    // 6. Calculate Total Price and Validate Amount Limits (sudah ada di kode asli)
+    const adminFee = new Prisma.Decimal(paymentMethod.fee ?? 0);
+    const transactionTotalPrice = orderSubtotalPrice.add(adminFee);
+    if (transactionTotalPrice.lessThan(paymentMethod.minimumPayment)) {
+      return createErrorResponse(
+        res,
+        `Minimum payment amount is ${paymentMethod.minimumPayment}`,
+        400
+      );
+    }
+    if (transactionTotalPrice.greaterThan(paymentMethod.maximumPayment)) {
+      return createErrorResponse(
+        res,
+        `Maximum payment amount is ${paymentMethod.maximumPayment}`,
+        400
+      );
+    }
+
+    // 7. Start Prisma Transaction
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // 8. Create Transaction and Order Record (sudah ada di kode asli)
+        const transaction = await tx.transaction.create({
+          data: {
+            userId: user.id,
+            paymentMethodId: paymentMethod.id,
+            adminFee,
+            totalPrice: transactionTotalPrice,
+            order: {
+              create: {
+                userId: user.id,
+                carModelYearColorId: carModelYearColor.id,
+                workshopId,
+                note: note,
+                subtotalPrice: orderSubtotalPrice,
+                carServices: {
+                  connect: carServicesData.map(({ id }) => ({ id })),
+                },
+              },
+            },
+          },
+          include: { order: { select: { id: true } } }, // Include order id
+        });
+
+        const midtransOrderId = transaction.id; // Use internal transaction ID
+
+        // 9. Prepare Midtrans Payload Components (sudah ada di kode asli)
+        const customerDetails: CustomerDetails = {
+          first_name:
+            user.userProfile?.fullname?.split(" ")[0] ?? user.username,
+          last_name:
+            user.userProfile?.fullname?.split(" ").slice(1).join(" ") ||
+            undefined,
+          email: user.email,
+          phone: user.userProfile!.phoneNumber!,
+        };
+
+        const itemDetails: ItemDetails[] = carServicesData.map((service) => ({
+          id: service.id,
+          price: Number(service.price),
+          quantity: 1,
+          name: service.name.substring(0, 50),
+          category: "Car Service",
+        }));
+        if (adminFee.greaterThan(0)) {
+          itemDetails.push({
+            id: "ADMIN_FEE",
+            price: Number(adminFee),
+            quantity: 1,
+            name: "Biaya Admin",
+          });
+        }
+
+        let paymentParameter: CoreApiChargeParameter;
+
+        const baseParameter: Omit<
+          CoreApiChargeParameter,
+          | "payment_type"
+          | "credit_card" // Specific payment objects
+          | "bank_transfer"
+          | "echannel"
+          | "gopay"
+          | "shopeepay"
+          | "cstore"
+          | "qris"
+          | "dana" // Tambahkan tipe baru di Omit jika ada objek spesifiknya
+          | "akulaku"
+          | "kredivo"
+        > = {
+          transaction_details: {
+            order_id: midtransOrderId,
+            gross_amount: Number(transactionTotalPrice),
+          },
+          customer_details: customerDetails,
+          item_details: itemDetails,
+          expiry: {
+            unit: "day",
+            duration: 2, // 48 jam (sesuaikan jika perlu)
+          },
+        };
+
+        // 10. Build Midtrans Payment Parameter based on Identifier
+        switch (paymentMethod.midtransIdentifier) {
+          // --- Metode Pembayaran Lama ---
+          case "credit_card":
+            paymentParameter = {
+              ...baseParameter,
+              payment_type: "credit_card",
+              credit_card: {
+                token_id: cardTokenId!,
+                authentication: true, // 3DS enabled
+              },
+            };
+            break;
+          case "bca_va":
+          case "bni_va":
+          case "bri_va":
+          case "permata_va":
+            const bankCode = paymentMethod.midtransIdentifier.split("_")[0];
+            paymentParameter = {
+              ...baseParameter,
+              payment_type: "bank_transfer",
+              bank_transfer: {
+                bank: bankCode as any, // Cast as any or use specific literal types
+              },
+            };
+            break;
+          case "echannel": // Mandiri Bill
+            paymentParameter = {
+              ...baseParameter,
+              payment_type: "echannel",
+              echannel: {
+                bill_info1: `Order ID: ${midtransOrderId}`,
+                bill_info2: `Pembayaran Jasa Mobil ${user.username}`,
+              },
+            };
+            break;
+          case "gopay":
+            paymentParameter = {
+              ...baseParameter,
+              payment_type: "gopay",
+              // gopay: { enable_callback: true, callback_url: "..." } // Optional
+            };
+            break;
+          case "qris":
+            paymentParameter = {
+              ...baseParameter,
+              payment_type: "qris",
+              // qris: { acquirer: 'gopay' } // Optional
+            };
+            break;
+          case "shopeepay":
+            paymentParameter = {
+              ...baseParameter,
+              payment_type: "shopeepay",
+              shopeepay: {
+                callback_url:
+                  process.env.MIDTRANS_SHOPEEPAY_CALLBACK_URL ||
+                  "https://YOUR_DEFAULT_CALLBACK.com/payment/complete", // Ganti URL callbackmu dari env atau default
+              },
+            };
+            break;
+          case "alfamart":
+          case "indomaret":
+            paymentParameter = {
+              ...baseParameter,
+              payment_type: "cstore",
+              cstore: {
+                store: paymentMethod.midtransIdentifier,
+                message: `Pembayaran Order ${midtransOrderId}`,
+              },
+            };
+            break;
+
+          // --- Metode Pembayaran Baru ---
+          case "dana":
+            paymentParameter = {
+              ...baseParameter,
+              payment_type: "dana",
+              // dana: { callback_url: "..." } // Optional callback
+            };
+            break;
+          case "akulaku": // Akulaku PayLater
+            paymentParameter = {
+              ...baseParameter,
+              payment_type: "akulaku",
+              // Tidak ada parameter spesifik 'akulaku:{}' yang umum diperlukan
+            };
+            break;
+          case "kredivo": // Kredivo PayLater
+            paymentParameter = {
+              ...baseParameter,
+              payment_type: "kredivo",
+              // Tidak ada parameter spesifik 'kredivo:{}' yang umum diperlukan
+            };
+            break;
+
+          default:
+            // Handle unsupported identifier saved in DB
+            throw new Error(
+              `Unsupported Midtrans identifier configured: ${paymentMethod.midtransIdentifier}`
+            );
+        }
+
+        // 11. Call Midtrans Core API Charge (sudah ada di kode asli)
+        let chargeResponse: CoreApiChargeResponse;
+        try {
+          chargeResponse = await midtransCoreApi.charge(paymentParameter);
+          console.log(
+            "Midtrans Charge Response:",
+            JSON.stringify(chargeResponse, null, 2)
+          );
+        } catch (error: any) {
+          console.error(
+            "Midtrans Charge Error:",
+            error?.message || error,
+            "Payload:",
+            JSON.stringify(paymentParameter, null, 2) // Log payload on error
+          );
+          // Extract Midtrans specific error message if available
+          const midtransErrorMessage =
+            error?.ApiResponse?.status_message ||
+            error?.message ||
+            "Unknown error";
+          throw new Error(
+            `Failed to create Midtrans transaction: ${midtransErrorMessage}`
+          );
+        }
+
+        // 12. Check Midtrans Response Status Code (sudah ada di kode asli)
+        if (!["200", "201"].includes(chargeResponse.status_code)) {
+          throw new Error(
+            `Midtrans charge failed with status ${chargeResponse.status_code}: ${chargeResponse.status_message}`
+          );
+        }
+
+        // 13. Create Payment Detail Record (sudah ada di kode asli)
+        const paymentDetail = await tx.paymentDetail.create({
+          data: {
+            transactionId: transaction.id,
+            // Midtrans Fields
+            midtransTransactionId: chargeResponse.transaction_id,
+            midtransOrderId: chargeResponse.order_id,
+            midtransPaymentType: chargeResponse.payment_type,
+            midtransTransactionStatus: mapToMidtransTransactionStatus(
+              chargeResponse.transaction_status
+            ),
+            midtransFraudStatus: mapToMidtransFraudStatus(
+              chargeResponse.fraud_status
+            ),
+            midtransPaymentCode: chargeResponse.payment_code, // CStore
+            midtransBillKey: chargeResponse.bill_key, // Mandiri Bill
+            midtransBillerCode: chargeResponse.biller_code, // Mandiri Bill
+            midtransQrCodeUrl: chargeResponse.actions?.find(
+              (a) => a.name === "generate-qr-code"
+            )?.url, // QRIS/GoPay/Dana
+            midtransRedirectUrl: chargeResponse.redirect_url, // CC 3DS, Akulaku, Kredivo, ShopeePay redirect (jika tdk pakai callback)
+            // Generic/Shared Fields
+            virtualAccountNumber:
+              chargeResponse.va_numbers?.[0]?.va_number ??
+              chargeResponse.permata_va_number,
+            webUrl: chargeResponse.redirect_url, // Prioritaskan redirect URL untuk web
+            deeplinkUrl:
+              chargeResponse.actions?.find(
+                (a) => a.name === "deeplink-redirect"
+              )?.url ?? // GoPay/ShopeePay/Dana deeplink
+              chargeResponse.actions?.find(
+                (a) => a.name === "deeplink-web-redirect" // Sometimes web deeplink exists
+              )?.url,
+            // paidAt will be updated via webhook
+            // Todo: mungkin nanti ditambahkan
+            // expiryTime: chargeResponse.expiry_time
+            //   ? new Date(chargeResponse.expiry_time)
+            //   : undefined, // Simpan expiry time jika ada
+          },
+        });
+
+        // 14. Prepare Response for Frontend (sudah ada di kode asli)
+        const frontendResponseData = {
+          orderId: transaction.order?.[0]?.id ?? midtransOrderId, // prefer internal order ID
+          transactionId: transaction.id,
+          midtransTransactionId: chargeResponse.transaction_id,
+          paymentStatus: transaction.paymentStatus, // Initial internal status (PENDING)
+          midtransInitialStatus: chargeResponse.transaction_status,
+          totalAmount: transactionTotalPrice,
+          paymentDetails: {
+            paymentType: chargeResponse.payment_type,
+            vaNumber:
+              chargeResponse.va_numbers?.[0]?.va_number ??
+              chargeResponse.permata_va_number,
+            paymentCode: chargeResponse.payment_code, // CStore
+            billKey: chargeResponse.bill_key, // Mandiri Bill
+            billerCode: chargeResponse.biller_code, // Mandiri Bill
+            qrCodeUrl: chargeResponse.actions?.find(
+              (a) => a.name === "generate-qr-code"
+            )?.url, // QRIS/GoPay/Dana
+            deeplinkUrl:
+              chargeResponse.actions?.find(
+                (a) => a.name === "deeplink-redirect"
+              )?.url ??
+              chargeResponse.actions?.find(
+                (a) => a.name === "deeplink-web-redirect"
+              )?.url, // Deeplink Mobile/Web
+            redirectUrl: chargeResponse.redirect_url, // CC 3DS, Akulaku, Kredivo, Shopee etc.
+            expiryTime: chargeResponse.expiry_time, // Send expiry time to frontend
+          },
+        };
+
+        return frontendResponseData; // Return this data from the transaction
+      },
+      {
+        timeout: 20000, // 20 seconds timeout for external API call
+      }
+    );
+
+    // 15. Send Success Response to Frontend (sudah ada di kode asli)
+    return createSuccessResponse(
+      res,
+      result, // Result from $transaction
+      "Order created and payment initiated successfully",
+      201
+    );
+  } catch (error: any) {
+    // Handle errors from validation or $transaction
+    console.error("Create Order Error:", error);
+    return createErrorResponse(
+      res,
+      error?.message || "Failed to create order",
+      error?.statusCode || // Use specific status code if available (e.g., from Midtrans error)
+        (error.message.startsWith("Midtrans charge failed") ? 400 : 500) // Default based on error type
+    );
+  }
+};
 export const createOrderWithPaymentRequest: RequestHandler = async (
   req,
   res
@@ -788,7 +1248,7 @@ export const cancelOrder: RequestHandler = async (req, res) => {
             id: true,
             paymentStatus: true,
             totalPrice: true,
-            paymentdetail: true,
+            paymentDetail: true,
           },
         },
       },
@@ -810,7 +1270,7 @@ export const cancelOrder: RequestHandler = async (req, res) => {
       );
     }
 
-    const xenditInvoiceId = order.transaction.paymentdetail?.xenditInvoiceId;
+    const xenditInvoiceId = order.transaction.paymentDetail?.xenditInvoiceId;
 
     if (!xenditInvoiceId) {
       return createErrorResponse(res, `Xendit invoice id not found`, 404);
@@ -927,7 +1387,7 @@ export const cancelOrderWithPaymentRequest: RequestHandler = async (
             id: true,
             paymentStatus: true,
             totalPrice: true,
-            paymentdetail: true,
+            paymentDetail: true,
           },
         },
       },
@@ -949,9 +1409,9 @@ export const cancelOrderWithPaymentRequest: RequestHandler = async (
     }
 
     const xenditPaymentMethodId =
-      order.transaction.paymentdetail?.xenditPaymentMethodId;
+      order.transaction.paymentDetail?.xenditPaymentMethodId;
     const xenditPaymentRequestId =
-      order.transaction.paymentdetail?.xenditPaymentRequestId;
+      order.transaction.paymentDetail?.xenditPaymentRequestId;
 
     if (!xenditPaymentMethodId || !xenditPaymentRequestId) {
       return createErrorResponse(
