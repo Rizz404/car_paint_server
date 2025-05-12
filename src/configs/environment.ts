@@ -27,6 +27,7 @@ const envSchema = z.object({
   FIREBASE_CLIENT_EMAIL: z.string(),
   FIREBASE_PROJECT_ID: z.string(),
   FIREBASE_PRIVATE_KEY: z.string(),
+  CALLBACK_URL: z.string(),
 });
 
 type ValidatedEnv = z.infer<typeof envSchema>;

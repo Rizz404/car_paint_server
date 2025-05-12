@@ -1,4 +1,5 @@
 import prisma from "@/configs/database";
+import env from "@/configs/environment";
 import { midtransCoreApi } from "@/configs/midtrans";
 import {
   xenditInvoiceClient,
@@ -135,7 +136,6 @@ export const createOrder: RequestHandler = async (req, res) => {
       });
     }
 
-    // Rest of your existing code...
     const carServicesData = await prisma.carService.findMany({
       where: {
         id: {
@@ -149,7 +149,6 @@ export const createOrder: RequestHandler = async (req, res) => {
       },
     });
 
-    // Check if all services exist
     if (carServicesData.length !== carServices.length) {
       const missingIds = carServices
         .filter(
@@ -187,7 +186,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       .add(adminFee)
       .add(paymentMethodFee);
 
-    // Menambahkan opsi timeout yang lebih panjang untuk transaksi
+    // * Menambahkan opsi timeout yang lebih panjang untuk transaksi
     const result = await prisma.$transaction(
       async (tx) => {
         const transaction = await tx.transaction.create({
@@ -199,7 +198,7 @@ export const createOrder: RequestHandler = async (req, res) => {
             order: {
               create: {
                 userId: user.id,
-                carModelYearColorId: carModelYearColor.id, // Use the found or created record
+                carModelYearColorId: carModelYearColor.id,
                 workshopId,
                 note: note,
                 subtotalPrice: orderTotalPrice,
@@ -278,10 +277,9 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
       workshopId,
       paymentMethodId,
       note,
-      cardTokenId, // Tetap ada untuk kartu kredit
+      cardTokenId,
     }: CreateOrderDTO = req.body;
 
-    // 1. Fetch User Data (sudah ada di kode asli)
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -308,7 +306,6 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
       );
     }
 
-    // 2. Find or Create CarModelYearColor (sudah ada di kode asli)
     if (!carModelYearId || !colorId) {
       return createErrorResponse(
         res,
@@ -332,7 +329,6 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
       });
     }
 
-    // 3. Fetch Car Services Data and Calculate Subtotal (sudah ada di kode asli)
     const carServiceIds = carServices.map((service) => service.carServiceId);
     const carServicesData = await prisma.carService.findMany({
       where: { id: { in: carServiceIds } },
@@ -353,7 +349,6 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
       new Prisma.Decimal(0)
     );
 
-    // 4. Fetch and Validate Payment Method (sudah ada di kode asli)
     const paymentMethod = await prisma.paymentMethod.findUnique({
       where: { id: paymentMethodId },
     });
@@ -365,7 +360,6 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Payment method is not active", 400);
     }
     if (!paymentMethod.midtransIdentifier) {
-      // Pastikan identifier ada di DB
       return createErrorResponse(
         res,
         "Payment method configuration for Midtrans is missing",
@@ -373,7 +367,7 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
       );
     }
 
-    // 5. Validate Credit Card Token (jika relevan) (sudah ada di kode asli)
+    // * Validate Credit Card Token (jika relevan) (sudah ada di kode asli)
     if (paymentMethod.midtransIdentifier === "credit_card" && !cardTokenId) {
       return createErrorResponse(
         res,
@@ -382,7 +376,6 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
       );
     }
 
-    // 6. Calculate Total Price and Validate Amount Limits (sudah ada di kode asli)
     const adminFee = new Prisma.Decimal(paymentMethod.fee ?? 0);
     const transactionTotalPrice = orderSubtotalPrice.add(adminFee);
     if (transactionTotalPrice.lessThan(paymentMethod.minimumPayment)) {
@@ -400,10 +393,8 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
       );
     }
 
-    // 7. Start Prisma Transaction
     const result = await prisma.$transaction(
       async (tx) => {
-        // 8. Create Transaction and Order Record (sudah ada di kode asli)
         const transaction = await tx.transaction.create({
           data: {
             userId: user.id,
@@ -423,12 +414,11 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
               },
             },
           },
-          include: { order: { select: { id: true } } }, // Include order id
+          include: { order: { select: { id: true } } },
         });
 
-        const midtransOrderId = transaction.id; // Use internal transaction ID
+        const midtransOrderId = transaction.id;
 
-        // 9. Prepare Midtrans Payload Components (sudah ada di kode asli)
         const customerDetails: CustomerDetails = {
           first_name:
             user.userProfile?.fullname?.split(" ")[0] ?? user.username,
@@ -460,14 +450,14 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
         const baseParameter: Omit<
           CoreApiChargeParameter,
           | "payment_type"
-          | "credit_card" // Specific payment objects
+          | "credit_card"
           | "bank_transfer"
           | "echannel"
           | "gopay"
           | "shopeepay"
           | "cstore"
           | "qris"
-          | "dana" // Tambahkan tipe baru di Omit jika ada objek spesifiknya
+          | "dana"
           | "akulaku"
           | "kredivo"
         > = {
@@ -479,20 +469,18 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
           item_details: itemDetails,
           expiry: {
             unit: "day",
-            duration: 2, // 48 jam (sesuaikan jika perlu)
+            duration: 2,
           },
         };
 
-        // 10. Build Midtrans Payment Parameter based on Identifier
         switch (paymentMethod.midtransIdentifier) {
-          // --- Metode Pembayaran Lama ---
           case "credit_card":
             paymentParameter = {
               ...baseParameter,
               payment_type: "credit_card",
               credit_card: {
                 token_id: cardTokenId!,
-                authentication: true, // 3DS enabled
+                authentication: true, // * 3DS enabled
               },
             };
             break;
@@ -500,16 +488,19 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
           case "bni_va":
           case "bri_va":
           case "permata_va":
+          case "cimb_va":
+          case "bsi_va":
+          case "mandiri_va":
             const bankCode = paymentMethod.midtransIdentifier.split("_")[0];
             paymentParameter = {
               ...baseParameter,
               payment_type: "bank_transfer",
               bank_transfer: {
-                bank: bankCode as any, // Cast as any or use specific literal types
+                bank: bankCode as any,
               },
             };
             break;
-          case "echannel": // Mandiri Bill
+          case "echannel":
             paymentParameter = {
               ...baseParameter,
               payment_type: "echannel",
@@ -523,7 +514,7 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
             paymentParameter = {
               ...baseParameter,
               payment_type: "gopay",
-              // gopay: { enable_callback: true, callback_url: "..." } // Optional
+              gopay: { enable_callback: true, callback_url: env.CALLBACK_URL }, // Optional
             };
             break;
           case "qris":
@@ -538,9 +529,7 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
               ...baseParameter,
               payment_type: "shopeepay",
               shopeepay: {
-                callback_url:
-                  process.env.MIDTRANS_SHOPEEPAY_CALLBACK_URL ||
-                  "https://YOUR_DEFAULT_CALLBACK.com/payment/complete", // Ganti URL callbackmu dari env atau default
+                callback_url: env.CALLBACK_URL,
               },
             };
             break;
@@ -556,37 +545,32 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
             };
             break;
 
-          // --- Metode Pembayaran Baru ---
           case "dana":
             paymentParameter = {
               ...baseParameter,
               payment_type: "dana",
-              // dana: { callback_url: "..." } // Optional callback
+              dana: { callback_url: env.CALLBACK_URL },
             };
             break;
           case "akulaku": // Akulaku PayLater
             paymentParameter = {
               ...baseParameter,
               payment_type: "akulaku",
-              // Tidak ada parameter spesifik 'akulaku:{}' yang umum diperlukan
             };
             break;
           case "kredivo": // Kredivo PayLater
             paymentParameter = {
               ...baseParameter,
               payment_type: "kredivo",
-              // Tidak ada parameter spesifik 'kredivo:{}' yang umum diperlukan
             };
             break;
 
           default:
-            // Handle unsupported identifier saved in DB
             throw new Error(
               `Unsupported Midtrans identifier configured: ${paymentMethod.midtransIdentifier}`
             );
         }
 
-        // 11. Call Midtrans Core API Charge (sudah ada di kode asli)
         let chargeResponse: CoreApiChargeResponse;
         try {
           chargeResponse = await midtransCoreApi.charge(paymentParameter);
@@ -601,7 +585,7 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
             "Payload:",
             JSON.stringify(paymentParameter, null, 2) // Log payload on error
           );
-          // Extract Midtrans specific error message if available
+
           const midtransErrorMessage =
             error?.ApiResponse?.status_message ||
             error?.message ||
@@ -611,18 +595,15 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
           );
         }
 
-        // 12. Check Midtrans Response Status Code (sudah ada di kode asli)
         if (!["200", "201"].includes(chargeResponse.status_code)) {
           throw new Error(
             `Midtrans charge failed with status ${chargeResponse.status_code}: ${chargeResponse.status_message}`
           );
         }
 
-        // 13. Create Payment Detail Record (sudah ada di kode asli)
         const paymentDetail = await tx.paymentDetail.create({
           data: {
             transactionId: transaction.id,
-            // Midtrans Fields
             midtransTransactionId: chargeResponse.transaction_id,
             midtransOrderId: chargeResponse.order_id,
             midtransPaymentType: chargeResponse.payment_type,
@@ -659,7 +640,7 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
           },
         });
 
-        // 14. Prepare Response for Frontend (sudah ada di kode asli)
+        // Prepare Response for Frontend (sudah ada di kode asli)
         const frontendResponseData = {
           orderId: transaction.order?.[0]?.id ?? midtransOrderId, // prefer internal order ID
           transactionId: transaction.id,
@@ -690,28 +671,26 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
           },
         };
 
-        return frontendResponseData; // Return this data from the transaction
+        return frontendResponseData;
       },
       {
-        timeout: 20000, // 20 seconds timeout for external API call
+        timeout: 20000, // * 20 seconds timeout for external API call
       }
     );
 
-    // 15. Send Success Response to Frontend (sudah ada di kode asli)
     return createSuccessResponse(
       res,
-      result, // Result from $transaction
+      result,
       "Order created and payment initiated successfully",
       201
     );
   } catch (error: any) {
-    // Handle errors from validation or $transaction
     console.error("Create Order Error:", error);
     return createErrorResponse(
       res,
       error?.message || "Failed to create order",
-      error?.statusCode || // Use specific status code if available (e.g., from Midtrans error)
-        (error.message.startsWith("Midtrans charge failed") ? 400 : 500) // Default based on error type
+      error?.statusCode ||
+        (error.message.startsWith("Midtrans charge failed") ? 400 : 500)
     );
   }
 };
