@@ -15,9 +15,9 @@ async function flushDatabase() {
     await prisma.user.deleteMany();
 
     // Delete car related data
-    await prisma.carModelYearColor.deleteMany();
+    await prisma.carModelColorColor.deleteMany();
     await prisma.color.deleteMany();
-    await prisma.carModelYear.deleteMany();
+    await prisma.carModelColor.deleteMany();
     await prisma.carModel.deleteMany();
     await prisma.carBrand.deleteMany();
 

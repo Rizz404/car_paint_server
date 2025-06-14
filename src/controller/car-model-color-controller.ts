@@ -6,54 +6,46 @@ import {
 } from "@/types/api-response";
 import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
-import { CarModelYearColor } from "@prisma/client";
+import { CarModelColor } from "@prisma/client";
 import { RequestHandler } from "express";
 
 // *======================= POST =======================*
-export const createManyCarModelYearColors: RequestHandler = async (
-  req,
-  res
-) => {
+export const createManyCarModelColors: RequestHandler = async (req, res) => {
   try {
-    const payloads: CarModelYearColor[] = req.body;
+    const payloads: CarModelColor[] = req.body;
 
-    const carModelYearColorsToCreate = payloads.map((payload, index) => ({
+    const carModelColorsToCreate = payloads.map((payload, index) => ({
       ...payload,
     }));
 
-    const createdCarModelYearColors = await prisma.carModelYearColor.createMany(
-      {
-        data: carModelYearColorsToCreate,
-        skipDuplicates: true,
-      }
-    );
+    const createdCarModelColors = await prisma.carModelColor.createMany({
+      data: carModelColorsToCreate,
+      skipDuplicates: true,
+    });
 
     return createSuccessResponse(
       res,
-      createdCarModelYearColors,
+      createdCarModelColors,
       "Car model year colors Created",
       201
     );
   } catch (error) {
-    logger.error("Error creating multiple carModelYearColors:", error);
+    logger.error("Error creating multiple carModelColors:", error);
     return createErrorResponse(res, error, 500);
   }
 };
 
-export const createCarModelYearColor: RequestHandler = async (req, res) => {
+export const createCarModelColor: RequestHandler = async (req, res) => {
   try {
-    const payload: CarModelYearColor = req.body;
+    const payload: CarModelColor = req.body;
 
-    const existingCarModelYearColor = await prisma.carModelYearColor.findFirst({
+    const existingCarModelColor = await prisma.carModelColor.findFirst({
       where: {
-        AND: [
-          { carModelYearId: payload.carModelYearId },
-          { colorId: payload.colorId },
-        ],
+        AND: [{ carModelId: payload.carModelId }, { colorId: payload.colorId }],
       },
     });
 
-    if (existingCarModelYearColor) {
+    if (existingCarModelColor) {
       return createErrorResponse(
         res,
         "Car Model Year Color already exist",
@@ -61,18 +53,18 @@ export const createCarModelYearColor: RequestHandler = async (req, res) => {
       );
     }
 
-    const createdCarModelYearColor = await prisma.carModelYearColor.create({
+    const createdCarModelColor = await prisma.carModelColor.create({
       data: payload,
     });
 
-    return createSuccessResponse(res, createdCarModelYearColor, "Created", 201);
+    return createSuccessResponse(res, createdCarModelColor, "Created", 201);
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }
 };
 
 // *======================= GET =======================*
-export const getCarModelYearColors: RequestHandler = async (req, res) => {
+export const getCarModelColors: RequestHandler = async (req, res) => {
   try {
     const {
       page = "1",
@@ -94,19 +86,13 @@ export const getCarModelYearColors: RequestHandler = async (req, res) => {
       validFields
     );
 
-    const carModelYearColors = await prisma.carModelYearColor.findMany({
+    const carModelColors = await prisma.carModelColor.findMany({
       include: {
-        carModelYear: {
+        carModel: {
           select: {
             id: true,
-            year: true,
-            carModel: {
-              select: {
-                id: true,
-                name: true,
-                carBrand: { select: { id: true, name: true } },
-              },
-            },
+            name: true,
+            carBrand: { select: { id: true, name: true } },
           },
         },
         color: { select: { id: true, name: true } },
@@ -115,26 +101,26 @@ export const getCarModelYearColors: RequestHandler = async (req, res) => {
       take: +limit,
       orderBy: { [field]: direction },
     });
-    const totalCarModelYearColors = await prisma.carModelYearColor.count();
+    const totalCarModelColors = await prisma.carModelColor.count();
 
     createPaginatedResponse(
       res,
-      carModelYearColors,
+      carModelColors,
       currentPage,
       itemsPerPage,
-      totalCarModelYearColors
+      totalCarModelColors
     );
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }
 };
 
-export const getCarModelYearColorsByCarModelYearId: RequestHandler = async (
+export const getCarModelColorsByCarModelId: RequestHandler = async (
   req,
   res
 ) => {
   try {
-    const { carModelYearId } = req.params;
+    const { carModelId } = req.params;
     const {
       page = "1",
       limit = "10",
@@ -155,20 +141,14 @@ export const getCarModelYearColorsByCarModelYearId: RequestHandler = async (
       validFields
     );
 
-    const carModelYearColors = await prisma.carModelYearColor.findMany({
-      where: { carModelYearId }, // Filter berdasarkan carModelYearId
+    const carModelColors = await prisma.carModelColor.findMany({
+      where: { carModelId }, // Filter berdasarkan carModelId
       include: {
-        carModelYear: {
+        carModel: {
           select: {
             id: true,
-            year: true,
-            carModel: {
-              select: {
-                id: true,
-                name: true,
-                carBrand: { select: { id: true, name: true } },
-              },
-            },
+            name: true,
+            carBrand: { select: { id: true, name: true } },
           },
         },
         color: { select: { id: true, name: true } },
@@ -177,26 +157,23 @@ export const getCarModelYearColorsByCarModelYearId: RequestHandler = async (
       take: +limit,
       orderBy: { [field]: direction },
     });
-    const totalCarModelYearColors = await prisma.carModelYearColor.count({
-      where: { carModelYearId }, // Count juga difilter
+    const totalCarModelColors = await prisma.carModelColor.count({
+      where: { carModelId }, // Count juga difilter
     });
 
     createPaginatedResponse(
       res,
-      carModelYearColors,
+      carModelColors,
       currentPage,
       itemsPerPage,
-      totalCarModelYearColors
+      totalCarModelColors
     );
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }
 };
 
-export const getCarModelYearColorsByColorId: RequestHandler = async (
-  req,
-  res
-) => {
+export const getCarModelColorsByColorId: RequestHandler = async (req, res) => {
   try {
     const { colorId } = req.params;
     const {
@@ -219,20 +196,14 @@ export const getCarModelYearColorsByColorId: RequestHandler = async (
       validFields
     );
 
-    const carModelYearColors = await prisma.carModelYearColor.findMany({
+    const carModelColors = await prisma.carModelColor.findMany({
       where: { colorId }, // Filter berdasarkan colorId
       include: {
-        carModelYear: {
+        carModel: {
           select: {
             id: true,
-            year: true,
-            carModel: {
-              select: {
-                id: true,
-                name: true,
-                carBrand: { select: { id: true, name: true } },
-              },
-            },
+            name: true,
+            carBrand: { select: { id: true, name: true } },
           },
         },
         color: { select: { id: true, name: true } },
@@ -241,26 +212,26 @@ export const getCarModelYearColorsByColorId: RequestHandler = async (
       take: +limit,
       orderBy: { [field]: direction },
     });
-    const totalCarModelYearColors = await prisma.carModelYearColor.count({
+    const totalCarModelColors = await prisma.carModelColor.count({
       where: { colorId }, // Count juga difilter
     });
 
     createPaginatedResponse(
       res,
-      carModelYearColors,
+      carModelColors,
       currentPage,
       itemsPerPage,
-      totalCarModelYearColors
+      totalCarModelColors
     );
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }
 };
 
-export const getCarModelYearColorsByCarModelYearIdAndColorId: RequestHandler =
+export const getCarModelColorsByCarModelColorIdAndColorId: RequestHandler =
   async (req, res) => {
     try {
-      const { carModelYearId, colorId } = req.params;
+      const { carModelId, colorId } = req.params;
       const {
         page = "1",
         limit = "10",
@@ -284,131 +255,130 @@ export const getCarModelYearColorsByCarModelYearIdAndColorId: RequestHandler =
         validFields
       );
 
-      const carModelYearColors = await prisma.carModelYearColor.findMany({
+      const carModelColors = await prisma.carModelColor.findMany({
         where: {
-          carModelYearId,
+          carModelId,
           colorId,
-        }, // Filter berdasarkan keduanya
+        },
         include: {
-          carModelYear: { select: { year: true } },
-          color: { select: { name: true } },
+          carModel: {
+            select: {
+              id: true,
+              name: true,
+              carBrand: { select: { id: true, name: true } },
+            },
+          },
+          color: { select: { id: true, name: true } },
         },
         skip: offset,
         take: +limit,
         orderBy: { [field]: direction },
       });
-      const totalCarModelYearColors = await prisma.carModelYearColor.count({
+      const totalCarModelColors = await prisma.carModelColor.count({
         where: {
-          carModelYearId,
+          carModelId,
           colorId,
         }, // Count juga difilter
       });
 
       createPaginatedResponse(
         res,
-        carModelYearColors,
+        carModelColors,
         currentPage,
         itemsPerPage,
-        totalCarModelYearColors
+        totalCarModelColors
       );
     } catch (error) {
       return createErrorResponse(res, error, 500);
     }
   };
 
-export const getCarModelYearColorById: RequestHandler = async (req, res) => {
+export const getCarModelColorById: RequestHandler = async (req, res) => {
   try {
-    const { carModelYearColorId } = req.params;
-    const carModelYearColor = await prisma.carModelYearColor.findUnique({
-      where: { id: carModelYearColorId },
+    const { carModelId } = req.params;
+    const carModelColor = await prisma.carModelColor.findUnique({
+      where: { id: carModelId },
       include: {
-        carModelYear: {
+        carModel: {
           select: {
             id: true,
-            year: true,
-            carModel: {
-              select: {
-                id: true,
-                name: true,
-                carBrand: { select: { id: true, name: true } },
-              },
-            },
+            name: true,
+            carBrand: { select: { id: true, name: true } },
           },
         },
         color: { select: { id: true, name: true } },
       },
     });
 
-    if (!carModelYearColor) {
+    if (!carModelColor) {
       return createErrorResponse(res, "Car model year color not found", 404);
     }
 
-    return createSuccessResponse(res, carModelYearColor);
+    return createSuccessResponse(res, carModelColor);
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }
 };
 
 // *======================= PATCH =======================*
-export const updateCarModelYearColor: RequestHandler = async (req, res) => {
+export const updateCarModelColor: RequestHandler = async (req, res) => {
   try {
-    const { carModelYearColorId } = req.params;
-    const payload: CarModelYearColor = req.body;
+    const { carModelId } = req.params;
+    const payload: CarModelColor = req.body;
 
-    const carModelYearColor = await prisma.carModelYearColor.findUnique({
+    const carModelColor = await prisma.carModelColor.findUnique({
       where: {
-        id: carModelYearColorId,
+        id: carModelId,
       },
     });
 
-    if (!carModelYearColor) {
+    if (!carModelColor) {
       return createErrorResponse(res, "Car model year color Not Found", 500);
     }
 
-    const updatedCarModelYearColor = await prisma.carModelYearColor.update({
+    const updatedCarModelColor = await prisma.carModelColor.update({
       data: payload,
-      where: { id: carModelYearColorId },
+      where: { id: carModelId },
     });
 
-    return createSuccessResponse(res, updatedCarModelYearColor, "Updated");
+    return createSuccessResponse(res, updatedCarModelColor, "Updated");
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }
 };
 
 // *======================= DELETE =======================*
-export const deleteCarModelYearColor: RequestHandler = async (req, res) => {
+export const deleteCarModelColor: RequestHandler = async (req, res) => {
   try {
-    const { carModelYearColorId } = req.params;
+    const { carModelId } = req.params;
 
-    const carModelYearColor = await prisma.carModelYearColor.findUnique({
+    const carModelColor = await prisma.carModelColor.findUnique({
       where: {
-        id: carModelYearColorId,
+        id: carModelId,
       },
     });
 
-    if (!carModelYearColor) {
+    if (!carModelColor) {
       return createErrorResponse(res, "Car model year color Not Found", 500);
     }
 
-    const deletedCarModelYearColor = await prisma.carModelYearColor.delete({
-      where: { id: carModelYearColorId },
+    const deletedCarModelColor = await prisma.carModelColor.delete({
+      where: { id: carModelId },
     });
 
-    return createSuccessResponse(res, deletedCarModelYearColor, "Deleted");
+    return createSuccessResponse(res, deletedCarModelColor, "Deleted");
   } catch (error) {
     return createErrorResponse(res, error, 500);
   }
 };
 
-export const deleteAllCarModelYearColor: RequestHandler = async (req, res) => {
+export const deleteAllCarModelColor: RequestHandler = async (req, res) => {
   try {
-    const deletedAllCarModelYearColors =
-      await prisma.carModelYearColor.deleteMany();
+    const deletedAllCarModelColors = await prisma.carModelColor.deleteMany();
 
     return createSuccessResponse(
       res,
-      deletedAllCarModelYearColors,
+      deletedAllCarModelColors,
       "All car models deleted"
     );
   } catch (error) {

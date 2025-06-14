@@ -78,19 +78,13 @@ export const getETickets: RequestHandler = async (req, res) => {
         order: {
           select: {
             workshop: { select: { id: true, name: true } },
-            carModelYearColor: {
+            carModelColor: {
               select: {
-                carModelYear: {
+                carModel: {
                   select: {
                     id: true,
-                    year: true,
-                    carModel: {
-                      select: {
-                        id: true,
-                        name: true,
-                        carBrand: { select: { id: true, name: true } },
-                      },
-                    },
+                    name: true,
+                    carBrand: { select: { id: true, name: true } },
                   },
                 },
                 color: { select: { id: true, name: true } },
@@ -125,19 +119,13 @@ export const getETicketById: RequestHandler = async (req, res) => {
         order: {
           select: {
             workshop: { select: { id: true, name: true } },
-            carModelYearColor: {
+            carModelColor: {
               select: {
-                carModelYear: {
+                carModel: {
                   select: {
                     id: true,
-                    year: true,
-                    carModel: {
-                      select: {
-                        id: true,
-                        name: true,
-                        carBrand: { select: { id: true, name: true } },
-                      },
-                    },
+                    name: true,
+                    carBrand: { select: { id: true, name: true } },
                   },
                 },
                 color: { select: { id: true, name: true } },
@@ -179,19 +167,13 @@ export const searchETickets: RequestHandler = async (req, res) => {
         order: {
           select: {
             workshop: { select: { id: true, name: true } },
-            carModelYearColor: {
+            carModelColor: {
               select: {
-                carModelYear: {
+                carModel: {
                   select: {
                     id: true,
-                    year: true,
-                    carModel: {
-                      select: {
-                        id: true,
-                        name: true,
-                        carBrand: { select: { id: true, name: true } },
-                      },
-                    },
+                    name: true,
+                    carBrand: { select: { id: true, name: true } },
                   },
                 },
                 color: { select: { id: true, name: true } },
@@ -313,19 +295,13 @@ export const getCurrentUserETickets: RequestHandler = async (req, res) => {
         order: {
           select: {
             workshop: { select: { id: true, name: true } },
-            carModelYearColor: {
+            carModelColor: {
               select: {
-                carModelYear: {
+                carModel: {
                   select: {
                     id: true,
-                    year: true,
-                    carModel: {
-                      select: {
-                        id: true,
-                        name: true,
-                        carBrand: { select: { id: true, name: true } },
-                      },
-                    },
+                    name: true,
+                    carBrand: { select: { id: true, name: true } },
                   },
                 },
                 color: { select: { id: true, name: true } },

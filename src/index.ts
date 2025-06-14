@@ -105,7 +105,7 @@ app.use("/api/v1", (req, res, next) => {
       }
       res.setHeader("Content-Type", "text/plain");
       res.send(
-        `${data}\n\n📌 Available routes:\n/auth\n/users\n/car-brands\n/car-models\n/car-services\n/colors\n/car-model-years\n/car-model-year-colors\n/user-cars\n/workshops\n/payment-methods\n/orders\n/transactions\n/histories\n/e-tickets`
+        `${data}\n\n📌 Available routes:\n/auth\n/users\n/car-brands\n/car-models\n/car-services\n/colors\n/car-model-colors\n/car-model-color-colors\n/user-cars\n/workshops\n/payment-methods\n/orders\n/transactions\n/histories\n/e-tickets`
       );
     });
   } else {
@@ -212,6 +212,9 @@ process.on("unhandledRejection", (reason, promise) => {
 
 process.on("SIGTERM", gracefulShutdown);
 process.on("SIGINT", gracefulShutdown);
+
+console.log(env.MIDTRANS_CLIENT_KEY);
+console.log(env.MIDTRANS_SERVER_KEY);
 
 // * INITIALIZATION
 (async () => {
