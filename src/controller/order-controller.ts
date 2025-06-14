@@ -490,16 +490,16 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
           case "permata_va":
           case "cimb_va":
           case "bsi_va":
-          case "mandiri_va":
             const bankCode = paymentMethod.midtransIdentifier.split("_")[0];
             paymentParameter = {
               ...baseParameter,
               payment_type: "bank_transfer",
               bank_transfer: {
-                bank: bankCode as any,
+                bank: bankCode.toUpperCase(),
               },
             };
             break;
+          case "mandiri_va":
           case "echannel":
             paymentParameter = {
               ...baseParameter,
@@ -635,8 +635,8 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
             // paidAt will be updated via webhook
             // Todo: mungkin nanti ditambahkan
             // expiryTime: chargeResponse.expiry_time
-            //   ? new Date(chargeResponse.expiry_time)
-            //   : undefined, // Simpan expiry time jika ada
+            //   ? new Date(chargeResponse.expiry_time)
+            //   : undefined, // Simpan expiry time jika ada
           },
         });
 

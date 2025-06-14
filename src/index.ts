@@ -213,6 +213,9 @@ process.on("unhandledRejection", (reason, promise) => {
 process.on("SIGTERM", gracefulShutdown);
 process.on("SIGINT", gracefulShutdown);
 
+console.log(env.MIDTRANS_CLIENT_KEY);
+console.log(env.MIDTRANS_SERVER_KEY);
+
 // * INITIALIZATION
 (async () => {
   await connectDb();

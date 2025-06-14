@@ -448,7 +448,7 @@ export const xenditPaymentRequestWebhook: RequestHandler = async (req, res) => {
 
 export const midtransWebhook: RequestHandler = async (req, res) => {
   try {
-    const serverKey = env.SANDBOX_MIDTRANS_SERVER_KEY;
+    const serverKey = env.MIDTRANS_SERVER_KEY;
     const payload: MidtransWebhookPayload = req.body;
     const {
       transaction_id: transactionIdFromMidtrans,

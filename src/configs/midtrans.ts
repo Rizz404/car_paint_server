@@ -3,7 +3,7 @@ import env from "./environment";
 
 // Todo: Nanti diganti lagi
 // For using sandbox in both development and production
-const USE_SANDBOX = true; // Set this to false when ready for real production
+const USE_SANDBOX = false; // Set this to false when ready for real production
 
 // Inisialisasi Snap untuk pembayaran frontend
 export const midtransSnap = new Snap({
