@@ -96,6 +96,35 @@ export const getColors: RequestHandler = async (req, res) => {
   }
 };
 
+export const getColorsByModelId: RequestHandler = async (req, res) => {
+  try {
+    const { carModelId } = req.params;
+
+    const carModel = await prisma.carModel.findUnique({
+      where: { id: carModelId },
+    });
+
+    if (!carModel) {
+      return createErrorResponse(res, "Car Model not found", 404);
+    }
+
+    const carModelColors = await prisma.carModelColor.findMany({
+      where: {
+        carModelId: carModelId,
+      },
+      include: {
+        color: true,
+      },
+    });
+
+    const colors = carModelColors.map((cmc) => cmc.color);
+
+    return createSuccessResponse(res, colors);
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
 export const getColorById: RequestHandler = async (req, res) => {
   try {
     const { colorId } = req.params;

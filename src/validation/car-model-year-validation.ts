@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const createCarModelYearSchema = z.object({
+export const createCarModelColorSchema = z.object({
   body: z
     .object({
       carModelId: z.string({ required_error: "Car model ID is required" }),
@@ -9,12 +9,12 @@ export const createCarModelYearSchema = z.object({
     .strict(),
 });
 
-export const updateCarModelYearSchema = z.object({
-  body: createCarModelYearSchema.shape.body.partial(),
+export const updateCarModelColorSchema = z.object({
+  body: createCarModelColorSchema.shape.body.partial(),
 });
 
-export const createManyCarModelYearSchema = z.object({
+export const createManyCarModelColorSchema = z.object({
   body: z
-    .array(createCarModelYearSchema.shape.body)
+    .array(createCarModelColorSchema.shape.body)
     .min(1, "At least one car model year is required"),
 });

@@ -50,8 +50,8 @@
 //     colors: await cloudDb.color.findMany(),
 //     workshops: await cloudDb.workshop.findMany(),
 //     carServices: await cloudDb.carService.findMany(),
-//     carModelYears: await cloudDb.carModelYear.findMany(),
-//     carModelYearColors: await cloudDb.carModelYearColor.findMany(),
+//     carModelColors: await cloudDb.carModelColor.findMany(),
+//     carModelColorColors: await cloudDb.carModelColorColor.findMany(),
 //     userCars: await cloudDb.userCar.findMany(),
 //     paymentMethods: await cloudDb.paymentMethod.findMany(),
 //     orders: await cloudDb.order.findMany(),
@@ -114,14 +114,14 @@
 
 //     // Level 3: Tables with multiple foreign key dependencies
 //     console.info("Inserting car model years...");
-//     await localDb.carModelYear.createMany({
-//       data: data.carModelYears,
+//     await localDb.carModelColor.createMany({
+//       data: data.carModelColors,
 //       skipDuplicates: true,
 //     });
 
 //     console.info("Inserting car model year colors...");
-//     await localDb.carModelYearColor.createMany({
-//       data: data.carModelYearColors,
+//     await localDb.carModelColorColor.createMany({
+//       data: data.carModelColorColors,
 //       skipDuplicates: true,
 //     });
 

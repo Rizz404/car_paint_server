@@ -1,6 +1,4 @@
 import {
-  createOrder,
-  createManyOrders,
   deleteAllOrder,
   deleteOrder,
   getOrderById,
@@ -8,11 +6,7 @@ import {
   searchOrders,
   updateOrder,
   getCurrentUserOrders,
-  cancelOrder,
-  createOrderWithPaymentRequest,
-  cancelOrderWithPaymentRequest,
   getOrdersByWorkshopId,
-  testFCM,
   createOrderWithMidtrans,
 } from "@/controller/order-controller";
 import { authMiddleware } from "@/middlewares/auth";
@@ -30,7 +24,6 @@ const orderRouter = express.Router();
 orderRouter
   .route("/")
   .get(authMiddleware(), validateRole(["ADMIN", "SUPER_ADMIN"]), getOrders)
-  .post(authMiddleware(), validateRequest(createOrderSchema), createOrder)
   .delete(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
@@ -40,10 +33,6 @@ orderRouter
 orderRouter.route("/midtrans").post(authMiddleware(), createOrderWithMidtrans);
 
 orderRouter
-  .route("/payment-request")
-  .post(authMiddleware(), createOrderWithPaymentRequest);
-
-orderRouter
   .route("/workshop/:workshopId")
   .get(
     authMiddleware(),
@@ -51,26 +40,9 @@ orderRouter
     getOrdersByWorkshopId
   );
 
-orderRouter.route("/test-fcm").post(testFCM);
-
-orderRouter
-  .route("/multiple")
-  .post(
-    authMiddleware(),
-    validateRole(["ADMIN", "SUPER_ADMIN"]),
-    validateRequest(createManyOrderSchema),
-    createManyOrders
-  );
-
 orderRouter.route("/search").get(searchOrders);
 
 orderRouter.route("/user").get(authMiddleware(), getCurrentUserOrders);
-
-orderRouter
-  .route("/payment-request/cancel/:orderId")
-  .patch(authMiddleware(), cancelOrderWithPaymentRequest);
-
-orderRouter.route("/cancel/:orderId").patch(authMiddleware(), cancelOrder);
 
 orderRouter
   .route("/:orderId")

@@ -65,25 +65,11 @@ model CarModel {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  carBrand      CarBrand       @relation(fields: [carBrandId], references: [id], onDelete: Cascade)
-  carModelYears CarModelYear[]
+  carBrand CarBrand        @relation(fields: [carBrandId], references: [id], onDelete: Cascade)
+  colors   CarModelColor[]
 
   @@unique([name, carBrandId])
   @@map("car_models")
-}
-
-model CarModelYear {
-  id         String   @id @default(cuid()) @db.VarChar(30)
-  carModelId String   @map("car_model_id") @db.VarChar(30)
-  year       Int      @db.Integer
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  carModel           CarModel            @relation(fields: [carModelId], references: [id], onDelete: Cascade)
-  carModelYearColors CarModelYearColor[]
-
-  @@unique([year, carModelId])
-  @@map("car_model_years")
 }
 
 model Color {
@@ -92,24 +78,24 @@ model Color {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  carModelYearColors CarModelYearColor[]
+  carModels CarModelColor[]
 
   @@map("colors")
 }
 
-model CarModelYearColor {
-  id             String   @id @default(cuid())
-  carModelYearId String   @map("car_model_year_id") @db.VarChar(30)
-  colorId        String   @map("color_id") @db.VarChar(30)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+model CarModelColor {
+  id         String   @id @default(cuid()) @db.VarChar(30)
+  carModelId String   @map("car_model_id") @db.VarChar(30)
+  colorId    String   @map("color_id") @db.VarChar(30)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  carModelYear CarModelYear @relation(fields: [carModelYearId], references: [id], onDelete: Cascade)
-  color        Color        @relation(fields: [colorId], references: [id], onDelete: Cascade)
-  orders       Order[]
+  carModel CarModel @relation(fields: [carModelId], references: [id], onDelete: Cascade)
+  color    Color    @relation(fields: [colorId], references: [id], onDelete: Cascade)
+  Order    Order[]
 
-  @@unique([carModelYearId, colorId])
-  @@map("car_model_year_colors")
+  @@unique([carModelId, colorId])
+  @@map("car_model_colors")
 }
 
 model Workshop {
@@ -192,26 +178,25 @@ model VirtualAccountConfig {
   @@map("virtual_account_configs")
 }
 
-// Todo: Mungkin diganti one to one nantis
 model Order {
-  id                  String      @id @default(cuid()) @db.VarChar(30)
-  userId              String      @map("user_id") @db.VarChar(30)
-  carModelYearColorId String      @map("car_model_year_color_id") @db.VarChar(30)
-  workshopId          String      @map("workshop_id") @db.VarChar(30)
-  transactionId       String      @map("transaction_id") @db.VarChar(30)
-  workStatus          WorkStatus  @default(QUEUED) @map("work_status")
-  orderStatus         OrderStatus @default(DRAFT) @map("order_status")
-  note                String?     @db.Text
-  subtotalPrice       Decimal     @map("subtotal_price") @db.Decimal(12, 2)
-  createdAt           DateTime    @default(now()) @map("created_at")
-  updatedAt           DateTime    @updatedAt @map("updated_at")
+  id              String      @id @default(cuid()) @db.VarChar(30)
+  userId          String      @map("user_id") @db.VarChar(30)
+  carModelColorId String      @map("car_model_color_id") @db.VarChar(30)
+  workshopId      String      @map("workshop_id") @db.VarChar(30)
+  transactionId   String      @map("transaction_id") @db.VarChar(30)
+  workStatus      WorkStatus  @default(QUEUED) @map("work_status")
+  orderStatus     OrderStatus @default(DRAFT) @map("order_status")
+  note            String?     @db.Text
+  subtotalPrice   Decimal     @map("subtotal_price") @db.Decimal(12, 2)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
 
-  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  carModelYearColor CarModelYearColor @relation(fields: [carModelYearColorId], references: [id])
-  workshop          Workshop          @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  transaction       Transaction       @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  carServices       CarService[]
-  eTickets          ETicket[]
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  carModelColor CarModelColor @relation(fields: [carModelColorId], references: [id]) // <<< DAN DI SINI
+  workshop      Workshop      @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  transaction   Transaction   @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  carServices   CarService[]
+  eTickets      ETicket[]
 
   @@map("orders")
 }
@@ -221,8 +206,8 @@ model Transaction {
   userId          String        @map("user_id") @db.VarChar(30)
   paymentMethodId String        @map("payment_method_id") @db.VarChar(30)
   adminFee        Decimal       @map("admin_fee") @db.Decimal(12, 2)
-  totalPrice      Decimal       @map("total_price") @db.Decimal(12, 2) // total = subtotal order + admin fee
-  paymentStatus   PaymentStatus @default(PENDING) @map("payment_status") // Status internalmu
+  totalPrice      Decimal       @map("total_price") @db.Decimal(12, 2)
+  paymentStatus   PaymentStatus @default(PENDING) @map("payment_status")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
