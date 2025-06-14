@@ -5,6 +5,7 @@ import {
   deleteColor,
   getColorById,
   getColors,
+  getColorsByModelId,
   searchColors,
   updateColor,
 } from "@/controller/color-controller";
@@ -43,6 +44,8 @@ colorRouter
     validateRequest(createManyColorSchema),
     createManyColors
   );
+
+colorRouter.get("/car-model/:carModelId", getColorsByModelId);
 
 colorRouter.route("/search").get(searchColors);
 colorRouter

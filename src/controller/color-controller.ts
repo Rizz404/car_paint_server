@@ -96,6 +96,73 @@ export const getColors: RequestHandler = async (req, res) => {
   }
 };
 
+export const getColorsByModelId: RequestHandler = async (req, res) => {
+  try {
+    const { carModelId } = req.params;
+    const {
+      page = "1",
+      limit = "10",
+      orderBy,
+      orderDirection,
+    } = req.query as unknown as {
+      page: string;
+      limit: string;
+      orderBy?: string;
+      orderDirection?: string;
+    };
+
+    const { currentPage, itemsPerPage, offset } = parsePagination(page, limit);
+    const validFields = ["name", "createdAt"];
+    const { field, direction } = parseOrderBy(
+      orderBy,
+      orderDirection,
+      validFields
+    );
+
+    const carModel = await prisma.carModel.findUnique({
+      where: { id: carModelId },
+    });
+
+    if (!carModel) {
+      return createErrorResponse(res, "Car Model not found", 404);
+    }
+
+    const carModelColors = await prisma.carModelColor.findMany({
+      where: {
+        carModelId: carModelId,
+      },
+      include: {
+        color: true,
+      },
+      skip: offset,
+      take: itemsPerPage,
+      orderBy: {
+        color: {
+          [field]: direction,
+        },
+      },
+    });
+
+    const totalColorsForModel = await prisma.carModelColor.count({
+      where: {
+        carModelId: carModelId,
+      },
+    });
+
+    const colors = carModelColors.map((cmc) => cmc.color);
+
+    return createPaginatedResponse(
+      res,
+      colors,
+      currentPage,
+      itemsPerPage,
+      totalColorsForModel
+    );
+  } catch (error) {
+    return createErrorResponse(res, error, 500);
+  }
+};
+
 export const getColorById: RequestHandler = async (req, res) => {
   try {
     const { colorId } = req.params;
