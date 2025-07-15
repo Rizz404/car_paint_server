@@ -51,6 +51,7 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
       workshopId,
       paymentMethodId,
       note,
+      plateNumber,
       cardTokenId,
     }: CreateOrderDTO = req.body;
 
@@ -203,7 +204,8 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
                 userId: user.id,
                 carModelColorId: finalCarModelColorId, // Menggunakan finalCarModelColorId
                 workshopId,
-                note: note,
+                plateNumber,
+                note,
                 subtotalPrice: orderSubtotalPrice,
                 carServices: {
                   connect: carServicesData.map(({ id }) => ({ id })),
