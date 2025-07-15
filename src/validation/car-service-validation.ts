@@ -13,6 +13,7 @@ export const createCarServiceSchema = z.object({
           invalid_type_error: "Price must be a number",
         })
         .positive("Price must be a positive number"),
+      carServiceImage: z.string().url("Must be a valid URL").optional(),
     })
     .strict(),
   file: fileSchema,
