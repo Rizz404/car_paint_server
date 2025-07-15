@@ -187,6 +187,7 @@ model Order {
   transactionId   String      @map("transaction_id") @db.VarChar(30)
   workStatus      WorkStatus  @default(QUEUED) @map("work_status")
   orderStatus     OrderStatus @default(DRAFT) @map("order_status")
+  plateNumber     String?     @map("plate_number")
   note            String?     @db.Text
   subtotalPrice   Decimal     @map("subtotal_price") @db.Decimal(12, 2)
   createdAt       DateTime    @default(now()) @map("created_at")

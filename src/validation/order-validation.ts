@@ -12,6 +12,7 @@ export const createOrderSchema = z.object({
       carModelColorId: z.string().optional(),
       workshopId: z.string().min(1, "Workshop ID is required"),
       paymentMethodId: z.string().min(1, "Payment Method ID is required"),
+      plateNumber: z.string().optional(),
       note: z.string().max(1000, "Max 1000 characters").optional(),
       carServices: z
         .array(carServiceSchema)
@@ -53,6 +54,7 @@ export const createManyOrderSchema = z.object({
         carModelId: z.string().optional(),
         workshopId: z.string().min(1, "Workshop ID is required"),
         paymentMethodId: z.string().min(1, "Payment Method ID is required"),
+        plateNumber: z.string().optional(),
         note: z.string().max(1000, "Max 1000 characters").optional(),
         carServices: z
           .array(carServiceSchema)
