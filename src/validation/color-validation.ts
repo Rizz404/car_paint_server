@@ -8,6 +8,7 @@ export const createColorSchema = z.object({
           required_error: "Name is required",
         })
         .min(3, "Name must be at least 3 characters"),
+      code: z.string().optional(),
     })
     .strict(),
 });
