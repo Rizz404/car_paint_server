@@ -5,54 +5,32 @@ import {
   createPaginatedResponse,
   createSuccessResponse,
 } from "@/types/api-response";
+import { deleteCloudinaryImage, isCloudinaryUrl } from "@/utils/cloudinary";
 import logger from "@/utils/logger";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import {
-  EWalletPaymentConfig,
-  PaymentMethod,
-  VirtualAccountConfig,
-} from "@prisma/client";
+  createPaymentMethodSchema,
+  updatePaymentMethodSchema,
+} from "@/validation/payment-method-validation";
+import { PaymentMethod } from "@prisma/client";
 import { RequestHandler } from "express";
+import { z } from "zod";
 
-type CreatePaymentMethodPayload = Omit<
-  PaymentMethod,
-  "id" | "createdAt" | "updatedAt"
-> & {
-  eWalletPaymentConfig?: Omit<
-    EWalletPaymentConfig,
-    "id" | "paymentMethodId" | "createdAt" | "updatedAt"
-  >;
-  virtualAccountConfig?: Omit<
-    VirtualAccountConfig,
-    "id" | "paymentMethodId" | "createdAt" | "updatedAt"
-  >;
-};
-
-type UpdatePaymentMethodPayload = Partial<
-  Omit<PaymentMethod, "id" | "createdAt" | "updatedAt">
-> & {
-  eWalletPaymentConfig?: Omit<
-    EWalletPaymentConfig,
-    "id" | "paymentMethodId" | "createdAt" | "updatedAt"
-  >;
-  virtualAccountConfig?: Omit<
-    VirtualAccountConfig,
-    "id" | "paymentMethodId" | "createdAt" | "updatedAt"
-  >;
-};
+type CreatePaymentMethodPayload = z.infer<
+  typeof createPaymentMethodSchema.shape.body
+>;
+type UpdatePaymentMethodPayload = z.infer<
+  typeof updatePaymentMethodSchema.shape.body
+>;
 
 // *======================= POST =======================*
 export const createManyPaymentMethods: RequestHandler = async (req, res) => {
   try {
-    const payloads: PaymentMethod[] = req.body;
-
-    const paymentMethodsToCreate = payloads.map((payload, index) => ({
-      ...payload,
-    }));
+    const payloads: CreatePaymentMethodPayload[] = req.body;
 
     const createdPaymentMethods = await prisma.paymentMethod.createMany({
-      data: paymentMethodsToCreate,
-      skipDuplicates: true, // Optional: skip duplicate entries
+      data: payloads,
+      skipDuplicates: true,
     });
 
     return createSuccessResponse(
@@ -67,26 +45,13 @@ export const createManyPaymentMethods: RequestHandler = async (req, res) => {
   }
 };
 
-// Todo: Nanti tambahin, sekarang input manual langsung ke database untuk logo payment method
 export const createPaymentMethod: RequestHandler = async (req, res) => {
   try {
     const payload: CreatePaymentMethodPayload = req.body;
-    const logoUrl = req.file as Express.Multer.File;
+    const logo = req.file as Express.Multer.File;
 
-    if (payload.type === "EWALLET" && !payload.eWalletPaymentConfig) {
-      return createErrorResponse(
-        res,
-        "E-Wallet payment method requires eWalletPaymentConfig",
-        400
-      );
-    }
-
-    if (payload.type === "VIRTUAL_ACCOUNT" && !payload.virtualAccountConfig) {
-      return createErrorResponse(
-        res,
-        "Virtual Account payment method requires virtualAccountConfig",
-        400
-      );
+    if (logo && !logo.cloudinary?.secure_url) {
+      return createErrorResponse(res, "Cloudinary error", 400);
     }
 
     const existingPaymentMethod = await prisma.paymentMethod.findFirst({
@@ -99,27 +64,8 @@ export const createPaymentMethod: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Payment Method already exists", 400);
     }
 
-    const { eWalletPaymentConfig, virtualAccountConfig, ...paymentMethodData } =
-      payload;
-
     const createdPaymentMethod = await prisma.paymentMethod.create({
-      data: {
-        ...paymentMethodData,
-        eWalletPaymentConfig: eWalletPaymentConfig
-          ? {
-              create: eWalletPaymentConfig,
-            }
-          : undefined,
-        virtualAccountConfig: virtualAccountConfig
-          ? {
-              create: virtualAccountConfig,
-            }
-          : undefined,
-      },
-      include: {
-        eWalletPaymentConfig: true,
-        virtualAccountConfig: true,
-      },
+      data: { ...payload, logoUrl: logo.cloudinary?.secure_url },
     });
 
     return createSuccessResponse(res, createdPaymentMethod, "Created", 201);
@@ -153,7 +99,6 @@ export const getPaymentMethods: RequestHandler = async (req, res) => {
     );
 
     const paymentMethods = await prisma.paymentMethod.findMany({
-      include: { eWalletPaymentConfig: true, virtualAccountConfig: true },
       skip: offset,
       take: +limit,
       orderBy: { [field]: direction },
@@ -188,7 +133,6 @@ export const getPaymentMethodById: RequestHandler = async (req, res) => {
     const { paymentMethodId } = req.params;
     const paymentMethod = await prisma.paymentMethod.findUnique({
       where: { id: paymentMethodId },
-      include: { eWalletPaymentConfig: true, virtualAccountConfig: true },
     });
 
     if (!paymentMethod) {
@@ -217,7 +161,7 @@ export const searchPaymentMethods: RequestHandler = async (req, res) => {
 
     const paymentMethods = await prisma.paymentMethod.findMany({
       where: { name: { mode: "insensitive", contains: name } },
-      include: { eWalletPaymentConfig: true, virtualAccountConfig: true },
+
       skip: offset,
       take: +limit,
     });
@@ -242,45 +186,28 @@ export const updatePaymentMethod: RequestHandler = async (req, res) => {
   try {
     const { paymentMethodId } = req.params;
     const payload: UpdatePaymentMethodPayload = req.body;
+    const logo = req.file as Express.Multer.File;
+
+    if (logo && !logo.cloudinary?.secure_url) {
+      return createErrorResponse(res, "Cloudinary error", 400);
+    }
 
     const existingPaymentMethod = await prisma.paymentMethod.findUnique({
       where: { id: paymentMethodId },
-      include: {
-        eWalletPaymentConfig: true,
-        virtualAccountConfig: true,
-      },
     });
 
     if (!existingPaymentMethod) {
       return createErrorResponse(res, "Payment method not found", 404);
     }
 
-    if (payload.type) {
-      if (
-        payload.type === "EWALLET" &&
-        !payload.eWalletPaymentConfig &&
-        !existingPaymentMethod.eWalletPaymentConfig
-      ) {
-        return createErrorResponse(
-          res,
-          "E-Wallet payment method requires eWalletPaymentConfig",
-          400
-        );
-      }
-      if (
-        payload.type === "VIRTUAL_ACCOUNT" &&
-        !payload.virtualAccountConfig &&
-        !existingPaymentMethod.virtualAccountConfig
-      ) {
-        return createErrorResponse(
-          res,
-          "Virtual Account payment method requires virtualAccountConfig",
-          400
-        );
+    if (logo && logo.cloudinary && logo.cloudinary.secure_url) {
+      const imageToDelete = existingPaymentMethod.logoUrl;
+
+      if (imageToDelete && isCloudinaryUrl(imageToDelete)) {
+        await deleteCloudinaryImage(imageToDelete);
       }
     }
 
-    // Only check name if it's being updated
     if (payload.name && payload.name !== existingPaymentMethod.name) {
       const nameExists = await prisma.paymentMethod.findFirst({
         where: {
@@ -297,37 +224,11 @@ export const updatePaymentMethod: RequestHandler = async (req, res) => {
       }
     }
 
-    const { eWalletPaymentConfig, virtualAccountConfig, ...paymentMethodData } =
-      payload;
-
     const updatedPaymentMethod = await prisma.paymentMethod.update({
       where: { id: paymentMethodId },
       data: {
-        ...paymentMethodData,
-        eWalletPaymentConfig: eWalletPaymentConfig
-          ? {
-              upsert: {
-                create: eWalletPaymentConfig,
-                update: eWalletPaymentConfig,
-              },
-            }
-          : payload.type === "VIRTUAL_ACCOUNT"
-            ? { delete: true }
-            : undefined,
-        virtualAccountConfig: virtualAccountConfig
-          ? {
-              upsert: {
-                create: virtualAccountConfig,
-                update: virtualAccountConfig,
-              },
-            }
-          : payload.type === "EWALLET"
-            ? { delete: true }
-            : undefined,
-      },
-      include: {
-        eWalletPaymentConfig: true,
-        virtualAccountConfig: true,
+        ...payload,
+        ...(logo && logo.cloudinary && { logoUrl: logo.cloudinary.secure_url }),
       },
     });
 
@@ -353,6 +254,12 @@ export const deletePaymentMethod: RequestHandler = async (req, res) => {
       return createErrorResponse(res, "Payment method Not Found", 500);
     }
 
+    const imageToDelete = paymentMethod.logoUrl;
+
+    if (imageToDelete && isCloudinaryUrl(imageToDelete)) {
+      await deleteCloudinaryImage(imageToDelete);
+    }
+
     const deletedPaymentMethod = await prisma.paymentMethod.delete({
       where: { id: paymentMethodId },
     });
@@ -370,7 +277,7 @@ export const deleteAllPaymentMethod: RequestHandler = async (req, res) => {
     return createSuccessResponse(
       res,
       deletedAllPaymentMethods,
-      "All car brands deleted"
+      "All payment methods deleted"
     );
   } catch (error) {
     return createErrorResponse(res, error, 500);

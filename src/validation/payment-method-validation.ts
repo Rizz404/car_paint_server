@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PaymentMethodType, PaymentReusability } from "@prisma/client";
+import { fileSchema } from "@/utils/file-vallidation";
 
 export const createPaymentMethodSchema = z.object({
   body: z
@@ -21,8 +22,15 @@ export const createPaymentMethodSchema = z.object({
       logoUrl: z.string().optional(),
       isActive: z.boolean().optional(),
       midtransIdentifier: z.string().optional(),
+      callbackUrl: z.string().url().optional(),
+      successReturnUrl: z.string().url().optional(),
+      failureReturnUrl: z.string().url().optional(),
+      bankCode: z.string().optional(),
+      channelCode: z.string().optional(),
+      storeName: z.string().optional(),
     })
     .strict(),
+  file: fileSchema,
 });
 
 export const updatePaymentMethodSchema = z.object({
@@ -31,6 +39,10 @@ export const updatePaymentMethodSchema = z.object({
 
 export const createManyPaymentMethodSchema = z.object({
   body: z
-    .array(createPaymentMethodSchema.shape.body)
+    .array(
+      createPaymentMethodSchema
+        .omit({ file: true })
+        .shape.body.extend({ logoUrl: z.string().optional() })
+    )
     .min(1, "At least one payment method is required"),
 });

@@ -19,14 +19,8 @@ export const createManyCarBrands: RequestHandler = async (req, res) => {
   try {
     const { ...rest }: CarBrand[] = req.body;
 
-    const logos = req.files as Express.Multer.File[];
-
     const carBrandsToCreate = rest.map((payload, index) => ({
       ...payload,
-      ...(logos &&
-        logos[index] && {
-          logo: logos[index].cloudinary?.secure_url!,
-        }),
     }));
 
     const createdCarBrands = await prisma.carBrand.createMany({
