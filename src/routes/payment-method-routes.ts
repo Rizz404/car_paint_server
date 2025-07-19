@@ -19,6 +19,7 @@ import {
   updatePaymentMethodSchema,
 } from "@/validation/payment-method-validation";
 import express from "express";
+import { parseFiles, uploadFilesToCloudinary } from "@/middlewares/upload-file";
 
 const paymentMethodRouter = express.Router();
 
@@ -28,7 +29,9 @@ paymentMethodRouter
   .post(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
+    parseFiles.single("logoUrl"),
     validateRequest(createPaymentMethodSchema),
+    uploadFilesToCloudinary("payment-methods"),
     createPaymentMethod
   )
   .delete(
@@ -55,7 +58,9 @@ paymentMethodRouter
   .patch(
     authMiddleware(),
     validateRole(["ADMIN", "SUPER_ADMIN"]),
+    parseFiles.single("logoUrl"),
     validateRequest(updatePaymentMethodSchema),
+    uploadFilesToCloudinary("payment-methods"),
     updatePaymentMethod
   )
   .delete(
