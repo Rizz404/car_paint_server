@@ -1,6 +1,6 @@
 import prisma from "@/configs/database";
 import env from "@/configs/environment";
-import { midtransCoreApi } from "@/configs/midtrans";
+import { midtransCoreApi, midtransSnap } from "@/configs/midtrans";
 import {
   createErrorResponse,
   createPaginatedResponse,
@@ -16,17 +16,7 @@ import {
 } from "@/utils/notification-handler";
 import { parseOrderBy, parsePagination } from "@/utils/query";
 import { createOrderSchema } from "@/validation/order-validation";
-import {
-  Cancellation,
-  CancellationReason,
-  MidtransFraudStatus,
-  MidtransTransactionStatus,
-  Order,
-  OrderStatus,
-  PaymentDetail,
-  Prisma,
-  WorkStatus,
-} from "@prisma/client";
+import { Order, OrderStatus, Prisma, WorkStatus } from "@prisma/client";
 import { RequestHandler } from "express";
 import { messaging } from "firebase-admin";
 import {
@@ -34,6 +24,15 @@ import {
   CustomerDetails,
   ItemDetails,
   CoreApiChargeResponse,
+  CoreApi,
+  MidtransClientOptions,
+  MidtransNotificationPayload,
+  MidtransWebhookPayload,
+  Snap,
+  TransactionDetails,
+  SnapTransaction,
+  SnapCreateTransactionResponse,
+  SnapCreateTransactionParameter, // alias untuk SnapTransaction
 } from "midtrans-client";
 import { z } from "zod";
 
@@ -480,6 +479,236 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
       error?.message || "Failed to create order",
       error?.statusCode ||
         (error.message.startsWith("Midtrans charge failed") ? 400 : 500)
+    );
+  }
+};
+
+export const createOrderWithSnap: RequestHandler = async (req, res) => {
+  try {
+    const { id: userId } = req.user!;
+    const {
+      carServices,
+      carModelId,
+      colorId,
+      carModelColorId,
+      workshopId,
+      paymentMethodId,
+      note,
+      plateNumber,
+    }: CreateOrderDTO = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        userProfile: {
+          select: {
+            fullname: true,
+            phoneNumber: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return createErrorResponse(res, "User not found", 404);
+    }
+    if (!user.userProfile || !user.userProfile.phoneNumber) {
+      return createErrorResponse(
+        res,
+        "User profile or phone number is required",
+        400
+      );
+    }
+
+    let finalCarModelColorId: string;
+
+    if (carModelColorId) {
+      const existingCarModelColor = await prisma.carModelColor.findUnique({
+        where: { id: carModelColorId },
+      });
+      if (!existingCarModelColor) {
+        return createErrorResponse(res, "Car model color not found", 404);
+      }
+      finalCarModelColorId = carModelColorId;
+    } else if (carModelId && colorId) {
+      let carModelColor = await prisma.carModelColor.findUnique({
+        where: { carModelId_colorId: { carModelId, colorId } },
+      });
+      if (!carModelColor) {
+        const [carModel, color] = await Promise.all([
+          prisma.carModel.findUnique({ where: { id: carModelId } }),
+          prisma.color.findUnique({ where: { id: colorId } }),
+        ]);
+        if (!carModel) {
+          return createErrorResponse(res, "Car model not found", 404);
+        }
+        if (!color) {
+          return createErrorResponse(res, "Color not found", 404);
+        }
+        carModelColor = await prisma.carModelColor.create({
+          data: { carModelId, colorId },
+        });
+      }
+      finalCarModelColorId = carModelColor.id;
+    } else {
+      return createErrorResponse(
+        res,
+        "Either carModelColorId or both carModelId and colorId are required",
+        400
+      );
+    }
+
+    const carServiceIds = carServices.map((service) => service.carServiceId);
+    const carServicesData = await prisma.carService.findMany({
+      where: { id: { in: carServiceIds } },
+      select: { id: true, name: true, price: true },
+    });
+
+    if (carServicesData.length !== carServiceIds.length) {
+      return createErrorResponse(
+        res,
+        "One or more car services not found",
+        404
+      );
+    }
+
+    const orderSubtotalPrice = carServicesData.reduce(
+      (sum, service) => sum.add(service.price),
+      new Prisma.Decimal(0)
+    );
+
+    const paymentMethod = await prisma.paymentMethod.findUnique({
+      where: { id: paymentMethodId },
+    });
+
+    if (!paymentMethod) {
+      return createErrorResponse(res, "Payment method not found", 404);
+    }
+    const adminFee = new Prisma.Decimal(paymentMethod.fee ?? 0);
+    const transactionTotalPrice = orderSubtotalPrice.add(adminFee);
+
+    if (transactionTotalPrice.lessThan(paymentMethod.minimumPayment)) {
+      return createErrorResponse(
+        res,
+        `Minimum payment amount is ${paymentMethod.minimumPayment}`,
+        400
+      );
+    }
+    if (transactionTotalPrice.greaterThan(paymentMethod.maximumPayment)) {
+      return createErrorResponse(
+        res,
+        `Maximum payment amount is ${paymentMethod.maximumPayment}`,
+        400
+      );
+    }
+
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const transaction = await tx.transaction.create({
+          data: {
+            userId: user.id,
+            paymentMethodId: paymentMethod.id,
+            adminFee,
+            totalPrice: transactionTotalPrice,
+            order: {
+              create: {
+                userId: user.id,
+                carModelColorId: finalCarModelColorId,
+                workshopId,
+                plateNumber,
+                note,
+                subtotalPrice: orderSubtotalPrice,
+                carServices: {
+                  connect: carServicesData.map(({ id }) => ({ id })),
+                },
+              },
+            },
+          },
+          include: { order: { select: { id: true } } },
+        });
+
+        const midtransOrderId = transaction.id;
+
+        const customerDetails: CustomerDetails = {
+          first_name:
+            user.userProfile?.fullname?.split(" ")[0] ?? user.username,
+          last_name:
+            user.userProfile?.fullname?.split(" ").slice(1).join(" ") ||
+            undefined,
+          email: user.email,
+          phone: user.userProfile!.phoneNumber!,
+        };
+
+        const itemDetails: ItemDetails[] = carServicesData.map((service) => ({
+          id: service.id,
+          price: Number(service.price),
+          quantity: 1,
+          name: service.name.substring(0, 50),
+        }));
+        if (adminFee.greaterThan(0)) {
+          itemDetails.push({
+            id: "ADMIN_FEE",
+            price: Number(adminFee),
+            quantity: 1,
+            name: "Biaya Admin",
+          });
+        }
+
+        const snapParameter: SnapTransaction = {
+          transaction_details: {
+            order_id: midtransOrderId,
+            gross_amount: Number(transactionTotalPrice),
+          },
+          customer_details: customerDetails,
+          item_details: itemDetails,
+          // callbacks: {
+          //   finish: `${env.FRONTEND_URL}/payment-finish`,
+          // },
+        };
+
+        let snapResponse: SnapCreateTransactionResponse;
+        try {
+          snapResponse = await midtransSnap.createTransaction(snapParameter);
+        } catch (error: any) {
+          console.error("Midtrans Snap Error:", error?.message || error);
+          throw new Error(
+            `Failed to create Midtrans transaction: ${error?.message}`
+          );
+        }
+
+        await tx.paymentDetail.create({
+          data: {
+            transactionId: transaction.id,
+            midtransOrderId: midtransOrderId,
+            midtransRedirectUrl: snapResponse.redirect_url,
+          },
+        });
+
+        return {
+          orderId: transaction.order?.[0]?.id ?? midtransOrderId,
+          transactionId: transaction.id,
+          redirectUrl: snapResponse.redirect_url,
+          token: snapResponse.token,
+        };
+      },
+      { timeout: 20000 }
+    );
+
+    return createSuccessResponse(
+      res,
+      result,
+      "Order created, redirect to payment page",
+      201
+    );
+  } catch (error: any) {
+    console.error("Create Order Error:", error);
+    return createErrorResponse(
+      res,
+      error?.message || "Failed to create order",
+      500
     );
   }
 };
