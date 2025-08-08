@@ -1,3 +1,4 @@
+import { filesArraySchema } from "@/utils/file-vallidation";
 import { z } from "zod";
 
 export const carServiceSchema = z.object({
@@ -43,49 +44,7 @@ export const createOrderSchema = z.object({
         });
       }
     }),
-});
-
-export const createManyOrderSchema = z.object({
-  body: z.array(
-    z
-      .object({
-        carModelColorId: z.string().optional(),
-        colorId: z.string().optional(),
-        carModelId: z.string().optional(),
-        workshopId: z.string().min(1, "Workshop ID is required"),
-        paymentMethodId: z.string().min(1, "Payment Method ID is required"),
-        plateNumber: z.string().optional(),
-        note: z.string().max(1000, "Max 1000 characters").optional(),
-        carServices: z
-          .array(carServiceSchema)
-          .min(1, "Minimal 1 layanan harus dipilih"),
-        userId: z.string().min(1, "User ID is required"),
-        transactionId: z.string().min(1, "Transaction ID is required"),
-      })
-      .superRefine((data, ctx) => {
-        if (data.carModelColorId) {
-          // Jika carModelColorId ada, maka colorId dan carModelId tidak boleh ada
-          if (data.colorId || data.carModelId) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "Cannot combine carModelColorId with colorId/carModelId",
-              path: ["carModelColorId"],
-            });
-          }
-          return;
-        }
-
-        // Jika carModelColorId tidak ada, maka colorId dan carModelId harus ada keduanya
-        if (!data.colorId || !data.carModelId) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message:
-              "Either carModelColorId or both colorId and carModelId are required",
-            path: ["colorId"],
-          });
-        }
-      })
-  ),
+  files: filesArraySchema.optional(),
 });
 
 export const updateOrderSchema = z.object({

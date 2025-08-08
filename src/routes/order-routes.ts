@@ -10,11 +10,11 @@ import {
   createOrderWithMidtrans,
 } from "@/controller/order-controller";
 import { authMiddleware } from "@/middlewares/auth";
+import { parseFiles, uploadFilesToCloudinary } from "@/middlewares/upload-file";
 import { validateRequest } from "@/middlewares/validate-request";
 import validateRole from "@/middlewares/validate-role";
 import {
   createOrderSchema,
-  createManyOrderSchema,
   updateOrderSchema,
 } from "@/validation/order-validation";
 import express from "express";
@@ -30,7 +30,15 @@ orderRouter
     deleteAllOrder
   );
 
-orderRouter.route("/midtrans").post(authMiddleware(), createOrderWithMidtrans);
+orderRouter
+  .route("/midtrans")
+  .post(
+    authMiddleware(),
+    parseFiles.array("carColors", 7),
+    validateRequest(createOrderSchema),
+    uploadFilesToCloudinary("car-colors"),
+    createOrderWithMidtrans
+  );
 
 orderRouter
   .route("/workshop/:workshopId")

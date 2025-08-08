@@ -53,6 +53,12 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
       plateNumber,
       cardTokenId,
     }: CreateOrderDTO = req.body;
+    const carColors = req.files as Express.Multer.File[];
+
+    const carColorsArr =
+      carColors
+        ?.map((color) => color.cloudinary?.secure_url)
+        .filter((url): url is string => !!url) ?? [];
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -202,6 +208,7 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
               create: {
                 userId: user.id,
                 carModelColorId: finalCarModelColorId, // Menggunakan finalCarModelColorId
+                carColors: carColorsArr,
                 workshopId,
                 plateNumber,
                 note,
