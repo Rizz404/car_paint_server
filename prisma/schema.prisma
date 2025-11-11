@@ -149,6 +149,7 @@ model PaymentMethod {
   bankCode         String? @map("bank_code") @db.VarChar(50)
   channelCode      String? @map("channel_code") @db.VarChar(50)
   storeName        String? @map("store_name") @db.VarChar(50) // untuk cstore (alfamart/indomaret)
+  acquirer         String? @map("acquirer") @db.VarChar(50) // untuk QRIS acquirer (gopay, airpay, dll)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
