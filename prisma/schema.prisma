@@ -223,6 +223,7 @@ model PaymentDetail {
   midtransQrCodeUrl         String?                    @map("midtrans_qr_code_url") @db.Text
   midtransRedirectUrl       String?                    @map("midtrans_redirect_url") @db.Text
   midtransExpiryTime        DateTime?                  @map("midtrans_expiry_time")
+  snapToken                 String?                    @map("snap_token") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
