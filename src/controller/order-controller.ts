@@ -503,6 +503,12 @@ export const createOrderWithSnap: RequestHandler = async (req, res) => {
       note,
       plateNumber,
     }: CreateOrderDTO = req.body;
+    const carColors = req.files as Express.Multer.File[];
+
+    const carColorsArr =
+      carColors
+        ?.map((color) => color.cloudinary?.secure_url)
+        .filter((url): url is string => !!url) ?? [];
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -624,6 +630,7 @@ export const createOrderWithSnap: RequestHandler = async (req, res) => {
               create: {
                 userId: user.id,
                 carModelColorId: finalCarModelColorId,
+                carColors: carColorsArr,
                 workshopId,
                 plateNumber,
                 note,
@@ -654,6 +661,7 @@ export const createOrderWithSnap: RequestHandler = async (req, res) => {
           price: Number(service.price),
           quantity: 1,
           name: service.name.substring(0, 50),
+          category: "Car Service",
         }));
         if (adminFee.greaterThan(0)) {
           itemDetails.push({
@@ -664,25 +672,50 @@ export const createOrderWithSnap: RequestHandler = async (req, res) => {
           });
         }
 
-        const snapParameter: SnapTransaction = {
+        const snapParameter: SnapCreateTransactionParameter = {
           transaction_details: {
             order_id: midtransOrderId,
             gross_amount: Number(transactionTotalPrice),
           },
           customer_details: customerDetails,
           item_details: itemDetails,
+          expiry: {
+            unit: "day",
+            duration: 2,
+          },
           // callbacks: {
-          //   finish: `${env.FRONTEND_URL}/payment-finish`,
+          //   finish: `${env.FRONTEND_URL}/payment/finish`,
           // },
         };
 
         let snapResponse: SnapCreateTransactionResponse;
         try {
           snapResponse = await midtransSnap.createTransaction(snapParameter);
+          console.log(
+            "Midtrans Snap Response:",
+            JSON.stringify(snapResponse, null, 2)
+          );
         } catch (error: any) {
-          console.error("Midtrans Snap Error:", error?.message || error);
+          console.error(
+            "Midtrans Snap Error:",
+            error?.message || error,
+            "Payload:",
+            JSON.stringify(snapParameter, null, 2)
+          );
+
+          const midtransErrorMessage =
+            error?.ApiResponse?.status_message ||
+            error?.message ||
+            "Unknown error";
           throw new Error(
-            `Failed to create Midtrans transaction: ${error?.message}`
+            `Failed to create Midtrans Snap transaction: ${midtransErrorMessage}`
+          );
+        }
+
+        // Validasi response dari Snap API
+        if (!snapResponse.redirect_url && !snapResponse.token) {
+          throw new Error(
+            "Invalid Snap response: missing redirect_url and token"
           );
         }
 
@@ -691,15 +724,20 @@ export const createOrderWithSnap: RequestHandler = async (req, res) => {
             transactionId: transaction.id,
             midtransOrderId: midtransOrderId,
             midtransRedirectUrl: snapResponse.redirect_url,
+            snapToken: snapResponse.token,
           },
         });
 
-        return {
+        const frontendResponseData = {
           orderId: transaction.order?.[0]?.id ?? midtransOrderId,
           transactionId: transaction.id,
+          paymentStatus: transaction.paymentStatus,
+          totalAmount: transactionTotalPrice,
+          snapToken: snapResponse.token,
           redirectUrl: snapResponse.redirect_url,
-          token: snapResponse.token,
         };
+
+        return frontendResponseData;
       },
       { timeout: 20000 }
     );
@@ -711,11 +749,12 @@ export const createOrderWithSnap: RequestHandler = async (req, res) => {
       201
     );
   } catch (error: any) {
-    console.error("Create Order Error:", error);
+    console.error("Create Order Snap Error:", error);
     return createErrorResponse(
       res,
       error?.message || "Failed to create order",
-      500
+      error?.statusCode ||
+        (error.message.startsWith("Failed to create Midtrans") ? 400 : 500)
     );
   }
 };
