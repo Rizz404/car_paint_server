@@ -352,7 +352,9 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
             paymentParameter = {
               ...baseParameter,
               payment_type: "dana",
-              dana: { callback_url: env.CALLBACK_URL },
+              dana: {
+                callback_url: env.CALLBACK_URL,
+              },
             };
             break;
           case "akulaku":
@@ -376,18 +378,7 @@ export const createOrderWithMidtrans: RequestHandler = async (req, res) => {
         let chargeResponse: CoreApiChargeResponse;
         try {
           chargeResponse = await midtransCoreApi.charge(paymentParameter);
-          console.log(
-            "Midtrans Charge Response:",
-            JSON.stringify(chargeResponse, null, 2)
-          );
         } catch (error: any) {
-          console.error(
-            "Midtrans Charge Error:",
-            error?.message || error,
-            "Payload:",
-            JSON.stringify(paymentParameter, null, 2)
-          );
-
           const midtransErrorMessage =
             error?.ApiResponse?.status_message ||
             error?.message ||
@@ -691,18 +682,7 @@ export const createOrderWithSnap: RequestHandler = async (req, res) => {
         let snapResponse: SnapCreateTransactionResponse;
         try {
           snapResponse = await midtransSnap.createTransaction(snapParameter);
-          console.log(
-            "Midtrans Snap Response:",
-            JSON.stringify(snapResponse, null, 2)
-          );
         } catch (error: any) {
-          console.error(
-            "Midtrans Snap Error:",
-            error?.message || error,
-            "Payload:",
-            JSON.stringify(snapParameter, null, 2)
-          );
-
           const midtransErrorMessage =
             error?.ApiResponse?.status_message ||
             error?.message ||
